@@ -1,0 +1,180 @@
+div.nav {
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    background-color: rgb(51,51,51);
+    color: rgb(218, 212, 212);
+    padding: 15px 15px;
+    margin: -8px;width: 100%;
+    margin-top: -10px;
+    margin-bottom: 7px;
+    position: fixed;
+
+}
+div.nav a{
+    margin-top: -30px;
+    margin: 22px;
+    color: rgb(192, 189, 189);
+    font-size: 12px;
+}
+div.nav img{
+    width: 13px;
+    margin-top: -30px;
+}
+div.nav a:hover{text-decoration: none;color: white;}
+div.nav2 {
+    text-align: center;
+    background-color: rgb(227,65,63);
+    color: white;
+    padding: 12px 12px;
+    margin: -8px;   
+    margin-top: 20px;
+    font-size: 14px;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin-bottom: 10px;
+}
+
+div.nav2 a{
+    color: white;
+    font-size: 14px;
+}
+
+.links{
+    text-align: center;
+    color:blue;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 20px;
+}
+div.holiday{
+    padding: 0x;
+    margin: -8px;
+    margin-top: -10px;
+    background-color:rgb(234,242,252);
+    line-height: 1em;
+}
+div.holiday  i.fas.fa-gift{
+    color: red;
+    font-size: 80px;
+}
+.h1{
+    font-size: 55px;
+    color: black;
+    font-family:Arial, Helvetica, sans-serif;
+}
+div.holiday a{
+    line-height: 1em;
+    font-size: 20px;
+  }
+
+a{
+    text-decoration: none;
+}
+a:hover{
+    text-decoration: underline;
+    }
+.hover{
+    cursor: pointer;
+}
+div.imgs img{
+    width: 19%;
+    margin: 15px;
+}
+div.iphone13pro{
+    padding: 0x;
+    margin: -8px;
+    text-align: center;
+    line-height: 0.7em;
+}
+p{
+    color: black;
+    font-size: 30px;
+}
+.image{
+    width: 44%;
+    margin-top: 20px;
+}
+
+.iphone13{
+    background-color: rgb(53,40,60);
+    padding: 0px;
+    margin: -8px;
+    text-align: center;
+    line-height: 0.7em;
+}
+.p2{
+    color:pink;
+    font-size: 30px;
+}
+
+.mac{
+    padding: 0px;
+    margin: 0px;
+    margin-top: 20px;
+    text-align: center;
+    line-height: 0.7em;
+    width: 50%;
+}
+.p3{
+    color:black;
+    font-size: 20px;
+    text-align: center;
+}
+div.container{
+    display: flex;text-align: center;
+}
+.watch{
+    padding: 0px;
+    margin: 0px;
+    margin-top: 15px;
+    background-color: rgb(245,245,247);
+    text-align: center;
+    line-height: 0.5em;
+    width: 50%;
+}
+.h2{
+    font-size: 33px;
+    color: black;
+    font-family:Arial, Helvetica, sans-serif;
+}
+.red{
+    color:rgb(164,55,64);
+    line-height: 0.5em;
+}
+.bgtv{
+    padding: 0px;
+    margin: 0px;
+    margin-top: 15px;
+    background-image: url('https://static.wikia.nocookie.net/dickinson/images/6/65/Apple_TV_Dickinson_key_art_2_3.png/revision/latest?cb=20211013172240');
+    background-size: cover;
+    width: 50%;
+}
+.footer{
+    background-color: rgb(238, 238, 241);
+    margin: -8px;
+    padding: 10px 10px;
+}
+.footer2{
+    margin-left: 15%; 
+    margin-right: 14%;
+    font-size: 12px;
+    font-family:Arial, Helvetica, sans-serif;
+    color:rgb(83, 82, 82);
+}
+table{
+    margin-left: 12%; 
+    margin-right: 14%;
+    margin-top: -10px;
+    text-align: left;
+}
+table tr th ul{
+    font-size: 12px;
+    font-family:Arial, Helvetica, sans-serif;
+    list-style: none;
+    margin-right:50px;
+}
+
+ul li a{
+    color:rgb(83, 82, 82);
+    line-height: 2.3em;
+}
+h4{cursor:default;}
+
