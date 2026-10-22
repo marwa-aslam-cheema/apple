@@ -137,3 +137,20 @@ Make every picture from the picture list, the props kit items that do not exist 
 8. Save all prompts in 05_Transparent_PNGs/prompts.md, report how many Flow generations were used, and open one
    contact sheet with all pictures.
 Stop.
+
+## STEP 4 — VOICE
+
+VOICE NAME (ai33 pro, Hindi): [VOICE NAME, e.g. Hindi Voice 2]
+(If I leave it empty, use the voice name from my last video.)
+
+1. Make the voice with ai33 pro (use the existing ai33_task.sh / tts.sh in the Automation folder if they fit), calm
+   and deep, reading script-hindi-full.txt word for word. Same voice and settings for every paragraph. Make it
+   one paragraph at a time and join the parts with natural pauses. Save 02_Voiceover/narration_full.mp3 (and a wav).
+2. Get the time of every word with whisper-cli, then align it to the SCRIPT's words (so timings follow the script
+   even if whisper mishears a word). Save 02_Voiceover/words.json.
+3. Check: total duration, no cut-off words, no pause longer than 1.5 seconds, no change in the voice between parts,
+   no sound glitches. Redo any bad paragraph.
+4. Update shot_list.csv with exact start and end times: each shot starts at the timestamp of the first word of its first
+   sentence (absolute time on one timeline, never by adding clip lengths). Report the voice duration and any shot that
+   became too short or too long for its rules.
+Stop.
