@@ -30,6 +30,10 @@ FIXED VISUAL STYLE (every picture, every video)
 - No filler: no blank cards, no decorative tape, no scraps without meaning. Everything on screen is tied to the
   narration. Everything must match the year and country of that shot; no modern objects.
 - Nothing may flicker or blink (see the anti-blink rules in Step 5).
+- NO PIXELATION, EVER: the desk, the sheets, the backdrop and every picture must be sharp at the closest zoom. On
+  screen, no image may be enlarged beyond 100% of its own pixels (screen pixels shown / image pixels <= 1.0 at the
+  tightest point of every zoom, drift and the 5-minute zoom-out), and 2x the output size is the target for anything
+  that is zoomed. Soft, blurry, blocky or stretched pictures are errors and must be fixed before rendering.
 
 THE DESK SYSTEM (the look of the FIRST 5 MINUTES only = Part 1)
 - Part 1 happens on ONE big base surface, "the desk" (for example dark aged wood or worn leather, chosen once from
@@ -133,12 +137,20 @@ Make every picture from the picture list, the props kit items that do not exist 
 3. Flow cannot make transparent PNGs: remove the background yourself, keep a thin white paper border, clean the edge
    (remove halo and fringe pixels, the alpha edge must be crisp and stable), and save into 05_Transparent_PNGs with the
    name from the list.
-4. DESK: make one large desk surface for the whole video (texture only, no objects, no text), at least 7680x4320,
-   tileable with no visible seams. Save to 04_Historical_Images/desk.png.
+4. DESK (Part 1 only): make one large desk surface for the first 5 minutes (texture only, no objects, no text),
+   tileable with no visible seams. Work out its size from the camera path: the whole desk area covered by the stops
+   and the final zoom-out must be sharp at the closest zoom, i.e. never enlarged beyond 100% of its pixels. If one
+   image cannot be big enough (at least 7680x4320, more if the path needs it), build it from tiles or upscale it
+   with a proper upscaler and check it. Never stretch a small image over the desk. Save to
+   04_Historical_Images/desk.png (and the tiles, if used).
 5. SHEETS: make each ground sheet type as a single sheet of paper with irregular torn or aged edges on a plain solid
    background, no text, low contrast, about 2400x1500 px. Cut each out from its background (clean alpha edge; the
    shadow is added by the animation) and save into 04_Historical_Images.
-6. Look at every picture. If it has text, a colour other than black/white/sepia, a cut-off edge, extra objects, a rough
+   Also make the Part 2 backdrop (one plain aged-paper tone, texture only) at least 3840x2160, sharp.
+6. RESOLUTION CHECK: for every picture, sheet, desk and backdrop, compare its pixel size with the biggest size it
+   will be shown at (including zoom). Anything that would be enlarged beyond 100% must be remade bigger or upscaled
+   properly, then checked again. Record the sizes in the report.
+   Look at every picture. If it has text, a colour other than black/white/sepia, a cut-off edge, extra objects, a rough
    or haloed edge, a wrong era, or a different style, make it again (twice at most).
 7. If Flow stops because of a daily limit: save what is done and what is pending in PLAN.md, tell me, and stop.
    I will type CONTINUE later.
@@ -228,6 +240,9 @@ all of Part 1's items are present and that nothing is cut off.
 HOOK REQUIREMENTS: at least 3–4 red threads, at least 2–3 newspaper headlines, 2–3 extras on every shot.
 TIMING: every visual appears on its word or up to 0.2 s before it, never after.
 
+SHARPNESS CHECK: for every item, compute the largest on-screen enlargement over its whole life (zoom, drift and the
+5-minute zoom-out); it must be 1.0 or less. Look at 100% crops of the desk and a few cut-outs at the tightest
+zoom: no soft, blocky or stretched pixels, no visible tile seams. Fix and re-render if any fail.
 Check it: render a still every second in the hook and every 2 seconds in the rest of Part 1, look at all of them, and
 fix anything off (a thread off its path, a missing pin, a late visual, cut-off or misspelled English text, filler,
 Hindi text on screen). Render out/part1.mp4 with the voice. Report: extras per shot, threads and headlines in the
