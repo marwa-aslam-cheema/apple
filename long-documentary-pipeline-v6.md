@@ -112,3 +112,28 @@ Read script-labeled.txt. Plan the whole visual side. No pictures yet.
    Any shot below the rules above? Any Hindi text on screen? Fix them first.
 Report: number of shots (Part 1 / Part 2), pictures, props, sheets, threads in the hook, headlines in the hook.
 Stop.
+
+## STEP 3 — PICTURES WITH GOOGLE FLOW
+
+Make every picture from the picture list, the props kit items that do not exist yet, the desk and the ground sheets.
+1. Prompt for each cut-out picture: what it is, era and country, angle; then "lots of empty space around it, nothing
+   touching the edges"; then the style line word for word; then "plain white background, no text, no labels, no
+   numbers, no arrows, no frame, no modern objects". Square unless clearly wide or tall.
+2. If a real public-domain photo or engraving of this person or machine exists (Wikimedia Commons, Library of
+   Congress), download it, note the credit in credits.txt, and use it as the reference so the person or machine looks
+   real. Convert it to the same cut-out style. Never use it as a raw rectangle.
+3. Flow cannot make transparent PNGs: remove the background yourself, keep a thin white paper border, clean the edge
+   (remove halo and fringe pixels, the alpha edge must be crisp and stable), and save into 05_Transparent_PNGs with the
+   name from the list.
+4. DESK: make one large desk surface for the whole video (texture only, no objects, no text), at least 7680x4320,
+   tileable with no visible seams. Save to 04_Historical_Images/desk.png.
+5. SHEETS: make each ground sheet type as a single sheet of paper with irregular torn or aged edges on a plain solid
+   background, no text, low contrast, about 2400x1500 px. Cut each out from its background (clean alpha edge; the
+   shadow is added by the animation) and save into 04_Historical_Images.
+6. Look at every picture. If it has text, a colour other than black/white/sepia, a cut-off edge, extra objects, a rough
+   or haloed edge, a wrong era, or a different style, make it again (twice at most).
+7. If Flow stops because of a daily limit: save what is done and what is pending in PLAN.md, tell me, and stop.
+   I will type CONTINUE later.
+8. Save all prompts in 05_Transparent_PNGs/prompts.md, report how many Flow generations were used, and open one
+   contact sheet with all pictures.
+Stop.
