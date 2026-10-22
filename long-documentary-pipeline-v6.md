@@ -218,3 +218,23 @@ fix anything off (a thread off its path, a missing pin, a late visual, cut-off o
 Hindi text on screen). Render out/part1.mp4 with the voice. Report: extras per shot, threads and headlines in the
 hook, blinks found and fixed, largest sync delay. Open the video.
 Stop.
+
+## STEP 6 — ANIMATION PART 2: AFTER 5 MINUTES
+
+Using the same Remotion template, desk and settings file, build every shot after the 5-minute mark with the same
+camera and ARRIVAL SEQUENCE as Step 5, continuing the desk path from where Part 1 ended.
+- Each stop lasts 6–10 s: the camera arrives, the ground sheet lands, the shot's cut-outs are already composed on
+  it (they land together, softly, on the first words), then a slow smooth zoom or drift on that area, never the same
+  move twice in a row, one direction per shot, then the camera slides on.
+- A red thread, English label, stamp or headline only where the shot list says so (key facts, about once every
+  1–2 minutes).
+- SMOOTH ZOOM, NO SHAKING: use pictures at least 2x the output size, apply the zoom with GPU transforms with sub-pixel
+  precision (no rounding to whole pixels), 5–8% zoom over the whole stop, ease in-out.
+- Chapters flow into each other with the short zoom-out over the filled desk, then the slide to the next area. No
+  black frames. The camera never stops completely; it always drifts a little.
+- Same anti-blink rules, performance rule and timing rules as Step 5.
+Check: render a still every 2 seconds and look at them. Measure jitter: for every zoom/drift, check that the movement
+between consecutive frames changes smoothly (no jumps). Re-render any shot that shakes or blinks.
+Render each chapter to out/part2_chapter_N.mp4 and report: shots built, threads and labels used, jitter check result,
+blinks found and fixed. Open one sample chapter.
+Stop.
