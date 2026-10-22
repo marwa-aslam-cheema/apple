@@ -71,7 +71,8 @@ Do this:
    Any CTA words (subscribe, like, comment)? Does the hook start with an exact date? Is the bridge present?
 4. Write facts.md: every date, number, person, place and claim in the script, with a source found by web search.
    Mark each verified or not verified. Do not edit the script. List the not verified items in your report.
-5. Save the YOUTUBE TEXT exactly as given into 08_Final_Video/youtube_description_tags.txt (titles, description, tags,
+5. YOUTUBE TEXT IS OPTIONAL: if I did not give it, skip this item (and the timestamp update in Step 7) and say so
+   in the report. If I gave it, save the YOUTUBE TEXT exactly as given into 08_Final_Video/youtube_description_tags.txt (titles, description, tags,
    hashtags). Leave out any thumbnail text.
 6. Create PLAN.md with the 7-step checklist.
 Stop after the report.
