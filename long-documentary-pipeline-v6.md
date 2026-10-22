@@ -44,3 +44,28 @@ Steps 1 to 7 will be pasted one by one the first time and appended below. From t
 the script and the YouTube text are given, and the whole pipeline runs from this file, ONE STEP AT A TIME.
 
 <!-- STEPS 1-7 BELOW (not yet received) -->
+
+## STEP 1 — INTAKE
+
+TOPIC: [TOPIC]
+
+SCRIPT (paste the ChatGPT script parts, Steps 1–4, here):
+[PASTE SCRIPT]
+
+YOUTUBE TEXT (paste ChatGPT Step 5 here: titles, description, tags, hashtags):
+[PASTE YOUTUBE TEXT]
+
+Do this:
+1. Create the project folder for this topic with new-documentary.sh.
+2. Build 01_Script/script-hindi-full.txt: join the parts in order and remove everything that is not narration
+   (section labels like [A1: …], "Word count" lines, notes, headings). Keep paragraph breaks.
+   Also save 01_Script/script-labeled.txt with the section labels kept (they define the chapters).
+3. Check and report: is it Hindi (Devanagari)? (If it is Roman Urdu, stop and tell me to get the Hindi version.)
+   Total word count and estimated duration at 135 words per minute (the limit is 3,300 words; report if above).
+   Any CTA words (subscribe, like, comment)? Does the hook start with an exact date? Is the bridge present?
+4. Write facts.md: every date, number, person, place and claim in the script, with a source found by web search.
+   Mark each verified or not verified. Do not edit the script. List the not verified items in your report.
+5. Save the YOUTUBE TEXT exactly as given into 08_Final_Video/youtube_description_tags.txt (titles, description, tags,
+   hashtags). Leave out any thumbnail text.
+6. Create PLAN.md with the 7-step checklist.
+Stop after the report.
