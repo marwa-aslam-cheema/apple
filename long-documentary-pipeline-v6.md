@@ -154,3 +154,67 @@ VOICE NAME (ai33 pro, Hindi): [VOICE NAME, e.g. Hindi Voice 2]
    sentence (absolute time on one timeline, never by adding clip lengths). Report the voice duration and any shot that
    became too short or too long for its rules.
 Stop.
+
+## STEP 5 — ANIMATION PART 1: THE FIRST 5 MINUTES
+FPS: 30   (change to 60 only if I write it here)
+
+Set up the Remotion project (1920x1080). If a Remotion template from an earlier video exists in
+/Volumes/Leghari 1/Automation, reuse it; otherwise create it at /Volumes/Leghari 1/Automation/remotion-history-template.
+It must be a reusable template: desk, sheets, pictures, positions, thread paths, pins, labels, headlines, stamps and
+timings all live in one settings file, so a new video only needs a new settings file and new pictures. Build all Part 1
+shots from shot_list.csv, each landing on its words.
+
+THE CAMERA works like a real camera filming one large desk. It slides slowly from one area of the desk to the next
+(start slow, speed up, settle slow), with a small drift while it rests. It never cuts. The desk background never
+changes. In Part 1 the camera moves to a new area every 3 to 5 seconds.
+ARRIVAL SEQUENCE for every stop:
+ 1. The camera slides to an empty area of the desk. It leaves the old area during the last words of the previous
+    line and arrives at the first word of the new line.
+ 2. The ground sheet lands on that area (drop and settle with a small rotation, or slide in from the edge, or
+    unfold) in 0.4 to 0.7 seconds, with a soft shadow growing as it lands. It may begin up to 0.2 s before the first word.
+ 3. Then the cut-outs, extras, thread, headlines and stamps appear on their own words, each with a different entry.
+Nothing from the new stop is visible before the camera arrives. Old sheets stay on the desk behind.
+Do not render the whole desk each frame: only draw the items near the camera view. Keep all desk coordinates in the
+settings file.
+
+How things appear:
+- Cut-outs enter with paper movement (drop and settle with a small bounce, slide with a slight rotation, pop,
+  unfold), with a soft shadow that grows as they land. Far layers move slower (2.5D depth).
+- Each shot: the main subject plus its 2–3 extras, each landing on its word with a different entry.
+- Newspaper clippings with the planned true English headline slide or spin in. Red ink stamps press in with the planned
+  English words. Labels are torn paper tags or typewriter captions in English, clean readable font. A magnifying
+  circle may grow out of a detail, joined by two thin lines.
+- Keep the top 8% and bottom 15% of the frame free of anything important; never cut a picture off at the edge.
+
+THE RED THREAD (build it in full detail):
+- Real cotton-thread look: 4–6 px, deep red (#B3261E), twisted-fibre texture, slightly darker edge, soft shadow on
+  the paper below.
+- It runs between two glossy red pushpins (small highlight, short shadow). The first pin drops with a tiny bounce, the
+  thread is DRAWN from pin to pin on the cue word over 0.8–1.5 s (slow start, fast middle, slow settle), then the
+  second pin drops.
+- The path is a natural slight sag, never a ruler-straight line, or a traced path on a picture (a route on a map, a rail,
+  a road). For traced paths, look at the picture and trace the exact route.
+- After it lands it keeps a very small sway. It can carry a small paper tag with a short English label (date, place,
+  number). When no longer needed it fades out with the pins; it never pops off.
+
+ANTI-BLINK RULES (the last video's pictures blinked; this must never happen):
+- Load every image with Remotion's <Img> and preload all images before rendering (hold the render with delayRender
+  until they are decoded). Never use CSS background images or plain <img> without preloading.
+- Mount each picture once for its whole life; never unmount and remount it between frames, never change its React
+  key. Control it only with opacity and transform from interpolate().
+- Do not animate blur or CSS filters on large images frame by frame. Use pre-rendered shadows and fixed depth blur
+  values. Entries use opacity, scale, position and rotation only.
+- Use cut-outs with a clean alpha edge (no halo pixels). Avoid sub-pixel rounding jumps: keep transforms smooth,
+  do not round positions per frame.
+- If a render still blinks, lower render concurrency (1–2) and re-render those parts.
+- Detect blinks after rendering: compare consecutive frames for the full lifetime of every cut-out. Any picture whose
+  pixels disappear and come back for 1–2 frames is a blink. Fix and re-render until the report shows zero blinks.
+
+HOOK REQUIREMENTS: at least 3–4 red threads, at least 2–3 newspaper headlines, 2–3 extras on every shot.
+TIMING: every visual appears on its word or up to 0.2 s before it, never after.
+
+Check it: render a still every second in the hook and every 2 seconds in the rest of Part 1, look at all of them, and
+fix anything off (a thread off its path, a missing pin, a late visual, cut-off or misspelled English text, filler,
+Hindi text on screen). Render out/part1.mp4 with the voice. Report: extras per shot, threads and headlines in the
+hook, blinks found and fixed, largest sync delay. Open the video.
+Stop.
