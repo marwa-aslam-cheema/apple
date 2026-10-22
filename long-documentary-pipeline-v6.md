@@ -31,13 +31,16 @@ FIXED VISUAL STYLE (every picture, every video)
   narration. Everything must match the year and country of that shot; no modern objects.
 - Nothing may flicker or blink (see the anti-blink rules in Step 5).
 
-THE DESK SYSTEM (the look of the whole video)
-- The whole video happens on ONE big base surface, "the desk" (for example dark aged wood or worn leather, chosen
-  once from the topic). It never changes in the whole video.
+THE DESK SYSTEM (the look of the FIRST 5 MINUTES only = Part 1)
+- Part 1 happens on ONE big base surface, "the desk" (for example dark aged wood or worn leather, chosen once from
+  the topic). It does not change during Part 1.
 - The camera films the desk like a real camera and slides from one area to the next. It never cuts.
 - At every new area, the camera arrives at an EMPTY part of the desk. Then a ground sheet (map, newspaper page,
   patent, ledger, letter, telegram...) lands there, and then the script-related cut-outs and extras appear on it.
   Old sheets stay behind on the desk, so it fills up as the story moves.
+- AT THE 5-MINUTE MARK the camera zooms out smoothly to show the WHOLE desk with everything that was shown in
+  Part 1 still on it, so the full, crowded desk is visible.
+- AFTER 5 MINUTES (Part 2) there is NO desk and no desk background. Part 2 uses still pictures (see Step 6).
 
 ## Workflow note
 Steps 1 to 7 will be pasted one by one the first time and appended below. From the next video on, only a TOPIC,
@@ -76,9 +79,10 @@ Read script-labeled.txt. Plan the whole visual side. No pictures yet.
 1. Split the narration into sentences and shots. Chapters come from the section labels.
    HOOK = the first 60–90 seconds up to the end of the bridge. PART 1 = the first 5 minutes (including the hook).
    PART 2 = everything after 5 minutes.
-2. DESK PLAN: choose one desk surface for the topic (mood and era). Lay out the camera path over the desk in a snake
-   pattern (left to right, step down, right to left, and so on). Each shot is a CAMERA STOP at a new empty area.
-   Per chapter, add one short zoom-out to show the filled desk before moving on.
+2. DESK PLAN (Part 1 only): choose one desk surface for the topic (mood and era). Lay out the camera path over the
+   desk in a snake pattern (left to right, step down, right to left, and so on). Each Part 1 shot is a CAMERA STOP at
+   a new empty area. The desk exists only for the first 5 minutes. Plan a final ZOOM-OUT at the 5-minute mark that
+   shows the whole filled desk. Part 2 shots (after 5 minutes) are still pictures with no desk and no desk path.
 3. Write 03_Scene_Plans/shot_list.csv and .json, one row per shot:
    shot_id | chapter | part | narration line | on-screen action (what HAPPENS: the narration's verb becomes the
    screen action) | desk stop position (x, y) | ground sheet type and how it lands | cut-outs used with positions on the
@@ -97,12 +101,17 @@ Read script-labeled.txt. Plan the whole visual side. No pictures yet.
      moment and is drawn from pin to pin on a cue word.
    - Newspaper headlines: at least 2–3 in the hook, with a short TRUE headline from the script in English, era-correct
      masthead style, generic masthead name if unsure. Never invent a quote.
+   - HAND STAMP (only in the first 5 minutes, 2-3 places in total): at a key English word (for example FIRST CAR,
+     DIED 1893) a hand holding a rubber stamp enters, presses the stamp on the paper and lifts away; the stamp
+     leaves the word printed in red ink. The printed word must be exactly the same size and shape as the stamp
+     face, so it clearly looks printed by that stamp. Count it as one of that shot's extras and write the exact
+     English text for it in shot_list.csv (column: stamp/label, marked HAND STAMP).
    - Stamps, labels and tags only with short true words from the script, in English (for example FIRST CAR, 1888,
      GERMANY, DIED 1893). Write the exact text for each in shot_list.csv.
 5. Picture list (file name, what it is, era, country, clothing, angle). Each picture is ONE person or object on its own.
    Reuse the same pictures across shots when the script returns to the same person or machine (about 30–50 pictures).
    Also list the PROPS KIT (sun, moon, clouds, coins, banknote, calendar sheet, crowd figures, thermometer,
-   black ribbon, newspaper clipping blanks...): check /Volumes/Leghari 1/Automation/asset-library first and reuse what exists.
+   black ribbon, newspaper clipping blanks, a hand holding a rubber stamp...): check /Volumes/Leghari 1/Automation/asset-library first and reuse what exists.
    Also list 15–20 ground sheet types chosen from the topic (old map of the real place, newspaper page of that era and
    country, patent or blueprint, ledger, letter, telegram, poster...). Sheets can be reused at a different rotation,
    crop and place.
@@ -184,6 +193,10 @@ How things appear:
   English words. Labels are torn paper tags or typewriter captions in English, clean readable font. A magnifying
   circle may grow out of a detail, joined by two thin lines.
 - Keep the top 8% and bottom 15% of the frame free of anything important; never cut a picture off at the edge.
+- HAND STAMP (2-3 places only, in Part 1, as planned in the shot list): a cut-out hand holding a rubber stamp slides
+  in on the cue word, presses down on the paper (small squash, short pause), lifts and leaves. The English word
+  appears in red ink at the moment of the press, exactly as large as the stamp face (same width, height and
+  rotation), so the stamp clearly made it. The imprint stays. Count the hand stamp as one of that shot's extras.
 
 THE RED THREAD (build it in full detail):
 - Real cotton-thread look: 4–6 px, deep red (#B3261E), twisted-fibre texture, slightly darker edge, soft shadow on
@@ -209,6 +222,9 @@ ANTI-BLINK RULES (the last video's pictures blinked; this must never happen):
 - Detect blinks after rendering: compare consecutive frames for the full lifetime of every cut-out. Any picture whose
   pixels disappear and come back for 1–2 frames is a blink. Fix and re-render until the report shows zero blinks.
 
+END OF PART 1 (5-minute mark): the camera zooms out smoothly (about 3-4 s, ease in-out) until the whole desk is
+visible with every sheet and cut-out from Part 1 still on it, and holds for a moment. Then Part 2 begins. Check that
+all of Part 1's items are present and that nothing is cut off.
 HOOK REQUIREMENTS: at least 3–4 red threads, at least 2–3 newspaper headlines, 2–3 extras on every shot.
 TIMING: every visual appears on its word or up to 0.2 s before it, never after.
 
@@ -220,17 +236,18 @@ Stop.
 
 ## STEP 6 — ANIMATION PART 2: AFTER 5 MINUTES
 
-Using the same Remotion template, desk and settings file, build every shot after the 5-minute mark with the same
-camera and ARRIVAL SEQUENCE as Step 5, continuing the desk path from where Part 1 ended.
-- Each stop lasts 6–10 s: the camera arrives, the ground sheet lands, the shot's cut-outs are already composed on
-  it (they land together, softly, on the first words), then a slow smooth zoom or drift on that area, never the same
-  move twice in a row, one direction per shot, then the camera slides on.
+Using the same Remotion template and settings file, build every shot after the 5-minute mark. From here there is NO
+desk and no desk background: each shot is a still picture composition on a plain, quiet backdrop (one simple aged
+dark paper tone, same for the whole of Part 2, chosen once).
+- Each shot lasts 6-10 s: the cut-outs (and a sheet such as a map or newspaper page only when the narration needs
+  it) are composed together and land softly on the first words, then a slow smooth zoom or drift on the picture,
+  never the same move twice in a row, one direction per shot, then a smooth transition to the next shot.
 - A red thread, English label, stamp or headline only where the shot list says so (key facts, about once every
   1–2 minutes).
 - SMOOTH ZOOM, NO SHAKING: use pictures at least 2x the output size, apply the zoom with GPU transforms with sub-pixel
   precision (no rounding to whole pixels), 5–8% zoom over the whole stop, ease in-out.
-- Chapters flow into each other with the short zoom-out over the filled desk, then the slide to the next area. No
-  black frames. The camera never stops completely; it always drifts a little.
+- Shots and chapters flow into each other with smooth transitions (slide or soft cross-dissolve, no hard cuts). No
+  black frames. The picture never stops completely; it always drifts a little.
 - Same anti-blink rules, performance rule and timing rules as Step 5.
 Check: render a still every 2 seconds and look at them. Measure jitter: for every zoom/drift, check that the movement
 between consecutive frames changes smoothly (no jumps). Re-render any shot that shakes or blinks.
