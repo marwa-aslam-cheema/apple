@@ -43,7 +43,6 @@ THE DESK SYSTEM (the look of the whole video)
 Steps 1 to 7 will be pasted one by one the first time and appended below. From the next video on, only a TOPIC,
 the script and the YouTube text are given, and the whole pipeline runs from this file, ONE STEP AT A TIME.
 
-<!-- STEPS 1-7 BELOW (not yet received) -->
 
 ## STEP 1 — INTAKE
 
@@ -238,3 +237,20 @@ between consecutive frames changes smoothly (no jumps). Re-render any shot that 
 Render each chapter to out/part2_chapter_N.mp4 and report: shots built, threads and labels used, jitter check result,
 blinks found and fixed. Open one sample chapter.
 Stop.
+
+## STEP 7 — FINAL RENDER AND YOUTUBE TEXT
+
+1. Join Part 1 and all Part 2 chapters with the voice into one timeline. If SFX or music files exist in the asset
+   library, add very light paper/stamp sounds and quiet background music under the voice; otherwise skip them and say
+   so. Export 08_Final_Video/<Topic>_final.mp4 (1920x1080, H.264, same fps as the project).
+2. Check and report numbers:
+   - Sync: for every shot, the difference between the shot change and its first word (at most 1 frame late) and the
+     largest delay found. The video length must equal the voice length plus one second. Fix and re-render if not.
+   - Black frames: none. Blinks: zero. Jitter on zooms: none. On-screen text: all English, spelled correctly,
+     nothing cut off, no Hindi text.
+   - Hook: number of red threads, newspaper headlines and extras per shot.
+3. Update 08_Final_Video/youtube_description_tags.txt: keep the titles, description, tags and hashtags from ChatGPT,
+   but replace the estimated timestamps with the REAL chapter timestamps from the final video. Keep it plain text.
+4. Final report: what was built, what is missing, every choice you made, and anything I should check by hand.
+   Open the final video.
+Done.
