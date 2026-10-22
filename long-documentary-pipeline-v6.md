@@ -69,3 +69,46 @@ Do this:
    hashtags). Leave out any thumbnail text.
 6. Create PLAN.md with the 7-step checklist.
 Stop after the report.
+
+## STEP 2 — SHOT PLAN
+
+Read script-labeled.txt. Plan the whole visual side. No pictures yet.
+
+1. Split the narration into sentences and shots. Chapters come from the section labels.
+   HOOK = the first 60–90 seconds up to the end of the bridge. PART 1 = the first 5 minutes (including the hook).
+   PART 2 = everything after 5 minutes.
+2. DESK PLAN: choose one desk surface for the topic (mood and era). Lay out the camera path over the desk in a snake
+   pattern (left to right, step down, right to left, and so on). Each shot is a CAMERA STOP at a new empty area.
+   Per chapter, add one short zoom-out to show the filled desk before moving on.
+3. Write 03_Scene_Plans/shot_list.csv and .json, one row per shot:
+   shot_id | chapter | part | narration line | on-screen action (what HAPPENS: the narration's verb becomes the
+   screen action) | desk stop position (x, y) | ground sheet type and how it lands | cut-outs used with positions on the
+   sheet | extras (each with its cue word and entry animation) | red thread (from → to, cue word, path) |
+   newspaper headline (exact English text) | stamp/label (exact English text) | camera move
+4. Rules for the shots:
+   - Part 1 shots last 3–5 seconds. Part 2 shots last 6–10 seconds (slow zoom or drift on one area, never the same
+     move twice in a row).
+   - Every Part 1 shot has the main subject plus 2–3 extra small elements tied to words of that line
+     (sun for morning, moon for night, calendar tag for a date, map piece and pin for a city, coins for money,
+     crowd figures for doubters, clouds/rain/thermometer for weather, red circle or black ribbon for danger or death).
+     Entry animations must differ inside a shot (drop with settle, pop, slide with a small rotation, unfold,
+     stamp press, drawn line). A Part 1 shot with fewer than 2 extras is an error.
+   - Red thread: at least 3–4 in the hook, at least one per minute in the rest of Part 1, and in Part 2 about one
+     every 1–2 minutes where the narration links two things. Each thread connects two things the narration links at that
+     moment and is drawn from pin to pin on a cue word.
+   - Newspaper headlines: at least 2–3 in the hook, with a short TRUE headline from the script in English, era-correct
+     masthead style, generic masthead name if unsure. Never invent a quote.
+   - Stamps, labels and tags only with short true words from the script, in English (for example FIRST CAR, 1888,
+     GERMANY, DIED 1893). Write the exact text for each in shot_list.csv.
+5. Picture list (file name, what it is, era, country, clothing, angle). Each picture is ONE person or object on its own.
+   Reuse the same pictures across shots when the script returns to the same person or machine (about 30–50 pictures).
+   Also list the PROPS KIT (sun, moon, clouds, coins, banknote, calendar sheet, crowd figures, thermometer,
+   black ribbon, newspaper clipping blanks...): check /Volumes/Leghari 1/Automation/asset-library first and reuse what exists.
+   Also list 15–20 ground sheet types chosen from the topic (old map of the real place, newspaper page of that era and
+   country, patent or blueprint, ledger, letter, telegram, poster...). Sheets can be reused at a different rotation,
+   crop and place.
+6. Write the style line once, word for word, in 03_Scene_Plans/style_line.txt.
+7. Quality check before you report: does every shot show its narration action? Any filler? Any anachronism?
+   Any shot below the rules above? Any Hindi text on screen? Fix them first.
+Report: number of shots (Part 1 / Part 2), pictures, props, sheets, threads in the hook, headlines in the hook.
+Stop.
