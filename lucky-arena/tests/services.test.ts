@@ -7,6 +7,7 @@ import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
+import { safeNext } from "@/lib/safe-next";
 import { socialSchema } from "@/lib/validation";
 import { expectedReturn } from "@/lib/wheel";
 import { absorbWallet, apiReport, apiSession, apiSettle, buildLaunchUrl, closeExpiredSessions, enterGame, exitGame, getOpenSession, listGameAccounts, regenerateApiKey, removeGameAccount, setGameAccount } from "@/lib/game-sessions";
@@ -546,5 +547,14 @@ describe("social links", () => {
     expect(socialSchema.parse({ kind: "WhatsApp", url: "https://wa.me/123" }).label).toBe("");
     expect(() => socialSchema.parse({ kind: "Facebook", url: "javascript:alert(1)" })).toThrow();
     expect(() => socialSchema.parse({ kind: "Nope", url: "https://x.com" })).toThrow();
+  });
+});
+
+describe("sign-in return path", () => {
+  it("only returns to this site", () => {
+    expect(safeNext("/play/ludo")).toBe("/play/ludo");
+    expect(safeNext("//evil.com")).toBeUndefined();
+    expect(safeNext("https://evil.com")).toBeUndefined();
+    expect(safeNext(undefined)).toBeUndefined();
   });
 });

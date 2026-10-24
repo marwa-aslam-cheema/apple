@@ -8,7 +8,7 @@ import { closeExpiredSessions } from "./game-sessions";
 import { AppError } from "./services";
 
 const COOKIE = "la_session";
-const MAX_AGE = 60 * 60 * 24 * 7;
+const MAX_AGE = 60 * 60 * 24 * 30; // stay signed in for a month, so an installed app does not ask again
 
 function secret(): Uint8Array {
   const s = process.env.SESSION_SECRET;

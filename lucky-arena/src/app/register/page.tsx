@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/AuthForm";
+import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/session";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string }> }): Promise<Metadata> {
@@ -14,8 +15,9 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   };
 }
 
-export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
-  if (await getCurrentUser()) redirect("/");
-  const { ref } = await searchParams;
-  return <AuthForm mode="register" refCode={ref?.slice(0, 20).toUpperCase()} />;
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ ref?: string; next?: string }> }) {
+  const { ref, next: rawNext } = await searchParams;
+  const next = safeNext(rawNext);
+  if (await getCurrentUser()) redirect(next ?? "/");
+  return <AuthForm mode="register" refCode={ref?.slice(0, 20).toUpperCase()} next={next} />;
 }

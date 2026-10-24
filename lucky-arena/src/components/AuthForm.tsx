@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { nextTrack, startMusic, unlockAudio } from "@/lib/music";
 
-export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCode?: string }) {
+export function AuthForm({ mode, refCode, next }: { mode: "login" | "register"; refCode?: string; next?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,6 +26,10 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       nextTrack(); // a different track each time you log in
       startMusic();
+      if (next) {
+        window.location.assign(next); // e.g. /play/<game>: carries on to the game the player tapped before signing in
+        return;
+      }
       router.push(data.role === "admin" ? "/admin" : "/");
       router.refresh();
     } catch (err) {
@@ -37,6 +41,7 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
   return (
     <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
       <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
+      {next && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Log in or sign up first, then you go straight to your game.</p>}
       {isReg && <p className="text-sm text-muted">Start at zero and spin the free welcome wheel for your first credits. Play-money fun: credits have no cash value.</p>}
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Referral code {refCode} applied: bonus credits for you and your friend.</p>}
       {isReg ? (
@@ -60,7 +65,7 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
       {!isReg && <p className="text-right text-sm"><Link href="/forgot" className="tap text-gold underline">Forgot password?</Link></p>}
       <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : isReg ? "Sign up" : "Log in"}</button>
       <p className="text-center text-sm text-muted">
-        {isReg ? <>Already have an account? <Link href="/login" className="tap text-gold underline">Log in</Link></> : <>New here? <Link href="/register" className="tap text-gold underline">Create an account</Link></>}
+        {isReg ? <>Already have an account? <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="tap text-gold underline">Log in</Link></> : <>New here? <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="tap text-gold underline">Create an account</Link></>}
       </p>
     </form>
   );

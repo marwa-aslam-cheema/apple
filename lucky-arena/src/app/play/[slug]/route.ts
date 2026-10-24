@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const base = new URL(req.url).origin;
   const user = await getCurrentUser();
-  if (!user) return NextResponse.redirect(new URL("/login", base));
+  if (!user) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(`/play/${slug}`)}`, base)); // sign in or sign up first, then straight to the game
   const db = await getDb();
   const [game] = await db.select().from(games).where(and(eq(games.slug, slug), eq(games.active, true)));
   if (!game || !game.link) return NextResponse.redirect(new URL("/games", base));
