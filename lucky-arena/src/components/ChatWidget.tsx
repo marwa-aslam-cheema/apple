@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { sfxReceived } from "@/lib/sfx";
 import { AdminChat } from "./AdminChat";
 import { ChatBox } from "./ChatBox";
+import { SocialBar } from "./SocialBar";
 import { Icon } from "./Icon";
 
 /** Floating chat bubble shown on every page: for the admin, signed-in players and (as "guest") visitors who are signed out. */
@@ -62,6 +63,7 @@ export function ChatWidget({ role }: { role: string }) {
             <b className="text-sm">{isAdmin ? "Player messages" : "Support chat"}</b>
             <button className="rounded-lg p-1.5 hover:bg-surface" onClick={() => setOpen(false)} aria-label="Close chat"><Icon name="x" className="h-4 w-4" /></button>
           </header>
+          {!isAdmin && <SocialBar title="" className="border-b border-line px-3 py-2" />}
           {guest && (
             <p className="border-b border-line bg-surface-2/60 px-3 py-2 text-xs text-muted">
               Forgot your password? <Link href="/forgot" onClick={() => setOpen(false)} className="font-bold text-gold underline">Send a reset request</Link> and the admin will reply here.

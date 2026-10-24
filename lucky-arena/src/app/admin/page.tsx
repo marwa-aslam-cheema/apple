@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { games, promotions, quickReplies, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { games, promotions, quickReplies, socialLinks, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminGameKeys } from "@/components/AdminGameKeys";
 import { AdminResource, type Field } from "@/components/AdminResource";
 import { AdminChat } from "@/components/AdminChat";
@@ -25,6 +25,7 @@ const TABS = [
   ["games", "Games"],
   ["promos", "Promotions"],
   ["wheel", "Wheel"],
+  ["social", "Social"],
 ] as const;
 
 const GAME_FIELDS: Field[] = [
@@ -55,6 +56,13 @@ const REPLY_FIELDS: Field[] = [
   { key: "shortcut", label: "Shortcut (optional: type it in the chat box to fill this message)", type: "text" },
   { key: "sortOrder", label: "Order", type: "number" },
 ];
+const SOCIAL_FIELDS: Field[] = [
+  { key: "kind", label: "Network", type: "select", options: ["Facebook", "WhatsApp", "Instagram", "Telegram", "TikTok", "YouTube", "Other"] },
+  { key: "label", label: "Name shown to players (optional, e.g. Lucky Arena Page)", type: "text" },
+  { key: "url", label: "Link (https://...  WhatsApp: https://wa.me/1234567890)", type: "text" },
+  { key: "sortOrder", label: "Order", type: "number" },
+  { key: "active", label: "Visible", type: "bool" },
+];
 const WHEEL_FIELDS: Field[] = [
   { key: "label", label: "Label", type: "text" },
   { key: "credits", label: "Prize at a 50-credit bet (main wheel shows it as a multiplier: 100 = 2x)", type: "number" },
@@ -80,6 +88,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const target = Number(userParam);
     const [who] = Number.isInteger(target) && target > 0 ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, target)) : [];
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
+  } else if (tab === "social") {
+    const rows = await db.select().from(socialLinks).orderBy(socialLinks.sortOrder, socialLinks.id);
+    body = (
+      <div className="space-y-4">
+        <p className="card p-4 text-sm">Add your Facebook page, WhatsApp, Instagram and other accounts. Players see them in the chat window and in the side menu. Untick "Visible" to hide one, or delete it to remove it.</p>
+        <AdminResource resource="social" titleKey="kind" fields={SOCIAL_FIELDS} rows={rows} defaults={{ kind: "Facebook", label: "", url: "", sortOrder: rows.length, active: true }} />
+      </div>
+    );
   } else if (tab === "replies") {
     const rows = await db.select().from(quickReplies).orderBy(quickReplies.sortOrder, quickReplies.id);
     body = (

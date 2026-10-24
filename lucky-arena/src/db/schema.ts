@@ -129,6 +129,16 @@ export const quickReplies = pgTable("quick_replies", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+/** Social pages the admin shows to players (Facebook page, WhatsApp, Instagram...). */
+export const socialLinks = pgTable("social_links", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").notNull().default("Other"),
+  label: text("label").notNull().default(""),
+  url: text("url").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+});
+
 /** Credits a player has taken into a game. While a session is open the wallet shows less, and the game holds `balance`. */
 export const gameSessions = pgTable("game_sessions", {
   id: serial("id").primaryKey(),

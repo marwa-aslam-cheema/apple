@@ -7,6 +7,7 @@ import { fmt } from "@/lib/format";
 import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unlockAudio } from "@/lib/music";
 import { ChatWidget } from "./ChatWidget";
 import { InstallBanner, useInstall } from "./pwa";
+import { SocialBar } from "./SocialBar";
 import { Icon } from "./Icon";
 import { ChipIcon, Logo } from "./Logo";
 
@@ -143,6 +144,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
           Install app
         </button>
       )}
+      <SocialBar className="mt-3 border-t border-line px-3 pt-3" />
     </nav>
   );
 

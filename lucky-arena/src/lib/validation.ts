@@ -73,3 +73,12 @@ export const forgotSchema = z.object({
   identifier: z.string().trim().min(1, "Enter your email or username.").max(120),
 });
 export const requestStatusSchema = z.object({ status: z.enum(["open", "done", "dismissed"]) });
+
+export const SOCIAL_KINDS = ["Facebook", "WhatsApp", "Instagram", "Telegram", "TikTok", "YouTube", "Other"] as const;
+export const socialSchema = z.object({
+  kind: z.enum(SOCIAL_KINDS).default("Other"),
+  label: z.string().trim().max(40).default(""),
+  url: z.string().trim().max(300).refine((v) => /^https?:\/\/[^\s]+$/i.test(v), "Link must start with http:// or https://"),
+  sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
+  active: z.boolean().default(true),
+});
