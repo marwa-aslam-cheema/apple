@@ -52,5 +52,6 @@ export const userAdminSchema = z.object({
   adjust: z.coerce.number().int().min(-1000000).max(1000000).optional(),
   note: z.string().trim().max(80).optional(),
   banned: z.boolean().optional(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters.").max(72).optional(),
   role: z.enum(["user", "admin"]).optional(),
 });

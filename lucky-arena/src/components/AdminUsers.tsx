@@ -17,6 +17,7 @@ function UserRow({ u, self }: { u: AdminUserRow; self: boolean }) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [pw, setPw] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function patch(body: object) {
@@ -47,6 +48,12 @@ function UserRow({ u, self }: { u: AdminUserRow; self: boolean }) {
         </label>
         <button className="btn btn-violet" disabled={!amount || Number(amount) === 0} onClick={() => patch({ adjust: Number(amount), note })}>Apply</button>
         <button className="btn btn-ghost" disabled={self} onClick={() => patch({ banned: !u.banned })}>{u.banned ? "Unban" : "Ban"}</button>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="min-w-0 flex-1 text-xs font-semibold text-muted">New password (min 8 characters)
+          <input type="text" autoComplete="off" className="input mt-1" value={pw} onChange={(e) => setPw(e.target.value)} />
+        </label>
+        <button className="btn btn-ghost" disabled={pw.length < 8} onClick={async () => { await patch({ newPassword: pw }); setPw(""); }}>Set password</button>
       </div>
       {msg && <p role="status" className={`text-sm font-semibold ${msg.ok ? "text-teal" : "text-danger"}`}>{msg.text}</p>}
     </li>

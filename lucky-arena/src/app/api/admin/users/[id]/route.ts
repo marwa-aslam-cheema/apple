@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { route } from "@/lib/api";
 import { requireAdminApi } from "@/lib/session";
-import { AppError, adminAdjust } from "@/lib/services";
+import { AppError, adminAdjust, adminSetPassword } from "@/lib/services";
 import { userAdminSchema } from "@/lib/validation";
 
 export const PATCH = route(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -22,6 +22,7 @@ export const PATCH = route(async (req: Request, ctx: { params: Promise<{ id: str
     const done = await db.update(users).set(patch).where(eq(users.id, id)).returning({ id: users.id });
     if (!done.length) throw new AppError("not_found", "User not found.", 404);
   }
+  if (body.newPassword) await adminSetPassword(db, id, body.newPassword);
   let balance: number | undefined;
   if (body.adjust) balance = await adminAdjust(db, id, body.adjust, body.note ?? "");
   return NextResponse.json({ ok: true, balance });

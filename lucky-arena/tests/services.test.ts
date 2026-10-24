@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  registerUser, spinWheel, verifyLogin,
+  adminSetPassword, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -95,6 +95,16 @@ describe("wallet and spin", () => {
     expect(await code(adminAdjust(db, id, 0, "x"))).toBe("bad_amount");
     const t = await db.select().from(transactions).where(eq(transactions.userId, id));
     expect(t.map((r) => r.type)).toContain("admin_adjust");
+  });
+});
+
+describe("password reset by admin", () => {
+  it("lets the user log in with the new password only", async () => {
+    const id = await registerUser(db, { email: "pw@x.test", username: "forgetful", password: "oldpassword1" });
+    await adminSetPassword(db, id, "newpassword1");
+    expect(await code(verifyLogin(db, "forgetful", "oldpassword1"))).toBe("bad_credentials");
+    expect((await verifyLogin(db, "forgetful", "newpassword1")).id).toBe(id);
+    expect(await code(adminSetPassword(db, 999999, "newpassword1"))).toBe("not_found");
   });
 });
 

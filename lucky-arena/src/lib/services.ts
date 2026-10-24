@@ -179,6 +179,15 @@ export async function adminAdjust(db: Db, userId: number, amount: number, note: 
   return applyCredits(db, userId, amount, "admin_adjust", note || "Admin adjustment");
 }
 
+export async function adminSetPassword(db: Db, userId: number, password: string) {
+  const done = await db
+    .update(users)
+    .set({ passwordHash: await bcrypt.hash(password, 10) })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  if (!done.length) throw new AppError("not_found", "User not found.", 404);
+}
+
 export function listTransactions(db: Db, userId: number, limit = 50) {
   return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.id)).limit(limit);
 }
