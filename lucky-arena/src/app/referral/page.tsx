@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { transactions, users } from "@/db/schema";
 import { CopyLink } from "@/components/CopyLink";
+import { ShareKit } from "@/components/ShareKit";
 import { REFERRAL_BONUS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { requireUserPage } from "@/lib/session";
@@ -28,6 +29,10 @@ export default async function ReferralPage() {
         <p className="text-sm text-muted">Your code</p>
         <p className="text-3xl font-extrabold tracking-widest text-gold" data-testid="ref-code">{user.referralCode}</p>
         <CopyLink code={user.referralCode} />
+      </section>
+      <section className="card space-y-3 p-5">
+        <h2 className="gold-text text-2xl font-extrabold uppercase">Share your invite</h2>
+        <ShareKit code={user.referralCode} />
       </section>
       <section className="grid grid-cols-2 gap-3">
         <div className="card p-4"><p className="text-xs text-muted">Friends joined</p><p className="text-2xl font-extrabold">{friends.length}</p></div>

@@ -20,6 +20,7 @@ A responsive gaming-lobby prototype built with **Next.js (App Router) + TypeScri
 | Quick replies | Admin chat has saved-message buttons above the box (click to fill, then Send), "Save as quick reply" for anything typed, and a Replies tab to edit or delete them |
 | Credit requests | A "+" next to the balance opens the wallet, where "Request credits" posts "I want credits" in the player's chat. The admin adds credits from the chat (one click: adds them and sends "Added ... credits"). Credits stay virtual: no payment methods anywhere |
 | Support chat | Floating chat bubble on every page for signed-in players and the admin (unread badge, admin sees a conversation list), plus a full Support Chat page and an admin Chat tab. Text only; polls every few seconds, no websockets needed |
+| Invite post | Referral page builds a shareable casino-style picture ("Join & get free spins" with the player's code), an editable caption, download, copy and Facebook / WhatsApp / Telegram buttons. Shared links show the same picture as their preview (set `SITE_URL` once the site is online) |
 | Promotions / VIP / Referral | One-time claimable promos, 5 XP-based VIP tiers (bigger daily bonus), referral links paying both sides (capped) |
 | Admin dashboard | Overview (incl. actual vs expected wheel return), requests (password resets), users (adjust credits, ban, set password), games, promotions and wheel segments CRUD |
 

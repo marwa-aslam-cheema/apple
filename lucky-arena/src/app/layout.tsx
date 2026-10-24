@@ -3,9 +3,14 @@ import { Shell } from "@/components/Shell";
 import { getCurrentUser } from "@/lib/session";
 import "./globals.css";
 
+const SITE_URL = process.env.SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: { default: "Lucky Arena - Demo Gaming Lobby", template: "%s - Lucky Arena" },
-  description: "A prototype gaming lobby with a lucky spin wheel, VIP club and referrals. Virtual demo credits only.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: "Lucky Arena - Join and get free spins", template: "%s - Lucky Arena" },
+  description: "Join Lucky Arena, spin the welcome wheel for free and play with friends. Virtual demo credits only, no real money.",
+  openGraph: { type: "website", siteName: "Lucky Arena", title: "Join Lucky Arena and get free spins", description: "Spin the welcome wheel, climb the VIP ladder and play with friends. Virtual demo credits only." },
+  twitter: { card: "summary_large_image", title: "Join Lucky Arena and get free spins" },
 };
 export const viewport: Viewport = { themeColor: "#0a0b1e", width: "device-width", initialScale: 1 };
 
