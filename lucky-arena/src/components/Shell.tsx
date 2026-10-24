@@ -17,6 +17,8 @@ export interface ShellUser {
   username: string;
   balance: number;
   role: string;
+  nickname: string;
+  avatar: string;
   /** Credits are inside a game: the wallet reads 0 until the player leaves it. */
   inGame: { title: string; balance: number; external: boolean } | null;
 }
@@ -34,7 +36,7 @@ const NAV = [
 ];
 const TABS = ["/", "/games", "/spin", "/wallet", "/profile"];
 
-export function Shell({ user, children }: { user: ShellUser | null; children: React.ReactNode }) {
+export function Shell({ user, site, children }: { user: ShellUser | null; site: { name: string; logo: string }; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const pwa = useInstall();
@@ -155,7 +157,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
     <div className="min-h-screen overflow-x-clip lg:pl-64">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-gradient-to-b from-[#26112a] via-[#150a18] to-[#0b0509] shadow-[inset_-1px_0_0_rgba(255,207,74,0.12)] lg:flex">
-        <div className="p-5"><Link href="/" aria-label="Lucky Arena home"><Logo /></Link></div>
+        <div className="p-5"><Link href="/" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} /></Link></div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
       </aside>
 
@@ -165,7 +167,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
           <button className="absolute inset-0 bg-black/60" aria-label="Close menu" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col bg-surface shadow-2xl">
             <div className="flex items-center justify-between p-4">
-              <Logo />
+              <Logo name={site.name} logo={site.logo} />
               <button className="rounded-lg p-2 hover:bg-surface-2" onClick={() => setOpen(false)} aria-label="Close menu"><Icon name="x" /></button>
             </div>
             <div className="flex-1 overflow-y-auto">{nav}</div>
@@ -178,7 +180,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
         <button className="rounded-lg p-2 hover:bg-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
           <Icon name="menu" />
         </button>
-        <Link href="/" className="lg:hidden" aria-label="Lucky Arena home"><Logo /></Link>
+        <Link href="/" className="lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} /></Link>
         <div className="ml-auto flex items-center gap-2">
           {user ? (
             <>
@@ -191,6 +193,14 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
               >
                 <Icon name={musicOn ? "music" : "mute"} className="h-5 w-5" />
               </button>
+              <Link href="/profile" aria-label="Your profile" title={user.nickname || user.username} className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gold/60 bg-gradient-to-br from-violet to-pink text-sm font-extrabold sm:h-10 sm:w-10">
+                {user.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span aria-hidden="true">{(user.nickname || user.username)[0]?.toUpperCase()}</span>
+                )}
+              </Link>
               <Link href="/wallet" className="flex items-center gap-1.5 rounded-xl border border-gold/60 bg-surface px-2.5 py-2 text-sm font-extrabold sm:gap-2 sm:px-3 text-gold shadow-[0_0_14px_rgba(255,207,74,0.18)]" aria-label="Wallet balance">
                 <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>

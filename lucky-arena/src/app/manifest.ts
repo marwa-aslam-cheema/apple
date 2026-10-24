@@ -1,9 +1,12 @@
 import type { MetadataRoute } from "next";
+import { getDb } from "@/db";
+import { getSite } from "@/lib/site";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const { name } = await getSite(await getDb());
   return {
-    name: "Lucky Arena",
-    short_name: "Lucky Arena",
+    name,
+    short_name: name.slice(0, 12),
     description: "Spin the welcome wheel and play casino games with friends. Play-money fun, 18+.",
     start_url: "/",
     scope: "/",

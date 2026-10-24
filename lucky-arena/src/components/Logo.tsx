@@ -20,12 +20,18 @@ export function LogoMark({ size = 36 }: { size?: number }) {
   );
 }
 
-export function Logo() {
+export function Logo({ name = "Lucky Arena", logo = "" }: { name?: string; logo?: string }) {
+  const custom = name !== "Lucky Arena";
   return (
     <span className="flex items-center gap-2.5">
-      <LogoMark />
+      {logo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logo} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
+      ) : (
+        <LogoMark />
+      )}
       <span className="font-[family-name:var(--font-display)] text-base font-extrabold uppercase tracking-wide min-[400px]:text-lg min-[400px]:tracking-wider">
-        Lucky<span className="gold-text">Arena</span>
+        {custom ? <span className="gold-text">{name}</span> : <>Lucky<span className="gold-text">Arena</span></>}
       </span>
     </span>
   );

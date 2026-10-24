@@ -3,6 +3,8 @@ import Link from "next/link";
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { AdminSite } from "@/components/AdminSite";
+import { getSite } from "@/lib/site";
 import { AdminWalletLabels } from "@/components/AdminWalletLabels";
 import { getWalletLabels } from "@/lib/wallet-labels";
 import { AdminGameKeys } from "@/components/AdminGameKeys";
@@ -28,6 +30,7 @@ const TABS = [
   ["promos", "Promotions"],
   ["wheel", "Wheel"],
   ["wallet", "Wallet"],
+  ["site", "Site"],
   ["social", "Social"],
 ] as const;
 
@@ -101,6 +104,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const target = Number(userParam);
     const [who] = Number.isInteger(target) && target > 0 ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, target)) : [];
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
+  } else if (tab === "site") {
+    const site = await getSite(db);
+    body = <AdminSite name={site.name} logo={site.logo} />;
   } else if (tab === "wallet") {
     const rows = await db.select().from(walletOptions).orderBy(walletOptions.sortOrder, walletOptions.id);
     const labels = await getWalletLabels(db);

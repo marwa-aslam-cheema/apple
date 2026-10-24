@@ -15,15 +15,18 @@ type Row = Record<string, string | number | boolean>;
 /** Add, change or remove the picture that goes out with a quick reply. 0 means no picture. */
 function PictureInput({ f, value, onChange }: { f: Field; value: number; onChange: (v: number) => void }) {
   const [busy, setBusy] = useState(false);
+  const [local, setLocal] = useState<{ id: number; src: string } | null>(null); // preview of a picture that is not saved yet
   const [err, setErr] = useState("");
   async function pick(file: File | undefined) {
     if (!file) return;
     setBusy(true);
     setErr("");
     try {
-      const res = await fetch("/api/chat/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl: await shrinkImage(file) }) });
+      const dataUrl = await shrinkImage(file);
+      const res = await fetch("/api/chat/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not upload.");
+      setLocal({ id: data.imageId, src: dataUrl });
       onChange(data.imageId);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not upload.");
@@ -37,7 +40,7 @@ function PictureInput({ f, value, onChange }: { f: Field; value: number; onChang
       <div className="flex flex-wrap items-center gap-3">
         {value > 0 && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`/api/chat/image/${value}`} alt="Picture for this reply" className="h-16 w-16 rounded-lg object-cover" />
+          <img src={local?.id === value ? local.src : `/api/chat/image/${value}`} alt="Picture for this reply" className="h-16 w-16 rounded-lg object-cover" />
         )}
         <label className="btn btn-ghost cursor-pointer !min-h-9 !px-3 !py-1 text-sm">
           {busy ? "Uploading..." : value > 0 ? "Change picture" : "Add picture"}
@@ -54,15 +57,18 @@ function PictureInput({ f, value, onChange }: { f: Field; value: number; onChang
 /** The picture on a game card: upload one (no link needed) or remove it. Stored as this site's own address. */
 function GameImageInput({ f, value, onChange }: { f: Field; value: string; onChange: (v: string) => void }) {
   const [busy, setBusy] = useState(false);
+  const [local, setLocal] = useState<{ url: string; src: string } | null>(null); // preview of a picture that is not saved yet
   const [err, setErr] = useState("");
   async function pick(file: File | undefined) {
     if (!file) return;
     setBusy(true);
     setErr("");
     try {
-      const res = await fetch("/api/chat/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl: await shrinkImage(file) }) });
+      const dataUrl = await shrinkImage(file);
+      const res = await fetch("/api/chat/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not upload.");
+      setLocal({ url: `/api/game-image/${data.imageId}`, src: dataUrl });
       onChange(`/api/game-image/${data.imageId}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not upload.");
@@ -76,7 +82,7 @@ function GameImageInput({ f, value, onChange }: { f: Field; value: string; onCha
       <div className="flex flex-wrap items-center gap-3">
         {value && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="Game picture" className="h-20 w-20 rounded-xl object-cover" />
+          <img src={local?.url === value ? local.src : value} alt="Game picture" className="h-20 w-20 rounded-xl object-cover" />
         )}
         <label className="btn btn-ghost cursor-pointer !min-h-9 !px-3 !py-1 text-sm">
           {busy ? "Uploading..." : value ? "Change picture" : "Add picture"}

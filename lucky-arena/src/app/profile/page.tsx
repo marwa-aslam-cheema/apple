@@ -3,6 +3,7 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { spins } from "@/db/schema";
+import { ProfileEditor } from "@/components/ProfileEditor";
 import { LogoutButton } from "@/components/LogoutButton";
 import { fmt, fmtDate } from "@/lib/format";
 import { requireUserPage } from "@/lib/session";
@@ -29,16 +30,24 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-6">
       <section className="card flex flex-wrap items-center gap-4 p-5">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet to-pink text-2xl font-extrabold" aria-hidden="true">
-          {user.username[0].toUpperCase()}
+        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet to-pink text-2xl font-extrabold">
+          {user.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span aria-hidden="true">{(user.nickname || user.username)[0].toUpperCase()}</span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-extrabold">{user.username}</h1>
+          <h1 className="truncate text-xl font-extrabold">{user.nickname || user.username}</h1>
+          {user.nickname && <p className="truncate text-xs text-muted">@{user.username}</p>}
           <p className="truncate text-sm text-muted">{user.email} · joined {user.createdAt.toISOString().slice(0, 10)}</p>
           <span className="mt-1 inline-block rounded-full bg-gold px-2.5 py-0.5 text-xs font-extrabold text-black">{t.tier.name} VIP</span>
         </div>
         <LogoutButton />
       </section>
+
+      <ProfileEditor username={user.username} nickname={user.nickname} avatar={user.avatar} />
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {tiles.map(([k, v]) => (

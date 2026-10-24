@@ -430,7 +430,7 @@ export async function chatConversations(db: Db) {
   const ids = [...new Set([...agg.map((a) => a.userId), ...online.map((o) => o.id)])];
   if (ids.length === 0) return [];
   const [people, lasts] = await Promise.all([
-    db.select({ id: users.id, username: users.username, email: users.email, tag: users.tag, lastSeenAt: users.lastSeenAt }).from(users).where(inArray(users.id, ids)),
+    db.select({ id: users.id, username: users.username, nickname: users.nickname, email: users.email, tag: users.tag, lastSeenAt: users.lastSeenAt }).from(users).where(inArray(users.id, ids)),
     agg.length ? db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender, deletedAt: chatMessages.deletedAt, imageId: chatMessages.imageId }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))) : [],
   ]);
   const rows = ids.map((id) => {
@@ -440,6 +440,7 @@ export async function chatConversations(db: Db) {
     return {
       userId: id,
       username: u?.username ?? "deleted",
+      nickname: u?.nickname ?? "",
       email: u?.email ?? "",
       tag: u?.tag ?? "",
       online: !!u?.lastSeenAt && u.lastSeenAt > onlineSince,
