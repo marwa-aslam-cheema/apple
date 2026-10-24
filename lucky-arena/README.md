@@ -11,7 +11,7 @@ A responsive gaming-lobby prototype built with **Next.js (App Router) + TypeScri
 | --- | --- |
 | Home & navigation | Hero, daily bonus, VIP progress, featured games. Fixed sidebar on desktop, slide-in drawer + bottom tab bar on mobile |
 | Accounts | Register / login / logout, bcrypt hashing, signed httpOnly session cookie, login rate limiting, banned-user lockout |
-| Games lobby | Search (debounced, URL-driven) and category chips; admin-managed catalogue (only Lucky Spin is playable) |
+| Games lobby | Search (debounced, URL-driven) and category chips; admin-managed catalogue. Lucky Spin is built in; any game can carry an optional https link to a game you own (opens in a new tab) |
 | Lucky Spin Wheel | SVG wheel, server-side weighted secure RNG, 50-credit cost, animated landing on the server's result, reduced-motion support |
 | Demo wallet | Atomic balance changes, full transaction ledger (signup, spin cost/win, daily, promo, referral, admin) |
 | Profile & dashboard | Stats, VIP tier, recent activity, sign out |

@@ -41,8 +41,8 @@ export function GameCard({ game }: { game: Game }) {
       <div className="relative aspect-square overflow-hidden rounded-xl">
         <GameArt hue={game.hue} category={game.category} />
         {game.featured && <span className="absolute left-2 top-2 rounded-full bg-gold px-2 py-0.5 text-[10px] font-extrabold text-black">HOT</span>}
-        <span className={`absolute bottom-2 right-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${game.playable ? "bg-teal text-black" : "bg-black/60 text-muted"}`}>
-          {game.playable ? "PLAY" : "SOON"}
+        <span className={`absolute bottom-2 right-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${game.playable || game.link ? "bg-teal text-black" : "bg-black/60 text-muted"}`}>
+          {game.playable || game.link ? "PLAY" : "SOON"}
         </span>
       </div>
       <div className="px-1 pb-1 pt-2">
@@ -52,6 +52,11 @@ export function GameCard({ game }: { game: Game }) {
     </>
   );
   const cls = "card block p-2 transition-transform hover:-translate-y-0.5";
+  if (game.link) {
+    return (
+      <a href={game.link} target="_blank" rel="noopener noreferrer" className={cls} title={game.description}>{inner}</a>
+    );
+  }
   return game.playable ? (
     <Link href="/spin" className={cls} title={game.description}>{inner}</Link>
   ) : (

@@ -19,6 +19,8 @@ export const gameSchema = z.object({
   title: z.string().trim().min(1).max(40),
   category: z.enum(["Wheel", "Cards", "Arcade", "Puzzle", "Trivia"]),
   description: z.string().trim().max(200).default(""),
+  // Optional external link to a game you own. Only http(s) URLs are accepted (no javascript: or data: links).
+  link: z.string().trim().max(300).refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Link must start with http:// or https://").default(""),
   hue: z.coerce.number().int().min(0).max(360).default(260),
   featured: z.boolean().default(false),
   playable: z.boolean().default(false),

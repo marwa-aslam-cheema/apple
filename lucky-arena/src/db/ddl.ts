@@ -31,12 +31,15 @@ export const DDL = [
     title TEXT NOT NULL,
     category TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    link TEXT NOT NULL DEFAULT '',
     hue INTEGER NOT NULL DEFAULT 260,
     featured BOOLEAN NOT NULL DEFAULT FALSE,
     playable BOOLEAN NOT NULL DEFAULT FALSE,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INTEGER NOT NULL DEFAULT 0
   )`,
+  // Added after the first release: keeps databases created earlier working.
+  `ALTER TABLE games ADD COLUMN IF NOT EXISTS link TEXT NOT NULL DEFAULT ''`,
   `CREATE TABLE IF NOT EXISTS promotions (
     id SERIAL PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,

@@ -48,3 +48,16 @@ describe("admin patch", () => {
     expect(() => parsePatch(gameSchema as never, existing, null)).toThrow();
   });
 });
+
+describe("game link", () => {
+  const base = { slug: "my-game", title: "My Game", category: "Arcade" };
+  it("accepts empty and http(s) links", () => {
+    expect(gameSchema.parse(base).link).toBe("");
+    expect(gameSchema.parse({ ...base, link: "https://example.com/play" }).link).toBe("https://example.com/play");
+  });
+  it("rejects script and data links", () => {
+    expect(() => gameSchema.parse({ ...base, link: "javascript:alert(1)" })).toThrow();
+    expect(() => gameSchema.parse({ ...base, link: "data:text/html,hi" })).toThrow();
+    expect(() => gameSchema.parse({ ...base, link: "example.com" })).toThrow();
+  });
+});
