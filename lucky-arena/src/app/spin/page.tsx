@@ -18,7 +18,7 @@ export default async function SpinPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-3xl font-extrabold">{welcomeLeft > 0 ? "Welcome Wheel" : "Lucky Spin Wheel"}</h1>
+        <h1 className="gold-text text-4xl font-extrabold uppercase">{welcomeLeft > 0 ? "Welcome Wheel" : "Lucky Spin Wheel"}</h1>
         <p className="mt-1 text-muted">
           {welcomeLeft > 0 ? `${welcomeLeft} free spin${welcomeLeft > 1 ? "s" : ""} left. Small virtual prizes to get you started.` : `${SPIN_COST} demo credits per spin. Virtual prizes only.`}
         </p>

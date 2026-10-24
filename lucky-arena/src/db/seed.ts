@@ -27,22 +27,22 @@ const PROMOS = [
 
 // Weighted so the expected return is slightly below the spin cost, like a real balanced prize wheel.
 const SEGMENTS = [
-  { label: "Try Again", credits: 0, weight: 48, color: "#2b2f5e" },
-  { label: "20", credits: 20, weight: 48, color: "#7c5cff" },
-  { label: "40", credits: 40, weight: 40, color: "#3b82f6" },
-  { label: "80", credits: 80, weight: 24, color: "#14b8a6" },
-  { label: "Try Again", credits: 0, weight: 16, color: "#2b2f5e" },
-  { label: "120", credits: 120, weight: 12, color: "#f472b6" },
-  { label: "300", credits: 300, weight: 5, color: "#f59e0b" },
-  { label: "JACKPOT 1000", credits: 1000, weight: 1, color: "#ef4444" },
+  { label: "Try Again", credits: 0, weight: 48, color: "#17101c" },
+  { label: "20", credits: 20, weight: 48, color: "#b3123f" },
+  { label: "40", credits: 40, weight: 40, color: "#0e6b4c" },
+  { label: "80", credits: 80, weight: 24, color: "#1e5aa8" },
+  { label: "Try Again", credits: 0, weight: 16, color: "#17101c" },
+  { label: "120", credits: 120, weight: 12, color: "#d6336c" },
+  { label: "300", credits: 300, weight: 5, color: "#e0a526" },
+  { label: "JACKPOT 1000", credits: 1000, weight: 1, color: "#ff3b3b" },
 ]; // expected return ~87% of the 50 credit spin cost (see tests/wheel.test.ts)
 
 // Welcome wheel for brand-new players: tiny prizes, mostly "try next time" (each player only gets WELCOME_SPINS spins).
 const WELCOME_SEGMENTS = [
-  { label: "Try next time", credits: 0, weight: 30, color: "#2b2f5e" },
-  { label: "1 credit", credits: 1, weight: 30, color: "#7c5cff" },
-  { label: "Try next time", credits: 0, weight: 30, color: "#3b3f7a" },
-  { label: "2 credits", credits: 2, weight: 10, color: "#f59e0b" },
+  { label: "Try next time", credits: 0, weight: 30, color: "#17101c" },
+  { label: "1 credit", credits: 1, weight: 30, color: "#b3123f" },
+  { label: "Try next time", credits: 0, weight: 30, color: "#2a1a33" },
+  { label: "2 credits", credits: 2, weight: 10, color: "#e0a526" },
 ];
 
 export async function seed(db: Db) {

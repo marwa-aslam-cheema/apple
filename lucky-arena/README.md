@@ -16,6 +16,7 @@ A responsive gaming-lobby prototype built with **Next.js (App Router) + TypeScri
 | Lucky Spin Wheel | SVG wheel, server-side weighted secure RNG, 50-credit cost, animated landing on the server's result, reduced-motion support |
 | Demo wallet | Atomic balance changes, full transaction ledger (signup, spin cost/win, daily, promo, referral, admin) |
 | Profile & dashboard | Stats, VIP tier, recent activity, sign out |
+| Look & sound | "Vegas night" casino theme (velvet black, ruby, brass gold, marquee bulbs, chips). Quiet original lounge music generated in the browser (4 tracks, a new one each login, only while signed in, toggle in the top bar), wheel tick/win sounds and chat sounds. No audio files or third-party assets; master level is `LEVEL` in `src/lib/music.ts` |
 | Support chat | Floating chat bubble on every page for signed-in players and the admin (unread badge, admin sees a conversation list), plus a full Support Chat page and an admin Chat tab. Text only; polls every few seconds, no websockets needed |
 | Promotions / VIP / Referral | One-time claimable promos, 5 XP-based VIP tiers (bigger daily bonus), referral links paying both sides (capped) |
 | Admin dashboard | Overview (incl. actual vs expected wheel return), requests (password resets), users (adjust credits, ban, set password), games, promotions and wheel segments CRUD |

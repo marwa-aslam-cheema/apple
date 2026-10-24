@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/db";
 import { GameCard } from "@/components/GameCard";
+import { ChipIcon } from "@/components/Logo";
 import { ClaimButton } from "@/components/ClaimButton";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, SPIN_COST, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
@@ -16,16 +17,22 @@ export default async function Home() {
 
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-violet/40 via-surface to-pink/20 p-6 sm:p-10">
-        <div className="max-w-xl">
-          <p className="mb-2 inline-block rounded-full bg-gold px-3 py-1 text-xs font-extrabold text-black">DEMO CREDITS ONLY</p>
-          <h1 className="text-3xl font-extrabold leading-tight sm:text-5xl">
-            Spin, play and climb the <span className="text-gold">VIP ladder</span>
-          </h1>
-          <p className="mt-3 text-muted">
-            A friendly prototype lobby. Join free and spin the welcome wheel for your first virtual credits, then try the Lucky Spin Wheel. Nothing here costs or pays real money.
+      <section className="marquee relative overflow-hidden bg-gradient-to-br from-[#4a0b26] via-[#1d0b1d] to-[#0d060f] p-8 sm:p-14">
+        <div className="spotlight pointer-events-none absolute inset-0" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 select-none sm:block" aria-hidden="true">
+          <span className="float-slow absolute right-24 top-8 text-8xl text-[#b3123f]/70 [--r:-8deg]">♥</span>
+          <span className="float-slower absolute right-52 top-28 text-7xl text-gold/50 [--r:10deg]">♠</span>
+          <span className="float-slow absolute right-10 top-36 text-7xl text-white/20 [--r:-4deg]">♦</span>
+          <span className="float-slower absolute bottom-6 right-36"><ChipIcon size={64} /></span>
+          <span className="float-slow absolute bottom-14 right-8"><ChipIcon size={44} /></span>
+        </div>
+        <div className="relative max-w-xl">
+          <p className="neon-text text-xs font-extrabold uppercase tracking-[0.35em]">Virtual casino night</p>
+          <h1 className="gold-text mt-3 text-5xl font-extrabold uppercase leading-[1.05] sm:text-7xl">Spin. Play. Shine.</h1>
+          <p className="mt-4 text-muted">
+            Join free and spin the welcome wheel for your first virtual credits, then try the Lucky Spin Wheel with friends. Demo credits only: nothing here costs or pays real money.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap gap-3">
             {user ? (
               <Link href="/spin" className="btn btn-gold">Spin the wheel</Link>
             ) : (
@@ -34,10 +41,6 @@ export default async function Home() {
             <Link href="/games" className="btn btn-ghost">Browse games</Link>
           </div>
         </div>
-        <svg aria-hidden="true" viewBox="0 0 200 200" className="pointer-events-none absolute -right-10 -top-10 hidden h-72 w-72 opacity-40 sm:block">
-          <circle cx="100" cy="100" r="90" fill="none" stroke="#f5b942" strokeWidth="4" strokeDasharray="10 8" />
-          <circle cx="100" cy="100" r="60" fill="none" stroke="#7c5cff" strokeWidth="6" />
-        </svg>
       </section>
 
       {user && (
@@ -60,7 +63,7 @@ export default async function Home() {
 
       <section>
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-xl font-extrabold">Featured games</h2>
+          <h2 className="gold-text text-2xl font-extrabold uppercase">Featured games</h2>
           <Link href="/games" className="text-sm font-semibold text-gold">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

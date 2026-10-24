@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { fmt } from "@/lib/format";
+import { sfxResult, sfxSpin, unlockSfx } from "@/lib/sfx";
 
 export interface WheelSeg {
   id: number;
@@ -33,6 +34,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
   const [duration, setDuration] = useState(4800);
 
   async function spin() {
+    unlockSfx(); // inside the click so the browser lets the wheel sounds play
     setError("");
     setResult(null);
     setBusy(true);
@@ -56,10 +58,12 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
       const delta = ((((-center - angleRef.current) % 360) + 360) % 360) + (reduce ? 0 : 360 * 5);
       angleRef.current += delta;
       setAngle(angleRef.current);
+      if (!reduce) sfxSpin(delta, sa, DURATION / 1000);
       await new Promise((r) => setTimeout(r, DURATION + 100));
       setBalance(data.balance);
       setWelcomeLeft(data.welcomeLeft);
       setResult({ prize: data.prize, label: data.label });
+      sfxResult(data.prize);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Spin failed.");
@@ -77,12 +81,13 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
         <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1" aria-hidden="true">
           <svg width="34" height="40" viewBox="0 0 34 40"><path d="M17 38L3 8a16 16 0 0 1 28 0z" fill="#f5b942" stroke="#1b1300" strokeWidth="2" /></svg>
         </div>
-        <div className="overflow-hidden p-1">
+        <div className="pointer-events-none absolute inset-3 rounded-full shadow-[0_0_70px_rgba(255,190,60,0.38)]" aria-hidden="true" />
+        <div className="relative overflow-hidden p-1">
         <svg
           viewBox="0 0 300 300"
           role="img"
           aria-label={`Prize wheel with ${n} segments`}
-          className="w-full drop-shadow-[0_10px_30px_rgba(124,92,255,0.35)]"
+          className="relative w-full"
           style={{ transform: `rotate(${angle}deg)`, transition: `transform ${duration}ms cubic-bezier(0.17, 0.67, 0.12, 1)` }}
         >
           <circle cx={R} cy={R} r={R - 2} fill="#12142d" stroke="#f5b942" strokeWidth="4" />
@@ -101,6 +106,12 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
           })}
           <circle cx={R} cy={R} r="20" fill="#0a0b1e" stroke="#f5b942" strokeWidth="4" />
           <circle cx={R} cy={R} r="6" fill="#f5b942" />
+        </svg>
+        <svg viewBox="0 0 300 300" className="pointer-events-none absolute inset-0 h-full w-full p-1" aria-hidden="true">
+          {Array.from({ length: 24 }, (_, i) => {
+            const [bx, by] = polar(i * 15, R - 2);
+            return <circle key={i} cx={bx} cy={by} r="3.4" fill="#fff3b0" className="bulb" style={{ filter: "drop-shadow(0 0 3px #ffb52e)" }} />;
+          })}
         </svg>
         </div>
       </div>

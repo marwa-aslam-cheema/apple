@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { sfxReceived } from "@/lib/sfx";
 import { AdminChat } from "./AdminChat";
 import { ChatBox } from "./ChatBox";
 import { Icon } from "./Icon";
@@ -10,6 +11,9 @@ export function ChatWidget({ role }: { role: string }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const isAdmin = role === "admin";
+  const openRef = useRef(false);
+  const prevUnread = useRef<number | null>(null);
+  openRef.current = open;
 
   useEffect(() => {
     let alive = true;
@@ -17,7 +21,12 @@ export function ChatWidget({ role }: { role: string }) {
       if (document.visibilityState !== "visible") return;
       try {
         const res = await fetch("/api/chat/unread", { cache: "no-store" });
-        if (res.ok && alive) setUnread((await res.json()).unread);
+        if (res.ok && alive) {
+          const n = (await res.json()).unread as number;
+          if (prevUnread.current !== null && n > prevUnread.current && !openRef.current) sfxReceived(); // new message while the bubble is closed
+          prevUnread.current = n;
+          setUnread(n);
+        }
       } catch {
         /* offline: try again next tick */
       }

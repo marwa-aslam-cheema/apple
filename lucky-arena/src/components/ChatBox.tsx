@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fmtDate } from "@/lib/format";
+import { sfxReceived, sfxSent, unlockSfx } from "@/lib/sfx";
 
 export interface ChatMsg {
   id: number;
@@ -17,6 +18,7 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const lastId = useRef(0);
+  const firstLoad = useRef(true);
   const box = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -25,14 +27,17 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
       if (!res.ok) return;
       const { messages } = (await res.json()) as { messages: ChatMsg[] };
       if (messages.length) {
+        if (!firstLoad.current && messages.some((m) => m.sender !== mine)) sfxReceived();
         lastId.current = messages[messages.length - 1].id;
         setMsgs((m) => [...m, ...messages.filter((x) => !m.some((y) => y.id === x.id))]);
         onActivity?.();
       }
     } catch {
       /* network blip: the next poll retries */
+    } finally {
+      firstLoad.current = false;
     }
-  }, [url, onActivity]);
+  }, [url, onActivity, mine]);
 
   useEffect(() => {
     load();
@@ -49,11 +54,13 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
     if (!body || busy) return;
     setBusy(true);
     setError("");
+    unlockSfx();
     try {
       const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send.");
       setText("");
+      sfxSent();
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send.");

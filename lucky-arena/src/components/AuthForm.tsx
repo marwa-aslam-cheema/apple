@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { nextTrack, startMusic, unlockAudio } from "@/lib/music";
 
 export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCode?: string }) {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    unlockAudio(); // inside the click/submit so the browser allows the background music afterwards
     setError("");
     setBusy(true);
     const f = new FormData(e.currentTarget);
@@ -22,6 +24,8 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
       const res = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      nextTrack(); // a different track each time you log in
+      startMusic();
       router.push(data.role === "admin" ? "/admin" : "/");
       router.refresh();
     } catch (err) {
@@ -31,8 +35,8 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
   }
 
   return (
-    <form onSubmit={submit} className="card mx-auto w-full max-w-md space-y-4 p-6">
-      <h1 className="text-2xl font-extrabold">{isReg ? "Create your account" : "Welcome back"}</h1>
+    <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
+      <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
       {isReg && <p className="text-sm text-muted">Start at zero and spin the free welcome wheel for your first demo credits. No payment details needed, ever.</p>}
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Referral code {refCode} applied: bonus credits for you and your friend.</p>}
       {isReg ? (

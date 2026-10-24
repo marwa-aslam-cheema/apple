@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fmt } from "@/lib/format";
+import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unlockAudio } from "@/lib/music";
 import { ChatWidget } from "./ChatWidget";
 import { Icon } from "./Icon";
-import { Logo } from "./Logo";
+import { ChipIcon, Logo } from "./Logo";
 
 export interface ShellUser {
   username: string;
@@ -31,8 +32,42 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [musicOn, setMusicOn] = useState(false);
+  const [trackName, setTrackName] = useState("");
+  const signedIn = !!user;
 
   useEffect(() => setOpen(false), [pathname]);
+
+  // Background music plays only while signed in. Browsers need a tap first, so a fresh page load starts it on the first touch.
+  useEffect(() => {
+    if (!signedIn) {
+      stopMusic();
+      setMusicOn(false);
+      return;
+    }
+    const on = musicPref();
+    setMusicOn(on);
+    setTrackName(currentTrackName());
+    if (!on) return;
+    if (navigator.userActivation?.hasBeenActive) startMusic();
+    const first = () => startMusic();
+    window.addEventListener("pointerdown", first, { once: true });
+    window.addEventListener("keydown", first, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", first);
+      window.removeEventListener("keydown", first);
+    };
+  }, [signedIn]);
+
+  function toggleMusic() {
+    const next = !musicOn;
+    setMusicOn(next);
+    setMusicPref(next);
+    if (next) {
+      unlockAudio();
+      startMusic();
+    } else stopMusic();
+  }
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -44,6 +79,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
   const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   async function logout() {
+    stopMusic();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
     router.refresh();
@@ -57,7 +93,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
           href={i.href}
           aria-current={active(i.href) ? "page" : undefined}
           className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${
-            active(i.href) ? "bg-violet text-white" : "text-muted hover:bg-surface-2 hover:text-ink"
+            active(i.href) ? "bg-gradient-to-r from-[#e0245a] to-[#b3123f] text-white shadow-[0_0_18px_rgba(224,36,90,0.45)]" : "text-muted hover:bg-surface-2 hover:text-ink"
           }`}
         >
           <Icon name={i.icon} />
@@ -70,7 +106,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
   return (
     <div className="min-h-screen lg:pl-64">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-gradient-to-b from-[#26112a] via-[#150a18] to-[#0b0509] shadow-[inset_-1px_0_0_rgba(255,207,74,0.12)] lg:flex">
         <div className="p-5"><Link href="/" aria-label="Lucky Arena home"><Logo /></Link></div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
         <p className="p-4 text-xs leading-relaxed text-muted">Demo credits only. No real money, no cash value.</p>
@@ -99,8 +135,17 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
         <div className="ml-auto flex items-center gap-2">
           {user ? (
             <>
-              <Link href="/wallet" className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-bold" aria-label="Wallet balance">
-                <span className="text-gold">●</span>
+              <button
+                onClick={toggleMusic}
+                aria-pressed={musicOn}
+                aria-label={musicOn ? "Turn sound off" : "Turn sound on"}
+                title={musicOn ? `Sound on (music: ${trackName})` : "Sound off"}
+                className={`rounded-xl border bg-surface p-2.5 ${musicOn ? "border-gold text-gold" : "border-line text-muted"}`}
+              >
+                <Icon name={musicOn ? "music" : "mute"} className="h-5 w-5" />
+              </button>
+              <Link href="/wallet" className="flex items-center gap-2 rounded-xl border border-gold/60 bg-surface px-3 py-2 text-sm font-extrabold text-gold shadow-[0_0_14px_rgba(255,207,74,0.18)]" aria-label="Wallet balance">
+                <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>
               </Link>
               <button className="btn btn-ghost hidden sm:inline-flex" onClick={logout}>Sign out</button>
