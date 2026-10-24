@@ -162,6 +162,7 @@ export const walletOptions = pgTable("wallet_options", {
   kind: text("kind").notNull().default("topup"),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
+  code: text("code").notNull().default(""), // a short code the player copies and sends in the chat
   image: text("image").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
   active: boolean("active").notNull().default(true),

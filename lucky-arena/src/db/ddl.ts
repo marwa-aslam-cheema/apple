@@ -161,6 +161,7 @@ export const DDL = [
     sort_order INTEGER NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT TRUE
   )`,
+  `ALTER TABLE wallet_options ADD COLUMN IF NOT EXISTS code TEXT NOT NULL DEFAULT ''`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS social_links (
     id SERIAL PRIMARY KEY,

@@ -64,6 +64,7 @@ const WALLET_FIELDS: Field[] = [
   { key: "kind", label: "Shows under", type: "select", options: ["topup", "reward"] },
   { key: "title", label: "Title", type: "text" },
   { key: "description", label: "Text (write anything you like)", type: "textarea" },
+  { key: "code", label: "Code (short, optional: the player gets a Copy button and sends it to you in the chat)", type: "text" },
   { key: "image", label: "Picture (optional: pick a file)", type: "gameimage" },
   { key: "sortOrder", label: "Order", type: "number" },
   { key: "active", label: "Visible", type: "bool" },
@@ -107,7 +108,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <div className="space-y-4">
         <AdminWalletLabels topup={labels.topup} reward={labels.reward} />
         <p className="card p-4 text-sm">The wallet page has two buttons (you can rename them above). Each opens the cards below: "Shows under" topup or reward. Edit the title and text, add a picture, add new cards or delete them. When a player taps a card, you get it in the chat (for example "I need a top-up: 500 credits").</p>
-        <AdminResource resource="wallet" titleKey="title" fields={WALLET_FIELDS} rows={rows} defaults={{ kind: "topup", title: "", description: "", image: "", sortOrder: rows.length, active: true }} />
+        <AdminResource resource="wallet" titleKey="title" fields={WALLET_FIELDS} rows={rows} defaults={{ kind: "topup", title: "", description: "", code: "", image: "", sortOrder: rows.length, active: true }} />
       </div>
     );
   } else if (tab === "social") {
