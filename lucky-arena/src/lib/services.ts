@@ -307,6 +307,9 @@ export async function adminUnreadCount(db: Db) {
 }
 
 /** One row per player who has written, newest conversation first, with unread count and last message. */
+/** A player counts as online if the site has seen them in this long. */
+const ONLINE_MS = 2 * 60_000;
+
 export async function chatConversations(db: Db) {
   const agg = await db
     .select({
@@ -319,16 +322,33 @@ export async function chatConversations(db: Db) {
     .groupBy(chatMessages.userId)
     .orderBy(desc(sql`max(${chatMessages.id})`))
     .limit(100);
-  if (agg.length === 0) return [];
+  const onlineSince = new Date(Date.now() - ONLINE_MS);
+  // Players who are online right now are listed even if they have not written yet.
+  const online = await db.select({ id: users.id }).from(users).where(and(gt(users.lastSeenAt, onlineSince), eq(users.role, "user")));
+  const ids = [...new Set([...agg.map((a) => a.userId), ...online.map((o) => o.id)])];
+  if (ids.length === 0) return [];
   const [people, lasts] = await Promise.all([
-    db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(inArray(users.id, agg.map((a) => a.userId))),
-    db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))),
+    db.select({ id: users.id, username: users.username, email: users.email, tag: users.tag, lastSeenAt: users.lastSeenAt }).from(users).where(inArray(users.id, ids)),
+    agg.length ? db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))) : [],
   ]);
-  return agg.map((a) => {
-    const u = people.find((p) => p.id === a.userId);
-    const m = lasts.find((l) => l.id === a.lastId);
-    return { userId: a.userId, username: u?.username ?? "deleted", email: u?.email ?? "", unread: a.unread, last: m?.body.slice(0, 80) ?? "", lastSender: m?.sender ?? "user" };
+  const rows = ids.map((id) => {
+    const a = agg.find((x) => x.userId === id);
+    const u = people.find((p) => p.id === id);
+    const m = a ? lasts.find((l) => l.id === a.lastId) : undefined;
+    return {
+      userId: id,
+      username: u?.username ?? "deleted",
+      email: u?.email ?? "",
+      tag: u?.tag ?? "",
+      online: !!u?.lastSeenAt && u.lastSeenAt > onlineSince,
+      unread: a?.unread ?? 0,
+      last: m?.body.slice(0, 80) ?? "",
+      lastSender: m?.sender ?? "admin",
+      lastId: a?.lastId ?? 0,
+    };
   });
+  // Unread first, then whoever wrote most recently.
+  return rows.sort((x, y) => Number(y.unread > 0) - Number(x.unread > 0) || y.lastId - x.lastId);
 }
 
 const REQUEST_REPEAT_MS = 30 * 60_000;

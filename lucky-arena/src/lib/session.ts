@@ -48,6 +48,10 @@ export async function getCurrentUser(): Promise<User | null> {
     const db = await getDb();
     await closeExpiredSessions(db, uid); // credits left in a game nobody is playing come back to the wallet
     const [user] = await db.select().from(users).where(eq(users.id, uid));
+    if (user && (!user.lastSeenAt || Date.now() - user.lastSeenAt.getTime() > 30_000)) {
+      user.lastSeenAt = new Date(); // "online" for the admin: seen within the last couple of minutes
+      await db.update(users).set({ lastSeenAt: user.lastSeenAt }).where(eq(users.id, uid));
+    }
     return user && !user.banned ? user : null;
   } catch {
     return null;

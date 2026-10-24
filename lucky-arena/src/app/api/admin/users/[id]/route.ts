@@ -15,10 +15,11 @@ export const PATCH = route(async (req: Request, ctx: { params: Promise<{ id: str
   if (id === admin.id && (body.banned || body.role === "user")) {
     throw new AppError("self_lockout", "You cannot ban or demote yourself.");
   }
-  if (body.banned !== undefined || body.role !== undefined) {
+  if (body.banned !== undefined || body.role !== undefined || body.tag !== undefined) {
     const patch: Partial<typeof users.$inferInsert> = {};
     if (body.banned !== undefined) patch.banned = body.banned;
     if (body.role !== undefined) patch.role = body.role;
+    if (body.tag !== undefined) patch.tag = body.tag;
     const done = await db.update(users).set(patch).where(eq(users.id, id)).returning({ id: users.id });
     if (!done.length) throw new AppError("not_found", "User not found.", 404);
   }

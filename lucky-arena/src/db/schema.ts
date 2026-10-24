@@ -22,6 +22,8 @@ export const users = pgTable("users", {
   referredBy: integer("referred_by"),
   lastDailyAt: timestamp("last_daily_at"),
   banned: boolean("banned").notNull().default(false),
+  tag: text("tag").notNull().default(""), // admin's own note shown beside the name, e.g. the player's name inside a game
+  lastSeenAt: timestamp("last_seen_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

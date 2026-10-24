@@ -183,6 +183,16 @@ describe("support chat", () => {
     expect(await userUnreadCount(db, a)).toBe(0); // already read above
     expect((await readChat(db, b, "user")).every((m) => m.body !== "hi, how can I help?")).toBe(true); // no leakage
   });
+  it("lists online players, unread first, with their tag", async () => {
+    const quiet = await registerUser(db, { email: "on1@x.test", username: "online_quiet", password: "password1" });
+    const writer = await registerUser(db, { email: "on2@x.test", username: "unread_writer", password: "password1" });
+    await db.update(users).set({ lastSeenAt: new Date(), tag: "ludo: ali99" }).where(eq(users.id, quiet));
+    await db.update(users).set({ lastSeenAt: new Date(Date.now() - 10 * 60_000) }).where(eq(users.id, writer));
+    await postChat(db, writer, "user", "need help");
+    const list = await chatConversations(db);
+    expect(list[0]).toMatchObject({ username: "unread_writer", unread: 1, online: false }); // unread comes first
+    expect(list.find((c) => c.userId === quiet)).toMatchObject({ online: true, tag: "ludo: ali99", unread: 0 }); // online without writing
+  });
   it("rejects empty and oversized messages", async () => {
     const id = await registerUser(db, { email: "c3@x.test", username: "chatter3", password: "password1" });
     expect(await code(postChat(db, id, "user", "   "))).toBe("invalid");

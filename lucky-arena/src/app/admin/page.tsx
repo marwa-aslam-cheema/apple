@@ -100,7 +100,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   } else if (tab === "users") {
     const term = q.trim().slice(0, 60);
     const list = await db
-      .select({ id: users.id, username: users.username, email: users.email, role: users.role, balance: users.balance, banned: users.banned, createdAt: users.createdAt })
+      .select({ id: users.id, username: users.username, email: users.email, role: users.role, balance: users.balance, banned: users.banned, tag: users.tag, createdAt: users.createdAt })
       .from(users)
       .where(term ? sql`${users.email} ilike ${"%" + term.replace(/[%_]/g, "") + "%"} or ${users.username} ilike ${"%" + term.replace(/[%_]/g, "") + "%"}` : undefined)
       .orderBy(desc(users.id))

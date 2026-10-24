@@ -12,6 +12,7 @@ export interface AdminUserRow {
   role: string;
   balance: number;
   banned: boolean;
+  tag?: string;
   createdAt?: string;
 }
 
@@ -65,7 +66,7 @@ function UserRow({ u, self }: { u: AdminUserRow; self: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-bold">
-            {u.username} {u.role === "admin" && <span className="rounded bg-violet px-1.5 text-xs">admin</span>} {u.banned && <span className="rounded bg-danger px-1.5 text-xs">banned</span>}
+            {u.username} {u.role === "admin" && <span className="rounded bg-violet px-1.5 text-xs">admin</span>} {u.banned && <span className="rounded bg-danger px-1.5 text-xs">banned</span>} {u.tag && <span className="rounded bg-violet/30 px-1.5 text-xs">{u.tag}</span>}
           </p>
           <p className="truncate text-sm text-ink">{u.email}</p>
         </div>
