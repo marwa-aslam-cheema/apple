@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { games, promotions, users, wheelSegments } from "./schema";
+import { games, promotions, quickReplies, users, wheelSegments } from "./schema";
 
 const GAMES = [
   { slug: "lucky-spin", title: "Lucky Spin Wheel", category: "Wheel", hue: 262, featured: true, playable: true, description: "Spin the wheel with demo credits. Fully playable in this prototype." },
@@ -53,6 +53,16 @@ const WELCOME_SEGMENTS = [
   { label: "2 credits", icon: "💰", credits: 2, weight: 10, color: "#e0a526" },
 ];
 
+// Ready-made admin chat replies (editable in Admin > Replies or saved straight from the chat box).
+const QUICK_REPLIES = [
+  { title: "Hello", body: "Hello! How can I help you today?" },
+  { title: "Wait a moment", body: "Please wait a moment, I am checking this for you." },
+  { title: "Credits added", body: "Done! The credits have been added to your wallet." },
+  { title: "Password reset", body: "Your password has been reset. Please log in with the new password and change it after." },
+  { title: "Need details", body: "Could you please send me your username so I can find your account?" },
+  { title: "Thanks", body: "Thanks for your patience. Enjoy the games!" },
+];
+
 export async function seed(db: Db) {
   const [{ value: userCount }] = await db.select({ value: count() }).from(users);
   if (userCount === 0) {
@@ -91,4 +101,6 @@ export async function seed(db: Db) {
   for (const [label, icon] of Object.entries(WELCOME_ICONS)) {
     await db.update(wheelSegments).set({ icon }).where(and(eq(wheelSegments.kind, "welcome"), eq(wheelSegments.label, label), eq(wheelSegments.icon, "")));
   }
+  const [{ value: replyCount }] = await db.select({ value: count() }).from(quickReplies);
+  if (replyCount === 0) await db.insert(quickReplies).values(QUICK_REPLIES.map((r, i) => ({ ...r, sortOrder: i })));
 }

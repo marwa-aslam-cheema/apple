@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChatBox } from "./ChatBox";
+import { QuickReplies } from "./QuickReplies";
 
 /** Adds virtual credits to this player and sends them the "Added ..." message in one click. */
 function AddCredits({ userId, onDone }: { userId: number; onDone: () => void }) {
@@ -99,11 +100,12 @@ export function AdminChat({ compact = false }: { compact?: boolean }) {
         <span className="truncate">{current.username} <span className="font-normal text-muted">· {current.email}</span></span>
       </h2>
       <AddCredits userId={current.userId} onDone={refresh} />
-      <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "h-[calc(100%-5.75rem)]" : "h-[26rem] max-h-[65vh]"} />
+      <QuickReplies />
+      <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "min-h-0 flex-1" : "h-[24rem] max-h-[60vh]"} />
     </>
   ) : null;
 
-  if (compact) return <div className="h-full">{thread && current ? threadView : listView}</div>;
+  if (compact) return <div className="h-full">{thread && current ? <div className="flex h-full flex-col">{threadView}</div> : listView}</div>;
 
   return (
     <div className="grid gap-4 md:grid-cols-[16rem_1fr]">

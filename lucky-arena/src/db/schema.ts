@@ -112,6 +112,13 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const quickReplies = pgTable("quick_replies", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 export type User = typeof users.$inferSelect;
 export type Game = typeof games.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;

@@ -22,6 +22,9 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
   const lastId = useRef(0);
   const firstLoad = useRef(true);
   const box = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [title, setTitle] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +56,32 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
       window.removeEventListener("la:chat-refresh", load);
     };
   }, [load]);
+
+  // Admin quick replies drop their text into the box (editable before sending).
+  useEffect(() => {
+    if (mine !== "admin") return;
+    const fill = (e: Event) => {
+      setText((e as CustomEvent<string>).detail);
+      input.current?.focus();
+    };
+    window.addEventListener("la:chat-fill", fill);
+    return () => window.removeEventListener("la:chat-fill", fill);
+  }, [mine]);
+
+  async function saveQuick() {
+    const body = text.trim();
+    if (!body || !title.trim()) return;
+    try {
+      const res = await fetch("/api/admin/replies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not save.");
+      setSaving(false);
+      setTitle("");
+      window.dispatchEvent(new Event("la:quick-changed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save.");
+    }
+  }
 
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight });
@@ -92,11 +121,25 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
         ))}
       </div>
       {error && <p role="alert" className="px-3 text-sm font-semibold text-danger">{error}</p>}
+      {mine === "admin" && text.trim() && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 pt-2 text-xs">
+          {saving ? (
+            <>
+              <input className="input !min-h-8 !w-40 !py-1 text-sm" placeholder="Button title" aria-label="Quick reply title" maxLength={30} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <button type="button" className="btn btn-violet !min-h-8 !px-3 !py-1" disabled={!title.trim()} onClick={saveQuick}>Save</button>
+              <button type="button" className="btn btn-ghost !min-h-8 !px-3 !py-1" onClick={() => setSaving(false)}>Cancel</button>
+            </>
+          ) : (
+            <button type="button" className="text-gold underline" onClick={() => setSaving(true)}>Save as quick reply</button>
+          )}
+        </div>
+      )}
       <form
         className="flex gap-2 border-t border-line p-3"
         onSubmit={(e) => { e.preventDefault(); send(); }}
       >
         <textarea
+          ref={input}
           className="input min-h-11 flex-1 resize-none"
           rows={1}
           maxLength={1000}

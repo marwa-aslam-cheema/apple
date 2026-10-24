@@ -50,6 +50,12 @@ export const segmentSchema = z.object({
   active: z.boolean().default(true),
 });
 
+export const replySchema = z.object({
+  title: z.string().trim().min(1, "Give the reply a short title.").max(30),
+  body: z.string().trim().min(1, "Write the message.").max(1000),
+  sortOrder: z.coerce.number().int().min(0).max(999).default(0),
+});
+
 export const userAdminSchema = z.object({
   adjust: z.coerce.number().int().min(-1000000).max(1000000).optional(),
   note: z.string().trim().max(80).optional(),

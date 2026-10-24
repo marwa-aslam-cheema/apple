@@ -54,7 +54,7 @@ export function ChatWidget({ role }: { role: string }) {
         <section
           role="dialog"
           aria-label={isAdmin ? "Player messages" : "Support chat"}
-          className="fixed inset-x-2 bottom-36 z-40 flex h-[26rem] max-h-[65vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:right-4 sm:w-96 lg:bottom-24"
+          className={`fixed inset-x-2 bottom-36 z-40 flex ${isAdmin ? "h-[36rem] max-h-[78vh]" : "h-[26rem] max-h-[65vh]"} flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:right-4 sm:w-96 lg:bottom-24`}
         >
           <header className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-2">
             <b className="text-sm">{isAdmin ? "Player messages" : "Support chat"}</b>

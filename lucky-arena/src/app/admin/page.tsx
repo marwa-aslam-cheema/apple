@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { games, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { games, promotions, quickReplies, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminResource, type Field } from "@/components/AdminResource";
 import { AdminChat } from "@/components/AdminChat";
 import { AdminRequests } from "@/components/AdminRequests";
@@ -18,6 +18,7 @@ export const metadata: Metadata = { title: "Admin" };
 const TABS = [
   ["overview", "Overview"],
   ["chat", "Chat"],
+  ["replies", "Replies"],
   ["requests", "Requests"],
   ["users", "Users"],
   ["games", "Games"],
@@ -46,6 +47,11 @@ const PROMO_FIELDS: Field[] = [
   { key: "claimable", label: "Claimable once", type: "bool" },
   { key: "active", label: "Visible", type: "bool" },
 ];
+const REPLY_FIELDS: Field[] = [
+  { key: "title", label: "Button title (short)", type: "text" },
+  { key: "body", label: "Message", type: "text" },
+  { key: "sortOrder", label: "Order", type: "number" },
+];
 const WHEEL_FIELDS: Field[] = [
   { key: "label", label: "Label", type: "text" },
   { key: "credits", label: "Prize credits", type: "number" },
@@ -69,6 +75,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   let body: React.ReactNode;
   if (tab === "chat") {
     body = <AdminChat />;
+  } else if (tab === "replies") {
+    const rows = await db.select().from(quickReplies).orderBy(quickReplies.sortOrder, quickReplies.id);
+    body = (
+      <div className="space-y-4">
+        <p className="card p-4 text-sm">Quick replies appear as buttons above the message box in the admin chat. Click one to fill the box, then press Send. You can also type a message in the chat and press "Save as quick reply".</p>
+        <AdminResource resource="replies" titleKey="title" fields={REPLY_FIELDS} rows={rows} defaults={{ title: "", body: "", sortOrder: rows.length }} />
+      </div>
+    );
   } else if (tab === "requests") {
     const rows = await db
       .select({ id: supportRequests.id, identifier: supportRequests.identifier, userId: supportRequests.userId, username: users.username, email: users.email, status: supportRequests.status, createdAt: supportRequests.createdAt })

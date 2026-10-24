@@ -17,6 +17,7 @@ A responsive gaming-lobby prototype built with **Next.js (App Router) + TypeScri
 | Demo wallet | Atomic balance changes, full transaction ledger (signup, spin cost/win, daily, promo, referral, admin) |
 | Profile & dashboard | Stats, VIP tier, recent activity, sign out |
 | Look & sound | "Vegas night" casino theme (velvet black, ruby, brass gold, marquee bulbs, chips). Quiet original lounge music generated in the browser (4 tracks, a new one each login, only while signed in, toggle in the top bar), wheel tick/win sounds and chat sounds. No audio files or third-party assets; master level is `LEVEL` in `src/lib/music.ts` |
+| Quick replies | Admin chat has saved-message buttons above the box (click to fill, then Send), "Save as quick reply" for anything typed, and a Replies tab to edit or delete them |
 | Credit requests | A "+" next to the balance opens the wallet, where "Request credits" posts "I want credits" in the player's chat. The admin adds credits from the chat (one click: adds them and sends "Added ... credits"). Credits stay virtual: no payment methods anywhere |
 | Support chat | Floating chat bubble on every page for signed-in players and the admin (unread badge, admin sees a conversation list), plus a full Support Chat page and an admin Chat tab. Text only; polls every few seconds, no websockets needed |
 | Promotions / VIP / Referral | One-time claimable promos, 5 XP-based VIP tiers (bigger daily bonus), referral links paying both sides (capped) |
