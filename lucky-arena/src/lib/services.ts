@@ -390,7 +390,7 @@ export async function requestCredits(db: Db, userId: number, opts: { gameId?: nu
     const inGameCredits = (await getOpenSession(db, userId))?.balance ?? 0;
     if (user.balance + inGameCredits > 0 || user.welcomeSpins > 0 || user.role === "admin") return { sent: false, reason: "has_credits", game: game.title };
   }
-  const body = game ? `I want credits in ${game.title}` : "I want credits";
+  const body = game ? `I want credits in ${game.title}` : "I need a top-up";
   const [last] = await db
     .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
     .from(chatMessages)

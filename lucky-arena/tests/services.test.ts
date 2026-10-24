@@ -218,12 +218,12 @@ describe("support chat", () => {
 describe("credit requests", () => {
   it("admin adds credits and the player is told in chat", async () => {
     const id = await registerUser(db, { email: "cr@x.test", username: "requester", password: "password1" });
-    await postChat(db, id, "user", "I want credits");
+    await postChat(db, id, "user", "I need a top-up");
     const balance = await grantCreditsAndNotify(db, id, 500);
     expect(balance).toBe(500);
     expect(await balanceOf(id)).toBe(500);
     const thread = await readChat(db, id, "user");
-    expect(thread.map((m) => m.body)).toEqual(["I want credits", "Added 500 credits to your wallet. Balance: 500."]);
+    expect(thread.map((m) => m.body)).toEqual(["I need a top-up", "Added 500 credits to your wallet. Balance: 500."]);
     const tx = await listTransactions(db, id, 5);
     expect(tx[0]).toMatchObject({ type: "admin_adjust", amount: 500 });
   });
@@ -380,7 +380,7 @@ describe("credit request from a game", () => {
     const id = await broke("brokefour");
     expect(await requestCredits(db, id)).toMatchObject({ sent: true });
     expect(await requestCredits(db, id)).toMatchObject({ sent: false, reason: "already_requested" });
-    expect((await readChat(db, id, "admin"))[0].body).toBe("I want credits");
+    expect((await readChat(db, id, "admin"))[0].body).toBe("I need a top-up");
   });
   it("rejects an unknown game", async () => {
     const id = await broke("brokefive");

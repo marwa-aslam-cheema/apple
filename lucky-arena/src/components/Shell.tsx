@@ -210,7 +210,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
                   aria-label="Ask the admin to load credits"
                   title="Ask the admin to load credits"
                   onClick={() => {
-                    // Straight to the admin's chat as "I want credits", then show the player the message that was sent.
+                    // Straight to the admin's chat as "I need a top-up", then show the player the message that was sent.
                     void fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
                       .then(() => window.dispatchEvent(new Event("la:open-chat")))
                       .catch(() => undefined);
