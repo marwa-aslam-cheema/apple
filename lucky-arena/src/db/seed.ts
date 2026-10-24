@@ -4,22 +4,22 @@ import type { Db } from "./index";
 import { games, promotions, quickReplies, users, wheelSegments } from "./schema";
 
 const GAMES = [
-  { slug: "lucky-spin", title: "Lucky Spin Wheel", category: "Wheel", hue: 262, featured: true, playable: true, description: "Spin the wheel with demo credits. Fully playable in this prototype." },
-  { slug: "star-fortune", title: "Star Fortune", category: "Wheel", hue: 330, featured: true, playable: false, description: "A cosmic bonus wheel with sparkling multipliers. Prototype listing." },
-  { slug: "card-quest", title: "Card Quest", category: "Cards", hue: 200, featured: true, playable: false, description: "Match pairs against the clock. Prototype listing." },
-  { slug: "memory-mint", title: "Memory Mint", category: "Cards", hue: 160, featured: false, playable: false, description: "Flip and remember. Prototype listing." },
-  { slug: "tower-stack", title: "Tower Stack", category: "Arcade", hue: 30, featured: true, playable: false, description: "Stack blocks as high as you can. Prototype listing." },
-  { slug: "comet-run", title: "Comet Run", category: "Arcade", hue: 12, featured: false, playable: false, description: "Dodge asteroids for bonus stars. Prototype listing." },
-  { slug: "pixel-pop", title: "Pixel Pop", category: "Arcade", hue: 300, featured: false, playable: false, description: "Pop colour clusters. Prototype listing." },
-  { slug: "word-orbit", title: "Word Orbit", category: "Puzzle", hue: 120, featured: false, playable: false, description: "Find words in a rotating ring. Prototype listing." },
-  { slug: "tile-tango", title: "Tile Tango", category: "Puzzle", hue: 80, featured: false, playable: false, description: "Slide tiles into order. Prototype listing." },
-  { slug: "quiz-galaxy", title: "Quiz Galaxy", category: "Trivia", hue: 230, featured: true, playable: false, description: "General-knowledge rounds. Prototype listing." },
-  { slug: "history-hunt", title: "History Hunt", category: "Trivia", hue: 45, featured: false, playable: false, description: "Guess the year. Prototype listing." },
-  { slug: "number-nest", title: "Number Nest", category: "Puzzle", hue: 180, featured: false, playable: false, description: "Sum the numbers. Prototype listing." },
+  { slug: "lucky-spin", title: "Lucky Spin Wheel", category: "Wheel", hue: 262, featured: true, playable: true, description: "Spin the wheel and win credits. Fully playable." },
+  { slug: "star-fortune", title: "Star Fortune", category: "Wheel", hue: 330, featured: true, playable: false, description: "A cosmic bonus wheel with sparkling multipliers. Coming soon." },
+  { slug: "card-quest", title: "Card Quest", category: "Cards", hue: 200, featured: true, playable: false, description: "Match pairs against the clock. Coming soon." },
+  { slug: "memory-mint", title: "Memory Mint", category: "Cards", hue: 160, featured: false, playable: false, description: "Flip and remember. Coming soon." },
+  { slug: "tower-stack", title: "Tower Stack", category: "Arcade", hue: 30, featured: true, playable: false, description: "Stack blocks as high as you can. Coming soon." },
+  { slug: "comet-run", title: "Comet Run", category: "Arcade", hue: 12, featured: false, playable: false, description: "Dodge asteroids for bonus stars. Coming soon." },
+  { slug: "pixel-pop", title: "Pixel Pop", category: "Arcade", hue: 300, featured: false, playable: false, description: "Pop colour clusters. Coming soon." },
+  { slug: "word-orbit", title: "Word Orbit", category: "Puzzle", hue: 120, featured: false, playable: false, description: "Find words in a rotating ring. Coming soon." },
+  { slug: "tile-tango", title: "Tile Tango", category: "Puzzle", hue: 80, featured: false, playable: false, description: "Slide tiles into order. Coming soon." },
+  { slug: "quiz-galaxy", title: "Quiz Galaxy", category: "Trivia", hue: 230, featured: true, playable: false, description: "General-knowledge rounds. Coming soon." },
+  { slug: "history-hunt", title: "History Hunt", category: "Trivia", hue: 45, featured: false, playable: false, description: "Guess the year. Coming soon." },
+  { slug: "number-nest", title: "Number Nest", category: "Puzzle", hue: 180, featured: false, playable: false, description: "Sum the numbers. Coming soon." },
 ];
 
 const PROMOS = [
-  { code: "WELCOME500", title: "Welcome Boost", description: "Claim 500 extra demo credits once, as a thank-you for joining.", rewardCredits: 500, claimable: true },
+  { code: "WELCOME500", title: "Welcome Boost", description: "Claim 500 extra credits once, as a thank-you for joining.", rewardCredits: 500, claimable: true },
   { code: "WEEKEND250", title: "Weekend Refill", description: "A one-time 250 credit refill to keep the spins going.", rewardCredits: 250, claimable: true },
   { code: "FRIENDS", title: "Invite Friends", description: "Share your referral link. You and your friend each get bonus credits when they join.", rewardCredits: 0, claimable: false },
   { code: "VIPCLUB", title: "VIP Club", description: "Earn XP with every spin to unlock higher tiers and bigger daily bonuses.", rewardCredits: 0, claimable: false },

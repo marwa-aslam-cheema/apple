@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Lucky Arena",
     short_name: "Lucky Arena",
-    description: "Spin the welcome wheel and play with friends. Virtual demo credits only, no real money.",
+    description: "Spin the welcome wheel and play casino games with friends. Play-money fun, 18+.",
     start_url: "/",
     scope: "/",
     display: "standalone",

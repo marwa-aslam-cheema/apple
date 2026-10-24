@@ -39,7 +39,6 @@ export default async function PromotionsPage() {
           </article>
         ))}
       </div>
-      <p className="text-xs text-muted">All rewards are virtual demo credits with no cash value.</p>
     </div>
   );
 }

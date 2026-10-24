@@ -70,7 +70,7 @@ export function SquarePost({ code, host }: { code?: string; host: string }): Rea
           <div style={{ display: "flex", padding: "10px 34px", borderRadius: 999, border: `3px solid ${gold}`, background: "rgba(255,207,74,0.12)", fontSize: 38, fontWeight: 800, letterSpacing: 6, color: gold }}>CODE {code}</div>
         ) : null}
         <div style={{ display: "flex", fontSize: 30, color: "#e9d3bd" }}>Play with friends at {host}</div>
-        <div style={{ display: "flex", fontSize: 22, color: "#a58f80" }}>Virtual demo credits only. No real money. 18+</div>
+        <div style={{ display: "flex", fontSize: 22, color: "#a58f80" }}>Play-money fun for friends. 18+</div>
       </div>
     </div>
   );
@@ -85,7 +85,7 @@ export function WidePost({ code, host }: { code?: string; host: string }): React
         <div style={{ display: "flex", fontSize: 56, fontWeight: 800, marginTop: 18 }}>JOIN &amp; GET</div>
         <div style={{ display: "flex", fontSize: 100, fontWeight: 900, color: gold, lineHeight: 1.05, textShadow: "0 5px 0 #8a5a05, 0 0 36px rgba(255,190,40,0.5)" }}>FREE SPINS</div>
         <div style={{ display: "flex", fontSize: 28, color: "#e9d3bd", marginTop: 18 }}>{code ? `Use code ${code} at ${host}` : `Play with friends at ${host}`}</div>
-        <div style={{ display: "flex", fontSize: 20, color: "#a58f80", marginTop: 10 }}>Virtual demo credits only. No real money. 18+</div>
+        <div style={{ display: "flex", fontSize: 20, color: "#a58f80", marginTop: 10 }}>Play-money fun for friends. 18+</div>
       </div>
       <div style={{ display: "flex" }}>
         <ShareWheel size={400} />

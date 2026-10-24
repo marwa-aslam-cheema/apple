@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 /** Ready-made invite post: picture, caption, and share buttons. */
 export function ShareKit({ code }: { code: string }) {
   const [origin, setOrigin] = useState("");
-  const [caption, setCaption] = useState(`Join me on Lucky Arena and get FREE SPINS! 🎰✨ Spin the welcome wheel and play with friends. Virtual credits only, no real money. Use my code ${code}:`);
+  const [caption, setCaption] = useState(`Join me on Lucky Arena and get FREE SPINS! 🎰✨ Spin the welcome wheel and play with friends. Play-money fun, no cash prizes. Use my code ${code}:`);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
   useEffect(() => {

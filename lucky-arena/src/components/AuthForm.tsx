@@ -37,7 +37,7 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
   return (
     <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
       <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
-      {isReg && <p className="text-sm text-muted">Start at zero and spin the free welcome wheel for your first demo credits. No payment details needed, ever.</p>}
+      {isReg && <p className="text-sm text-muted">Start at zero and spin the free welcome wheel for your first credits. Play-money fun: credits have no cash value.</p>}
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Referral code {refCode} applied: bonus credits for you and your friend.</p>}
       {isReg ? (
         <>

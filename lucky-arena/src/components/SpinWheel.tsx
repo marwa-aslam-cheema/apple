@@ -46,7 +46,7 @@ function WinPopup({ win, onClose }: { win: Win; onClose: () => void }) {
         <div className="float-slow relative text-7xl" aria-hidden="true">{win.icon || "🎉"}</div>
         <p className="neon-text relative mt-3 text-xs font-extrabold uppercase tracking-[0.35em]">{jackpot ? "Jackpot!" : "You won"}</p>
         <p className="gold-text relative font-[family-name:var(--font-display)] text-6xl font-extrabold">+{fmt(win.prize)}</p>
-        <p className="relative mb-5 text-sm text-muted">demo credit{win.prize === 1 ? "" : "s"}</p>
+        <p className="relative mb-5 text-sm text-muted">credit{win.prize === 1 ? "" : "s"}</p>
         <button ref={btn} className="btn btn-gold relative w-full" onClick={onClose}>Collect</button>
       </div>
     </div>
@@ -211,7 +211,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
           <button className="btn btn-gold w-full max-w-xs text-lg" onClick={spin} disabled={busy || !canAfford}>
             {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${cost} credits`}
           </button>
-          <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> demo credits</p>
+          <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> credits</p>
           {!canAfford && (
             <p className="text-center text-sm text-muted">
               Not enough credits. Claim your <Link className="text-gold underline" href="/wallet">daily bonus</Link> or check <Link className="text-gold underline" href="/promotions">promotions</Link>.

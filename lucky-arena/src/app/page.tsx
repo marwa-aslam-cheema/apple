@@ -29,10 +29,10 @@ export default async function Home() {
           <span className="float-slow absolute bottom-14 right-8"><ChipIcon size={44} /></span>
         </div>
         <div className="relative max-w-xl">
-          <p className="neon-text text-xs font-extrabold uppercase tracking-[0.35em]">Virtual casino night</p>
+          <p className="neon-text text-xs font-extrabold uppercase tracking-[0.35em]">Casino night</p>
           <h1 className="gold-text mt-3 text-5xl font-extrabold uppercase leading-[1.05] sm:text-7xl">Spin. Play. Shine.</h1>
           <p className="mt-4 text-muted">
-            Join free and spin the welcome wheel for your first virtual credits, then try the Lucky Spin Wheel with friends. Demo credits only: nothing here costs or pays real money.
+            Join free and spin the welcome wheel for your first credits, then try the Lucky Spin Wheel with friends.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             {user ? (

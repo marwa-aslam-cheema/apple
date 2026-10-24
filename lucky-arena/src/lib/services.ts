@@ -44,7 +44,7 @@ export async function applyCredits(db: Db, userId: number, amount: number, type:
     .set({ balance: sql`${users.balance} + ${amount}` })
     .where(and(eq(users.id, userId), sql`${users.balance} + ${amount} >= 0`))
     .returning({ balance: users.balance });
-  if (!row) throw new AppError("insufficient_credits", "Not enough demo credits.", 402);
+  if (!row) throw new AppError("insufficient_credits", "Not enough credits.", 402);
   await db.insert(transactions).values({ userId, type, amount, balanceAfter: row.balance, note });
   return row.balance;
 }

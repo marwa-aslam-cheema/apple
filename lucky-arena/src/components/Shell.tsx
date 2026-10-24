@@ -120,7 +120,6 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-gradient-to-b from-[#26112a] via-[#150a18] to-[#0b0509] shadow-[inset_-1px_0_0_rgba(255,207,74,0.12)] lg:flex">
         <div className="p-5"><Link href="/" aria-label="Lucky Arena home"><Logo /></Link></div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
-        <p className="p-4 text-xs leading-relaxed text-muted">Demo credits only. No real money, no cash value.</p>
       </aside>
 
       {/* Mobile drawer */}
@@ -175,8 +174,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
 
       <footer className="mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10">
         <p>
-          Lucky Arena is a prototype for demonstration. All credits are virtual, cannot be bought, withdrawn or exchanged, and have
-          no cash value. This site involves no real-money gambling. 18+ recommended.
+          Lucky Arena is play-money fun for friends. Credits have no cash value and cannot be withdrawn. 18+
         </p>
       </footer>
 

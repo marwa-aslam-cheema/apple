@@ -23,7 +23,7 @@ export default async function ReferralPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-extrabold">Invite friends</h1>
-        <p className="mt-1 text-muted">You and each friend who joins with your link both receive {fmt(REFERRAL_BONUS)} demo credits.</p>
+        <p className="mt-1 text-muted">You and each friend who joins with your link both receive {fmt(REFERRAL_BONUS)} credits.</p>
       </header>
       <section className="card space-y-3 p-5">
         <p className="text-sm text-muted">Your code</p>

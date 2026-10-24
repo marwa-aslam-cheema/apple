@@ -30,10 +30,10 @@ export default async function WalletPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold">Demo wallet</h1>
+      <h1 className="text-2xl font-extrabold">Wallet</h1>
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-5 md:col-span-2">
-          <p className="text-sm text-muted">Balance (virtual credits)</p>
+          <p className="text-sm text-muted">Balance</p>
           <p className="mt-1 text-4xl font-extrabold text-gold" data-testid="wallet-balance">{fmt(user.balance)}</p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
             <div className="rounded-xl bg-bg p-3"><b className="block text-lg">{fmt(stats.plays)}</b><span className="text-muted">Spins</span></div>
@@ -50,7 +50,7 @@ export default async function WalletPage() {
 
       <section className="card p-5" id="request">
         <h2 className="font-bold">Need more credits?</h2>
-        <p className="mb-3 mt-1 text-sm text-muted">Send a request and the admin will answer in your chat. Credits are virtual: they have no cash value and cannot be bought, sold or withdrawn.</p>
+        <p className="mb-3 mt-1 text-sm text-muted">Send a request and the admin will answer in your chat.</p>
         <RequestCredits />
       </section>
 
@@ -75,7 +75,7 @@ export default async function WalletPage() {
           </ul>
         )}
       </section>
-      <p className="text-xs text-muted">Credits are virtual. There are no deposits or withdrawals in this prototype.</p>
+      <p className="text-xs text-muted">Credits are play money: no cash value and no withdrawals.</p>
     </div>
   );
 }

@@ -20,7 +20,6 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
           {list.map((g) => <GameCard key={g.id} game={g} />)}
         </div>
       )}
-      <p className="text-xs text-muted">Only Lucky Spin is playable in this prototype. Other titles are placeholder listings managed from the admin dashboard.</p>
     </div>
   );
 }

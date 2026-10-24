@@ -9,8 +9,8 @@ const SITE_URL = process.env.SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: "Lucky Arena - Join and get free spins", template: "%s - Lucky Arena" },
-  description: "Join Lucky Arena, spin the welcome wheel for free and play with friends. Virtual demo credits only, no real money.",
-  openGraph: { type: "website", siteName: "Lucky Arena", title: "Join Lucky Arena and get free spins", description: "Spin the welcome wheel, climb the VIP ladder and play with friends. Virtual demo credits only." },
+  description: "Join Lucky Arena, spin the welcome wheel for free and play casino games with friends. Play-money fun, 18+.",
+  openGraph: { type: "website", siteName: "Lucky Arena", title: "Join Lucky Arena and get free spins", description: "Spin the welcome wheel, climb the VIP ladder and play with friends. Play-money fun, 18+." },
   twitter: { card: "summary_large_image", title: "Join Lucky Arena and get free spins" },
   applicationName: "Lucky Arena",
   appleWebApp: { capable: true, title: "Lucky Arena", statusBarStyle: "black-translucent" },
