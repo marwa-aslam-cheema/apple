@@ -6,8 +6,9 @@ import { AdminChat } from "./AdminChat";
 import { ChatBox } from "./ChatBox";
 import { Icon } from "./Icon";
 
-/** Floating chat bubble shown on every page for signed-in players and the admin. */
+/** Floating chat bubble shown on every page: for the admin, signed-in players and (as "guest") visitors who are signed out. */
 export function ChatWidget({ role }: { role: string }) {
+  const guest = role === "guest";
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const isAdmin = role === "admin";
@@ -20,7 +21,7 @@ export function ChatWidget({ role }: { role: string }) {
     async function check() {
       if (document.visibilityState !== "visible") return;
       try {
-        const res = await fetch("/api/chat/unread", { cache: "no-store" });
+        const res = await fetch(guest ? "/api/guest/unread" : "/api/chat/unread", { cache: "no-store" });
         if (res.ok && alive) {
           const n = (await res.json()).unread as number;
           if (prevUnread.current !== null && n > prevUnread.current && !openRef.current) sfxReceived(); // new message while the bubble is closed
@@ -34,7 +35,7 @@ export function ChatWidget({ role }: { role: string }) {
     check();
     const t = setInterval(check, 8000);
     return () => { alive = false; clearInterval(t); };
-  }, [open]);
+  }, [open, guest]);
 
   useEffect(() => {
     const openIt = () => setOpen(true);
@@ -61,7 +62,7 @@ export function ChatWidget({ role }: { role: string }) {
             <button className="rounded-lg p-1.5 hover:bg-surface" onClick={() => setOpen(false)} aria-label="Close chat"><Icon name="x" className="h-4 w-4" /></button>
           </header>
           <div className="min-h-0 flex-1">
-            {isAdmin ? <AdminChat compact /> : <ChatBox url="/api/chat" mine="user" className="h-full" />}
+            {isAdmin ? <AdminChat compact /> : <ChatBox url={guest ? "/api/guest/chat" : "/api/chat"} mine="user" className="h-full" />}
           </div>
         </section>
       )}

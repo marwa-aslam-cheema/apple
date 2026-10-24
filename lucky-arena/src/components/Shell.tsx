@@ -221,7 +221,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
       </footer>
 
       {user?.role !== "admin" && <InstallBanner />} {/* the admin has the sidebar entry and works at a desk: no nag over the forms */}
-      {user && !pathname.startsWith("/chat") && <ChatWidget role={user.role} />}
+      {!pathname.startsWith("/chat") && <ChatWidget role={user ? user.role : "guest"} />}
 
       {/* Mobile bottom tabs */}
       <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">

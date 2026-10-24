@@ -5,7 +5,7 @@ import { gameSessions, games, spins, transactions, users, wheelSegments } from "
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 import { absorbWallet, apiReport, apiSession, apiSettle, buildLaunchUrl, closeExpiredSessions, enterGame, exitGame, getOpenSession, listGameAccounts, regenerateApiKey, removeGameAccount, setGameAccount } from "@/lib/game-sessions";
@@ -192,6 +192,19 @@ describe("support chat", () => {
     const list = await chatConversations(db);
     expect(list[0]).toMatchObject({ username: "unread_writer", unread: 1, online: false }); // unread comes first
     expect(list.find((c) => c.userId === quiet)).toMatchObject({ online: true, tag: "ludo: ali99", unread: 0 }); // online without writing
+  });
+  it("lets a signed-out visitor chat through a guest thread that broadcasts skip", async () => {
+    const gid = await createGuest(db, "reset: someone");
+    await postChat(db, gid, "user", "Password reset request. My email or username: someone");
+    const row = (await chatConversations(db)).find((c) => c.userId === gid);
+    expect(row).toMatchObject({ unread: 1, tag: "reset: someone" });
+    await postChat(db, gid, "admin", "Done, check your email");
+    expect((await readChat(db, gid, "user")).map((m) => m.sender)).toEqual(["user", "admin"]);
+    expect(await verifyLogin(db, `guest-x`, "!").catch((e) => e.code)).toBeTruthy(); // a guest can never log in
+    const n = await broadcastRecipientCount(db);
+    await broadcastChat(db, "hello everyone");
+    expect((await readChat(db, gid, "user")).some((m) => m.body === "hello everyone")).toBe(false);
+    expect(n).toBeGreaterThan(0);
   });
   it("rejects empty and oversized messages", async () => {
     const id = await registerUser(db, { email: "c3@x.test", username: "chatter3", password: "password1" });

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
@@ -240,6 +241,20 @@ export async function setRequestStatus(db: Db, requestId: number, status: "open"
 
 /* ---------- support chat (one thread per player, text only) ---------- */
 
+/**
+ * A visitor who is not signed in can still write to support (for example after "forgot password"). They get a throw-away
+ * "guest" account (role guest: it cannot log in, never gets broadcasts) so the normal chat thread, admin list, unread
+ * counts and replies all work unchanged. Their cookie only opens this guest thread, never a real player's.
+ */
+export async function createGuest(db: Db, tag = ""): Promise<number> {
+  const rand = randomBytes(6).toString("hex");
+  const [g] = await db
+    .insert(users)
+    .values({ email: `guest-${rand}@guest.invalid`, username: `guest_${rand.slice(0, 6)}`, passwordHash: "!", role: "guest", welcomeSpins: 0, balance: 0, referralCode: `G${rand.toUpperCase()}`, tag })
+    .returning({ id: users.id });
+  return g.id;
+}
+
 export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string) {
   const text = body.trim();
   if (!text) throw new AppError("invalid", "Write a message first.");
@@ -324,7 +339,7 @@ export async function chatConversations(db: Db) {
     .limit(100);
   const onlineSince = new Date(Date.now() - ONLINE_MS);
   // Players who are online right now are listed even if they have not written yet.
-  const online = await db.select({ id: users.id }).from(users).where(and(gt(users.lastSeenAt, onlineSince), eq(users.role, "user")));
+  const online = await db.select({ id: users.id }).from(users).where(and(gt(users.lastSeenAt, onlineSince), inArray(users.role, ["user", "guest"])));
   const ids = [...new Set([...agg.map((a) => a.userId), ...online.map((o) => o.id)])];
   if (ids.length === 0) return [];
   const [people, lasts] = await Promise.all([

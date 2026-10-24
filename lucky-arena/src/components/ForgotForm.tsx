@@ -18,6 +18,7 @@ export function ForgotForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       setSent(true);
+      window.dispatchEvent(new Event("la:open-chat")); // the visitor sees the message that went to the admin
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -29,7 +30,7 @@ export function ForgotForm() {
     return (
       <div className="card mx-auto w-full max-w-md space-y-3 p-6">
         <h1 className="text-2xl font-extrabold">Request sent</h1>
-        <p className="text-sm text-muted">If that account exists, the admin has been notified and will send you a new password. Keep your email or username handy so they can confirm it is you.</p>
+        <p className="text-sm text-muted">The admin has your request in chat and will send you a new password. Reply in the chat bubble below if they ask you anything. Keep your email or username handy so they can confirm it is you.</p>
         <Link href="/login" className="btn btn-gold">Back to log in</Link>
       </div>
     );

@@ -58,6 +58,31 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+const GUEST_COOKIE = "la_guest";
+
+/** The visitor's support-chat identity (a guest account), or null when they have none yet. */
+export async function getGuestId(): Promise<number | null> {
+  const token = (await cookies()).get(GUEST_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    const gid = Number(payload.gid);
+    if (!Number.isInteger(gid)) return null;
+    const db = await getDb();
+    const [g] = await db.select({ id: users.id, role: users.role, seen: users.lastSeenAt }).from(users).where(eq(users.id, gid));
+    if (!g || g.role !== "guest") return null;
+    if (!g.seen || Date.now() - g.seen.getTime() > 30_000) await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, gid));
+    return gid;
+  } catch {
+    return null;
+  }
+}
+
+export async function setGuestCookie(gid: number) {
+  const token = await new SignJWT({ gid }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime("30d").sign(secret());
+  (await cookies()).set(GUEST_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", path: "/", maxAge: 60 * 60 * 24 * 30 });
+}
+
 /** For pages: redirect to login when signed out. */
 export async function requireUserPage(): Promise<User> {
   const user = await getCurrentUser();

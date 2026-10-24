@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, quickReplies, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminGameKeys } from "@/components/AdminGameKeys";
@@ -102,7 +102,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const list = await db
       .select({ id: users.id, username: users.username, email: users.email, role: users.role, balance: users.balance, banned: users.banned, tag: users.tag, createdAt: users.createdAt })
       .from(users)
-      .where(term ? sql`${users.email} ilike ${"%" + term.replace(/[%_]/g, "") + "%"} or ${users.username} ilike ${"%" + term.replace(/[%_]/g, "") + "%"}` : undefined)
+      .where(term ? and(ne(users.role, "guest"), sql`(${users.email} ilike ${"%" + term.replace(/[%_]/g, "") + "%"} or ${users.username} ilike ${"%" + term.replace(/[%_]/g, "") + "%"})`) : ne(users.role, "guest"))
       .orderBy(desc(users.id))
       .limit(200);
     body = (
@@ -134,7 +134,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     );
   } else {
     const [[u], [s], [t], segs] = await Promise.all([
-      db.select({ n: count(), credits: sql<number>`coalesce(sum(${users.balance}), 0)::int` }).from(users),
+      db.select({ n: count(), credits: sql<number>`coalesce(sum(${users.balance}), 0)::int` }).from(users).where(ne(users.role, "guest")),
       db.select({ n: count(), cost: sql<number>`coalesce(sum(${spins.cost}), 0)::int`, prize: sql<number>`coalesce(sum(${spins.prize}), 0)::int` }).from(spins),
       db.select({ n: count() }).from(transactions),
       db.select().from(wheelSegments),
