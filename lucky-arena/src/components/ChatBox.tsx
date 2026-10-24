@@ -209,7 +209,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
               {m.imageId && (
                 <a href={`/api/chat/image/${m.imageId}`} target="_blank" rel="noopener noreferrer" className="mb-1 block">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/chat/image/${m.imageId}`} alt="Picture in the chat" loading="lazy" className="max-h-60 w-full rounded-lg object-cover" />
+                  <img src={`/api/chat/image/${m.imageId}`} alt="Picture in the chat" loading="lazy" className="max-h-72 w-auto max-w-full rounded-lg" />
                 </a>
               )}
               {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}

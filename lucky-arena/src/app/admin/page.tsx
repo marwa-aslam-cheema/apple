@@ -3,6 +3,8 @@ import Link from "next/link";
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { AdminWalletLabels } from "@/components/AdminWalletLabels";
+import { getWalletLabels } from "@/lib/wallet-labels";
 import { AdminGameKeys } from "@/components/AdminGameKeys";
 import { AdminResource, type Field } from "@/components/AdminResource";
 import { AdminChat } from "@/components/AdminChat";
@@ -100,9 +102,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
   } else if (tab === "wallet") {
     const rows = await db.select().from(walletOptions).orderBy(walletOptions.sortOrder, walletOptions.id);
+    const labels = await getWalletLabels(db);
     body = (
       <div className="space-y-4">
-        <p className="card p-4 text-sm">The wallet page has two buttons, <b>I want a top-up</b> and <b>Rewards</b>. Each opens the cards below: "Shows under" topup or reward. Edit the title and text, add a picture, add new cards or delete them. When a player taps a card, you get it in the chat (for example "I need a top-up: 500 credits").</p>
+        <AdminWalletLabels topup={labels.topup} reward={labels.reward} />
+        <p className="card p-4 text-sm">The wallet page has two buttons (you can rename them above). Each opens the cards below: "Shows under" topup or reward. Edit the title and text, add a picture, add new cards or delete them. When a player taps a card, you get it in the chat (for example "I need a top-up: 500 credits").</p>
         <AdminResource resource="wallet" titleKey="title" fields={WALLET_FIELDS} rows={rows} defaults={{ kind: "topup", title: "", description: "", image: "", sortOrder: rows.length, active: true }} />
       </div>
     );

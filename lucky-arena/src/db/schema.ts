@@ -167,6 +167,12 @@ export const walletOptions = pgTable("wallet_options", {
   active: boolean("active").notNull().default(true),
 });
 
+/** Small admin-editable texts (for example the names of the two wallet buttons). */
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 /** Social pages the admin shows to players (Facebook page, WhatsApp, Instagram...). */
 export const socialLinks = pgTable("social_links", {
   id: serial("id").primaryKey(),

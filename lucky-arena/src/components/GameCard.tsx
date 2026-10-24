@@ -55,10 +55,10 @@ export function GameCard({ game, needsCredits = false, needsAccount = false }: {
   const onOpen = needsCredits ? () => askForCredits(game.id) : undefined;
   const inner = (
     <>
-      <div className="relative aspect-square overflow-hidden rounded-xl">
+      <div className={`relative overflow-hidden rounded-xl ${game.image ? "" : "aspect-square"}`}>
         {game.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={game.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+          <img src={game.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="block h-auto w-full" />
         ) : (
           <GameArt hue={game.hue} category={game.category} />
         )}

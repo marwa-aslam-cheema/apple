@@ -71,7 +71,7 @@ export default async function Home() {
           <h2 className="gold-text text-2xl font-extrabold uppercase">Featured games</h2>
           <Link href="/games" className="tap text-sm font-semibold text-gold">View all</Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 items-start">
           {featured.map((g) => <GameCard key={g.id} game={g} needsCredits={needsCredits} needsAccount={!!user && user.role !== "admin" && !accounts.has(g.id)} />)}
         </div>
       </section>

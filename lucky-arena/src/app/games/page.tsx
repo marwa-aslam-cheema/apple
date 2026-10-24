@@ -23,7 +23,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
       {list.length === 0 ? (
         <p className="card p-8 text-center text-muted">No games match your search.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" data-testid="game-grid">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 items-start" data-testid="game-grid">
           {list.map((g) => <GameCard key={g.id} game={g} needsCredits={needsCredits} needsAccount={!!user && user.role !== "admin" && !accounts.has(g.id)} />)}
         </div>
       )}
