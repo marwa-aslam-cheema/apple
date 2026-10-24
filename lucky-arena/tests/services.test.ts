@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, adminUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -168,9 +168,11 @@ describe("support chat", () => {
     expect(await adminUnreadCount(db)).toBe(before + 1);
 
     await postChat(db, a, "admin", "hi, how can I help?");
+    expect(await userUnreadCount(db, a)).toBe(1);
     expect((await readChat(db, a, "user")).map((m) => m.sender)).toEqual(["user", "admin"]);
     const later = await readChat(db, a, "user", thread[0].id);
     expect(later.map((m) => m.body)).toEqual(["hi, how can I help?"]); // only newer than `after`
+    expect(await userUnreadCount(db, a)).toBe(0); // already read above
     expect((await readChat(db, b, "user")).every((m) => m.body !== "hi, how can I help?")).toBe(true); // no leakage
   });
   it("rejects empty and oversized messages", async () => {

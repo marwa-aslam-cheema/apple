@@ -262,6 +262,14 @@ export async function readChat(db: Db, userId: number, viewer: "user" | "admin",
   return rows;
 }
 
+export async function userUnreadCount(db: Db, userId: number) {
+  const [r] = await db
+    .select({ n: count() })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), eq(chatMessages.readByUser, false)));
+  return r.n;
+}
+
 export async function adminUnreadCount(db: Db) {
   const [r] = await db.select({ n: count() }).from(chatMessages).where(and(eq(chatMessages.sender, "user"), eq(chatMessages.readByAdmin, false)));
   return r.n;

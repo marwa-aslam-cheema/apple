@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fmt } from "@/lib/format";
+import { ChatWidget } from "./ChatWidget";
 import { Icon } from "./Icon";
 import { Logo } from "./Logo";
 
@@ -121,6 +122,8 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
           no cash value. This site involves no real-money gambling. 18+ recommended.
         </p>
       </footer>
+
+      {user && !pathname.startsWith("/chat") && <ChatWidget role={user.role} />}
 
       {/* Mobile bottom tabs */}
       <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">

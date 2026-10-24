@@ -11,7 +11,7 @@ export interface ChatMsg {
 }
 
 /** One conversation. `mine` is who is looking at it ("user" = the player, "admin" = staff). */
-export function ChatBox({ url, mine, onActivity }: { url: string; mine: "user" | "admin"; onActivity?: () => void }) {
+export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[70vh]" }: { url: string; mine: "user" | "admin"; onActivity?: () => void; className?: string }) {
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -63,7 +63,7 @@ export function ChatBox({ url, mine, onActivity }: { url: string; mine: "user" |
   }
 
   return (
-    <div className="flex h-[28rem] max-h-[70vh] flex-col">
+    <div className={`flex flex-col ${className}`}>
       <div ref={box} className="flex-1 space-y-2 overflow-y-auto p-3" aria-live="polite">
         {msgs.length === 0 && <p className="py-8 text-center text-sm text-muted">No messages yet.</p>}
         {msgs.map((m) => (
