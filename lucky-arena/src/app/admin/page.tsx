@@ -35,7 +35,7 @@ const GAME_FIELDS: Field[] = [
   { key: "description", label: "Description", type: "text" },
   { key: "link", label: "Game link (https://...)", type: "text" },
   { key: "adminLink", label: "Admin link: the game's own back-office (only you see it; never share its password here)", type: "text" },
-  { key: "image", label: "Picture link (https://... .png/.jpg)", type: "text" },
+  { key: "image", label: "Game picture (pick a file from your phone or computer)", type: "gameimage" },
   { key: "hue", label: "Colour hue (0-360)", type: "number" },
   { key: "sortOrder", label: "Sort order", type: "number" },
   { key: "featured", label: "Featured", type: "bool" },

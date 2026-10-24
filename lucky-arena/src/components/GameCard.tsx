@@ -62,7 +62,7 @@ export function GameCard({ game, needsCredits = false, needsAccount = false }: {
         ) : (
           <GameArt hue={game.hue} category={game.category} />
         )}
-        {game.featured && <span className="absolute left-2 top-2 rounded-full bg-gold px-2 py-0.5 text-[10px] font-extrabold text-black">HOT</span>}
+        {game.featured && <span className="hot-badge absolute left-2 top-2"><span className="flame" aria-hidden="true">🔥</span>HOT</span>}
         <span className={`absolute bottom-2 right-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${game.playable || game.link || game.adminLink ? "bg-teal text-black" : "bg-black/60 text-muted"}`}>
           {game.playable || game.link || game.adminLink ? "PLAY" : "SOON"}
         </span>
@@ -73,7 +73,7 @@ export function GameCard({ game, needsCredits = false, needsAccount = false }: {
       </div>
     </>
   );
-  const cls = "card block p-2 transition-transform hover:-translate-y-0.5";
+  const cls = `card block p-2 transition-transform hover:-translate-y-0.5 ${game.featured ? "hot-card" : ""}`;
   // Admins who set a back-office link land there (the game's own login); players only ever get the player link.
   const href = game.adminLink || (game.link ? `/play/${game.slug}` : "");
   if (href) {
