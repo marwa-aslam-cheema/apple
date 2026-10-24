@@ -4,17 +4,20 @@ import { count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminResource, type Field } from "@/components/AdminResource";
+import { AdminChat } from "@/components/AdminChat";
 import { AdminRequests } from "@/components/AdminRequests";
 import { AdminUsers } from "@/components/AdminUsers";
 import { SPIN_COST } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { requireAdminPage } from "@/lib/session";
+import { adminUnreadCount } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
 export const metadata: Metadata = { title: "Admin" };
 
 const TABS = [
   ["overview", "Overview"],
+  ["chat", "Chat"],
   ["requests", "Requests"],
   ["users", "Users"],
   ["games", "Games"],
@@ -60,8 +63,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const [{ open }] = await db.select({ open: count() }).from(supportRequests).where(eq(supportRequests.status, "open"));
 
+  const unreadChat = await adminUnreadCount(db);
+
   let body: React.ReactNode;
-  if (tab === "requests") {
+  if (tab === "chat") {
+    body = <AdminChat />;
+  } else if (tab === "requests") {
     const rows = await db
       .select({ id: supportRequests.id, identifier: supportRequests.identifier, userId: supportRequests.userId, username: users.username, email: users.email, status: supportRequests.status, createdAt: supportRequests.createdAt })
       .from(supportRequests)
@@ -114,7 +121,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <h1 className="text-2xl font-extrabold">Admin dashboard</h1>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="tablist">
         {TABS.map(([k, label]) => (
-          <Link key={k} href={`/admin?tab=${k}`} className="chip" role="tab" aria-selected={tab === k} aria-current={tab === k ? "true" : undefined}>{label}{k === "requests" && open > 0 ? ` (${open})` : ""}</Link>
+          <Link key={k} href={`/admin?tab=${k}`} className="chip" role="tab" aria-selected={tab === k} aria-current={tab === k ? "true" : undefined}>{label}{k === "requests" && open > 0 ? ` (${open})` : ""}{k === "chat" && unreadChat > 0 ? ` (${unreadChat})` : ""}</Link>
         ))}
       </div>
       {body}

@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { chatMessages, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -231,6 +231,64 @@ export async function createResetRequest(db: Db, identifier: string) {
 export async function setRequestStatus(db: Db, requestId: number, status: "open" | "done" | "dismissed") {
   const done = await db.update(supportRequests).set({ status }).where(eq(supportRequests.id, requestId)).returning({ id: supportRequests.id });
   if (!done.length) throw new AppError("not_found", "Request not found.", 404);
+}
+
+/* ---------- support chat (one thread per player, text only) ---------- */
+
+export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string) {
+  const text = body.trim();
+  if (!text) throw new AppError("invalid", "Write a message first.");
+  if (text.length > 1000) throw new AppError("invalid", "Message is too long (max 1000 characters).");
+  const [row] = await db
+    .insert(chatMessages)
+    .values({ userId, sender, body: text, readByAdmin: sender === "admin", readByUser: sender === "user" })
+    .returning();
+  return row;
+}
+
+/** Messages of one player's thread after `after`, oldest first. Marks the other side's messages as read. */
+export async function readChat(db: Db, userId: number, viewer: "user" | "admin", after = 0) {
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), gt(chatMessages.id, after)))
+    .orderBy(asc(chatMessages.id))
+    .limit(200);
+  if (viewer === "user") {
+    await db.update(chatMessages).set({ readByUser: true }).where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), eq(chatMessages.readByUser, false)));
+  } else {
+    await db.update(chatMessages).set({ readByAdmin: true }).where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "user"), eq(chatMessages.readByAdmin, false)));
+  }
+  return rows;
+}
+
+export async function adminUnreadCount(db: Db) {
+  const [r] = await db.select({ n: count() }).from(chatMessages).where(and(eq(chatMessages.sender, "user"), eq(chatMessages.readByAdmin, false)));
+  return r.n;
+}
+
+/** One row per player who has written, newest conversation first, with unread count and last message. */
+export async function chatConversations(db: Db) {
+  const agg = await db
+    .select({
+      userId: chatMessages.userId,
+      lastId: sql<number>`max(${chatMessages.id})::int`,
+      unread: sql<number>`count(*) filter (where ${chatMessages.sender} = 'user' and not ${chatMessages.readByAdmin})::int`,
+    })
+    .from(chatMessages)
+    .groupBy(chatMessages.userId)
+    .orderBy(desc(sql`max(${chatMessages.id})`))
+    .limit(100);
+  if (agg.length === 0) return [];
+  const [people, lasts] = await Promise.all([
+    db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(inArray(users.id, agg.map((a) => a.userId))),
+    db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))),
+  ]);
+  return agg.map((a) => {
+    const u = people.find((p) => p.id === a.userId);
+    const m = lasts.find((l) => l.id === a.lastId);
+    return { userId: a.userId, username: u?.username ?? "deleted", email: u?.email ?? "", unread: a.unread, last: m?.body.slice(0, 80) ?? "", lastSender: m?.sender ?? "user" };
+  });
 }
 
 export function listTransactions(db: Db, userId: number, limit = 50) {

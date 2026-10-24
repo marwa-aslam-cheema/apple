@@ -101,6 +101,16 @@ export const supportRequests = pgTable("support_requests", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // the player this conversation belongs to
+  sender: text("sender").notNull(), // "user" or "admin"
+  body: text("body").notNull(),
+  readByAdmin: boolean("read_by_admin").notNull().default(false),
+  readByUser: boolean("read_by_user").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Game = typeof games.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;

@@ -21,6 +21,7 @@ const NAV = [
   { href: "/vip", label: "VIP Club", icon: "crown" },
   { href: "/referral", label: "Referral", icon: "users" },
   { href: "/wallet", label: "Wallet", icon: "wallet" },
+  { href: "/chat", label: "Support Chat", icon: "chat" },
   { href: "/profile", label: "Profile", icon: "user" },
 ];
 const TABS = ["/", "/games", "/spin", "/wallet", "/profile"];

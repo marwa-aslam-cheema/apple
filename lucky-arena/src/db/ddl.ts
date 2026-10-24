@@ -80,6 +80,16 @@ export const DDL = [
     status TEXT NOT NULL DEFAULT 'open',
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    sender TEXT NOT NULL,
+    body TEXT NOT NULL,
+    read_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    read_by_user BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS chat_user_idx ON chat_messages (user_id, id)`,
   `CREATE TABLE IF NOT EXISTS spins (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,

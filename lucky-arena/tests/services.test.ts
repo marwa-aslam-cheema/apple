@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, createResetRequest, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, adminUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -148,6 +148,35 @@ describe("forgot password requests", () => {
     expect(rows.some((r) => r.userId === null && r.identifier === "nobody-here")).toBe(true);
     await setRequestStatus(db, mine[0].id, "done");
     expect(await code(setRequestStatus(db, 999999, "done"))).toBe("not_found");
+  });
+});
+
+describe("support chat", () => {
+  it("keeps one thread per player with read tracking", async () => {
+    const a = await registerUser(db, { email: "c1@x.test", username: "chatter1", password: "password1" });
+    const b = await registerUser(db, { email: "c2@x.test", username: "chatter2", password: "password1" });
+    const before = await adminUnreadCount(db);
+    await postChat(db, a, "user", "  hello admin  ");
+    await postChat(db, b, "user", "me too");
+    expect(await adminUnreadCount(db)).toBe(before + 2);
+    const convos = await chatConversations(db);
+    expect(convos[0].username).toBe("chatter2"); // newest first
+    expect(convos.find((c) => c.userId === a)?.unread).toBe(1);
+
+    const thread = await readChat(db, a, "admin");
+    expect(thread.map((m) => m.body)).toEqual(["hello admin"]); // trimmed
+    expect(await adminUnreadCount(db)).toBe(before + 1);
+
+    await postChat(db, a, "admin", "hi, how can I help?");
+    expect((await readChat(db, a, "user")).map((m) => m.sender)).toEqual(["user", "admin"]);
+    const later = await readChat(db, a, "user", thread[0].id);
+    expect(later.map((m) => m.body)).toEqual(["hi, how can I help?"]); // only newer than `after`
+    expect((await readChat(db, b, "user")).every((m) => m.body !== "hi, how can I help?")).toBe(true); // no leakage
+  });
+  it("rejects empty and oversized messages", async () => {
+    const id = await registerUser(db, { email: "c3@x.test", username: "chatter3", password: "password1" });
+    expect(await code(postChat(db, id, "user", "   "))).toBe("invalid");
+    expect(await code(postChat(db, id, "user", "x".repeat(1001)))).toBe("invalid");
   });
 });
 

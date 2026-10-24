@@ -11,6 +11,7 @@ const paths: Record<string, string> = {
   menu: "M4 6h16M4 12h16M4 18h16",
   x: "M6 6l12 12M18 6L6 18",
   search: "M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM21 21l-4.3-4.3",
+  chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z",
   copy: "M9 9h11v11H9zM5 15V4h11",
 };
 
