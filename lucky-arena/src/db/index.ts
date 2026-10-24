@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { DDL } from "./ddl";
@@ -29,7 +31,10 @@ export async function createDb(opts: CreateOpts = {}): Promise<Db> {
     }
     const { PGlite } = await import("@electric-sql/pglite");
     const { drizzle } = await import("drizzle-orm/pglite");
-    const client = new PGlite(opts.dir ?? process.env.PGLITE_DIR ?? ".data/pg");
+    const dir = opts.dir ?? process.env.PGLITE_DIR ?? ".data/pg";
+    // PGlite creates the data directory but not its parents (".data" does not exist on a fresh checkout).
+    if (!dir.includes("://")) mkdirSync(dirname(dir), { recursive: true });
+    const client = new PGlite(dir);
     db = drizzle(client, { schema }) as unknown as Db;
   }
   for (const stmt of DDL) await db.execute(sql.raw(stmt));
