@@ -132,6 +132,15 @@ export const DDL = [
   )`,
   `ALTER TABLE quick_replies ADD COLUMN IF NOT EXISTS shortcut TEXT NOT NULL DEFAULT ''`,
   `CREATE UNIQUE INDEX IF NOT EXISTS quick_replies_shortcut_idx ON quick_replies (shortcut) WHERE shortcut <> ''`,
+  `CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS push_user_idx ON push_subscriptions (user_id)`,
   `CREATE TABLE IF NOT EXISTS social_links (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL DEFAULT 'Other',

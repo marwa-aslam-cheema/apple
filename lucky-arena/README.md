@@ -114,3 +114,12 @@ The game is opened as `<game link>?lucky_session=<token>&lucky_site=<this site>&
 | `POST {site}/api/game-api/settle` `{ "session": "<token>", "balance": 700 }` | Player left: credits return to the wallet. Works once per session |
 
 Balances are whole numbers. Credits are play money with no cash value.
+
+## Phone notifications (optional)
+
+Players who tap **Turn on notifications** (side menu) get a phone notification when the admin replies or sends an announcement, even with the site closed. The admin gets one for new player messages. It needs the site on HTTPS (any real host) and, on iPhone, the app added to the Home Screen (iOS 16.4+).
+
+1. Run `npx web-push generate-vapid-keys` once.
+2. Put the two keys in the environment as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (and `VAPID_SUBJECT=mailto:you@example.com`), then restart.
+
+Without keys the button is hidden and nothing is sent.

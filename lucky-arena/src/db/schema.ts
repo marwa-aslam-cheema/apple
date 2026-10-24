@@ -129,6 +129,16 @@ export const quickReplies = pgTable("quick_replies", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+/** A phone (browser) that agreed to receive notifications. */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 /** Social pages the admin shows to players (Facebook page, WhatsApp, Instagram...). */
 export const socialLinks = pgTable("social_links", {
   id: serial("id").primaryKey(),

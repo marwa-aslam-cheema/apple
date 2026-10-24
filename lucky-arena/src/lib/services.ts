@@ -1,3 +1,4 @@
+import { adminIds, notifyUsers } from "./push";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
@@ -263,6 +264,9 @@ export async function postChat(db: Db, userId: number, sender: "user" | "admin",
     .insert(chatMessages)
     .values({ userId, sender, body: text, readByAdmin: sender === "admin", readByUser: sender === "user" })
     .returning();
+  // A phone notification for whoever is not looking at the site: the player gets the admin's reply, the admin gets the player's message.
+  if (sender === "admin") void notifyUsers(db, [userId], { title: "Lucky Arena support", body: text.slice(0, 120), url: "/chat" }, { skipActiveWithinMs: 20_000 });
+  else void adminIds(db).then((ids) => notifyUsers(db, ids, { title: "New player message", body: text.slice(0, 120), url: "/admin?tab=chat&user=" + userId }, { skipActiveWithinMs: 20_000 }));
   return row;
 }
 
@@ -304,7 +308,7 @@ export async function broadcastChat(db: Db, body: string) {
   const text = body.trim();
   if (!text) throw new AppError("invalid", "Write the message first.");
   if (text.length > 1000) throw new AppError("invalid", "Message is too long (max 1000 characters).");
-  return db.transaction(async (tx) => {
+  const ids = await db.transaction(async (tx) => {
     const t = tx as unknown as Db;
     const people = await t.select({ id: users.id }).from(users).where(and(eq(users.role, "user"), eq(users.banned, false)));
     for (let i = 0; i < people.length; i += BROADCAST_CHUNK) {
@@ -312,8 +316,10 @@ export async function broadcastChat(db: Db, body: string) {
         people.slice(i, i + BROADCAST_CHUNK).map((p) => ({ userId: p.id, sender: "admin", body: text, kind: "broadcast", readByAdmin: true, readByUser: false })),
       );
     }
-    return people.length;
+    return people.map((p) => p.id);
   });
+  void notifyUsers(db, ids, { title: "Lucky Arena", body: text.slice(0, 120), url: "/chat" }, { skipActiveWithinMs: 20_000 });
+  return ids.length;
 }
 
 export async function adminUnreadCount(db: Db) {

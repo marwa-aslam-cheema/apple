@@ -18,3 +18,30 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(event.request).catch(() => caches.match(OFFLINE)));
   }
 });
+
+// Phone notifications: show the message, and open the right page when it is tapped.
+self.addEventListener("push", (event) => {
+  let data = { title: "Lucky Arena", body: "You have a new message.", url: "/chat" };
+  try {
+    data = { ...data, ...event.data.json() };
+  } catch {
+    /* plain text or empty push: use the defaults */
+  }
+  event.waitUntil(self.registration.showNotification(data.title, { body: data.body, icon: "/pwa-icon/192", badge: "/pwa-icon/192", data: { url: data.url }, tag: "la-chat" }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/chat";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ("focus" in c) {
+          c.navigate(url).catch(() => undefined);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});
