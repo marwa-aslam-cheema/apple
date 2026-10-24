@@ -48,11 +48,11 @@ interface Convo {
   lastSender: string;
 }
 
-export function AdminChat({ compact = false }: { compact?: boolean }) {
+export function AdminChat({ compact = false, initial }: { compact?: boolean; initial?: { userId: number; username: string; email: string } }) {
   const [list, setList] = useState<Convo[]>([]);
-  const [sel, setSel] = useState<number | null>(null);
+  const [sel, setSel] = useState<number | null>(initial?.userId ?? null);
   const [loaded, setLoaded] = useState(false);
-  const [thread, setThread] = useState(!compact); // compact: start on the list, open a thread on click
+  const [thread, setThread] = useState(!compact || !!initial); // compact: start on the list, open a thread on click
   const [broadcast, setBroadcast] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -73,7 +73,8 @@ export function AdminChat({ compact = false }: { compact?: boolean }) {
     return () => clearInterval(t);
   }, [refresh]);
 
-  const current = list.find((c) => c.userId === sel);
+  // A player with no messages yet (opened from the Users list) is not in the list: build their header from what we were given.
+  const current: Convo | undefined = list.find((c) => c.userId === sel) ?? (initial && sel === initial.userId ? { ...initial, unread: 0, last: "", lastSender: "admin" } : undefined);
 
   const broadcastButton = (
     <button className="btn btn-violet !min-h-10 w-full !py-1.5" onClick={() => { setBroadcast(true); setThread(true); }}>

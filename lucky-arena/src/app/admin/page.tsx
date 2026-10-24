@@ -64,9 +64,9 @@ const WHEEL_FIELDS: Field[] = [
   { key: "active", label: "Active", type: "bool" },
 ];
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; user?: string }> }) {
   const admin = await requireAdminPage();
-  const { tab = "overview" } = await searchParams;
+  const { tab = "overview", q = "", user: userParam } = await searchParams;
   const db = await getDb();
 
   const [{ open }] = await db.select({ open: count() }).from(supportRequests).where(eq(supportRequests.status, "open"));
@@ -75,7 +75,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   let body: React.ReactNode;
   if (tab === "chat") {
-    body = <AdminChat />;
+    const target = Number(userParam);
+    const [who] = Number.isInteger(target) && target > 0 ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, target)) : [];
+    body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
   } else if (tab === "replies") {
     const rows = await db.select().from(quickReplies).orderBy(quickReplies.sortOrder, quickReplies.id);
     body = (
@@ -94,10 +96,25 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       .limit(100);
     body = <AdminRequests rows={rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))} />;
   } else if (tab === "users") {
+    const term = q.trim().slice(0, 60);
     const list = await db
-      .select({ id: users.id, username: users.username, email: users.email, role: users.role, balance: users.balance, banned: users.banned })
-      .from(users).orderBy(desc(users.id)).limit(200);
-    body = <AdminUsers users={list} selfId={admin.id} />;
+      .select({ id: users.id, username: users.username, email: users.email, role: users.role, balance: users.balance, banned: users.banned, createdAt: users.createdAt })
+      .from(users)
+      .where(term ? sql`${users.email} ilike ${"%" + term.replace(/[%_]/g, "") + "%"} or ${users.username} ilike ${"%" + term.replace(/[%_]/g, "") + "%"}` : undefined)
+      .orderBy(desc(users.id))
+      .limit(200);
+    body = (
+      <div className="space-y-4">
+        <form action="/admin" method="get" className="flex gap-2">
+          <input type="hidden" name="tab" value="users" />
+          <input name="q" defaultValue={term} placeholder="Search by email or username" aria-label="Search players" className="input" />
+          <button className="btn btn-gold">Search</button>
+          {term && <Link href="/admin?tab=users" className="btn btn-ghost">Clear</Link>}
+        </form>
+        <p className="text-sm text-muted">{list.length} player{list.length === 1 ? "" : "s"}{term ? ` matching "${term}"` : " (newest first)"}. Each card shows the email and credits, a History link (games played and where credits went), and a password reset.</p>
+        <AdminUsers users={list.map((u) => ({ ...u, createdAt: u.createdAt.toISOString() }))} selfId={admin.id} />
+      </div>
+    );
   } else if (tab === "games") {
     const rows = await db.select().from(games).orderBy(games.sortOrder, games.id);
     body = <AdminResource resource="games" titleKey="title" fields={GAME_FIELDS} rows={rows} defaults={{ title: "", slug: "", category: "Arcade", description: "", link: "", image: "", hue: 260, sortOrder: 0, featured: false, playable: false, active: true }} />;

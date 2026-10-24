@@ -4,22 +4,14 @@ import { ClaimButton } from "@/components/ClaimButton";
 import { RequestCredits } from "@/components/RequestCredits";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS } from "@/lib/config";
 import { fmt, fmtDate } from "@/lib/format";
+import { TX_LABELS } from "@/lib/labels";
 import { requireUserPage } from "@/lib/session";
 import { listTransactions, userStats } from "@/lib/services";
 import { tierForXp } from "@/lib/vip";
 
 export const metadata: Metadata = { title: "Wallet" };
 
-const LABELS: Record<string, string> = {
-  signup_bonus: "Welcome bonus",
-  welcome_prize: "Welcome wheel",
-  referral_bonus: "Referral bonus",
-  spin_cost: "Lucky Spin",
-  spin_win: "Spin prize",
-  daily_bonus: "Daily bonus",
-  promo: "Promotion",
-  admin_adjust: "Admin adjustment",
-};
+const LABELS = TX_LABELS;
 
 export default async function WalletPage() {
   const user = await requireUserPage();

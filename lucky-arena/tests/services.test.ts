@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -227,6 +227,38 @@ describe("send to all", () => {
   it("rejects empty and oversized messages", async () => {
     expect(await code(broadcastChat(db, "   "))).toBe("invalid");
     expect(await code(broadcastChat(db, "x".repeat(1001)))).toBe("invalid");
+  });
+});
+
+describe("player history for the admin", () => {
+  it("shows games played, where credits went and where they came from", async () => {
+    const [{ id: adminId }] = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+    const ref = await registerUser(db, { email: "h0@x.test", username: "historian0", password: "password1" });
+    const [{ referralCode }] = await db.select().from(users).where(eq(users.id, ref));
+    const id = await registerUser(db, { email: "h1@x.test", username: "historian1", password: "password1", ref: referralCode });
+    await spinWheel(db, id);
+    await spinWheel(db, id); // the two free welcome spins
+    await grantCreditsAndNotify(db, id, 500);
+    for (let i = 0; i < 3; i++) await spinWheel(db, id); // paid spins
+    const h = await userHistory(db, id);
+    expect(h).not.toBeNull();
+    expect(h!.user.email).toBe("h1@x.test");
+    expect(h!.referrer?.username).toBe("historian0");
+    const welcome = h!.games.find((g) => g.game === "Welcome wheel");
+    const lucky = h!.games.find((g) => g.game === "Lucky Spin");
+    expect(welcome).toMatchObject({ plays: 2, spent: 0 });
+    expect(lucky).toMatchObject({ plays: 3, spent: 150 });
+    expect(h!.totals.plays).toBe(5);
+    expect(h!.totals.spent).toBe(150);
+    expect(h!.totals.addedByAdmin).toBeGreaterThanOrEqual(500);
+    expect(h!.spins).toHaveLength(5);
+    expect(h!.spins[0].game).toBe("Lucky Spin"); // newest first
+    // the ledger explains the balance exactly
+    expect(h!.transactions.reduce((t, r) => t + r.amount, 0)).toBe(h!.user.balance);
+    expect(adminId).toBeGreaterThan(0);
+  });
+  it("returns null for an unknown player", async () => {
+    expect(await userHistory(db, 987654)).toBeNull();
   });
 });
 

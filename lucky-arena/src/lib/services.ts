@@ -336,6 +336,49 @@ export async function grantCreditsAndNotify(db: Db, userId: number, amount: numb
   });
 }
 
+/** Everything an admin wants to know about one player: credits, games played, where credits went, and the ledger. */
+export async function userHistory(db: Db, userId: number) {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) return null;
+  const [referrer] = user.referredBy ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, user.referredBy)) : [];
+  const [referrals, allSpins, transactionsList, byType] = await Promise.all([
+    db.select({ id: users.id, username: users.username, createdAt: users.createdAt }).from(users).where(eq(users.referredBy, userId)).orderBy(desc(users.id)).limit(20),
+    db.select().from(spins).where(eq(spins.userId, userId)).orderBy(desc(spins.id)).limit(20000),
+    listTransactions(db, userId, 100),
+    db
+      .select({ type: transactions.type, n: count(), total: sql<number>`coalesce(sum(${transactions.amount}), 0)::int` })
+      .from(transactions)
+      .where(eq(transactions.userId, userId))
+      .groupBy(transactions.type),
+  ]);
+  // Games: a free spin (cost 0) is the Welcome wheel, a paid one is Lucky Spin.
+  const gameName = (cost: number) => (cost === 0 ? "Welcome wheel" : "Lucky Spin");
+  const games = new Map<string, { game: string; plays: number; spent: number; won: number }>();
+  for (const s of allSpins) {
+    const g = games.get(gameName(s.cost)) ?? { game: gameName(s.cost), plays: 0, spent: 0, won: 0 };
+    g.plays++;
+    g.spent += s.cost;
+    g.won += s.prize;
+    games.set(g.game, g);
+  }
+  const typeTotal = (t: string) => byType.find((r) => r.type === t)?.total ?? 0;
+  return {
+    user,
+    referrer: referrer ?? null,
+    referrals,
+    games: [...games.values()],
+    spins: allSpins.slice(0, 50).map((s) => ({ ...s, game: gameName(s.cost) })),
+    transactions: transactionsList,
+    byType,
+    totals: {
+      plays: allSpins.length,
+      spent: allSpins.reduce((t, s) => t + s.cost, 0),
+      won: allSpins.reduce((t, s) => t + s.prize, 0),
+      addedByAdmin: typeTotal("admin_adjust"),
+    },
+  };
+}
+
 export function listTransactions(db: Db, userId: number, limit = 50) {
   return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.id)).limit(limit);
 }
