@@ -1,0 +1,14 @@
+// Central, non-secret app settings. All credits are virtual and have no cash value.
+export const APP_NAME = "Lucky Arena";
+export const SIGNUP_BONUS = 0; // new players start at zero and earn their first credits on the welcome wheel
+export const WELCOME_SPINS = 2; // free welcome-wheel spins per new player (so at most 2 small prizes each)
+export const REFERRAL_BONUS = 500; // paid to both the new user and the referrer
+export const REFERRAL_MAX_REWARDS = 20; // cap on referrer rewards (prototype abuse guard)
+export const SPIN_COST = 50; // the reference bet: a wheel segment's "credits" is what it pays at this bet
+export const MIN_BET = 1;
+export const MAX_BET = 1000;
+export const SPIN_XP = 10;
+export const DAILY_BONUS_BASE = 100;
+export const DAILY_COOLDOWN_MS = 20 * 60 * 60 * 1000;
+
+export const CATEGORIES = ["Featured", "Wheel", "Cards", "Arcade", "Puzzle", "Trivia"] as const;
