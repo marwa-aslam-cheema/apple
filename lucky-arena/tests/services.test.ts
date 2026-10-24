@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db } from "@/db";
-import { transactions, users, wheelSegments } from "@/db/schema";
+import { games, transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -306,6 +306,51 @@ describe("bet size", () => {
     const id = await registerUser(db, { email: "wb@x.test", username: "welcomebet", password: "password1" });
     const r = await spinWheel(db, id, 1000);
     expect(r).toMatchObject({ welcome: true, cost: 0 });
+  });
+});
+
+describe("credit request from a game", () => {
+  async function broke(name: string) {
+    const id = await registerUser(db, { email: `${name}@x.test`, username: name, password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, id));
+    return id;
+  }
+  const gameId = async (slug: string) => (await db.select().from(games).where(eq(games.slug, slug)))[0].id;
+  it("posts \"I want credits in <game>\" with the real game name when the player has nothing to play with", async () => {
+    const id = await broke("brokeone");
+    const r = await requestCredits(db, id, { gameId: await gameId("lucky-spin") });
+    expect(r).toMatchObject({ sent: true, game: "Lucky Spin Wheel" });
+    expect((await readChat(db, id, "admin")).map((m) => [m.sender, m.body])).toEqual([["user", "I want credits in Lucky Spin Wheel"]]);
+  });
+  it("does nothing while the player still has credits or free spins, or is the admin", async () => {
+    const withCredits = await broke("richone");
+    await adminAdjust(db, withCredits, 5, "x");
+    expect(await requestCredits(db, withCredits, { gameId: await gameId("card-quest") })).toMatchObject({ sent: false, reason: "has_credits" });
+    const fresh = await registerUser(db, { email: "freshone@x.test", username: "freshone", password: "password1" }); // still has the 2 free spins
+    expect(await requestCredits(db, fresh, { gameId: await gameId("card-quest") })).toMatchObject({ sent: false, reason: "has_credits" });
+    const [admin] = await db.select().from(users).where(eq(users.role, "admin"));
+    expect(await requestCredits(db, admin.id, { gameId: await gameId("card-quest") })).toMatchObject({ sent: false });
+    expect(await readChat(db, withCredits, "admin")).toHaveLength(0);
+  });
+  it("does not repeat an unanswered request, but asks again after the admin has answered", async () => {
+    const id = await broke("brokethree");
+    const g = await gameId("tower-stack");
+    expect((await requestCredits(db, id, { gameId: g })).sent).toBe(true);
+    expect(await requestCredits(db, id, { gameId: g })).toMatchObject({ sent: false, reason: "already_requested" });
+    expect((await requestCredits(db, id, { gameId: await gameId("comet-run") })).sent).toBe(true); // a different game is a different request
+    await postChat(db, id, "admin", "one moment");
+    expect((await requestCredits(db, id, { gameId: g })).sent).toBe(true);
+    expect((await readChat(db, id, "admin")).filter((m) => m.body === "I want credits in Tower Stack")).toHaveLength(2);
+  });
+  it("the plain wallet request still works and is also not repeated", async () => {
+    const id = await broke("brokefour");
+    expect(await requestCredits(db, id)).toMatchObject({ sent: true });
+    expect(await requestCredits(db, id)).toMatchObject({ sent: false, reason: "already_requested" });
+    expect((await readChat(db, id, "admin"))[0].body).toBe("I want credits");
+  });
+  it("rejects an unknown game", async () => {
+    const id = await broke("brokefive");
+    expect(await code(requestCredits(db, id, { gameId: 424242 }))).toBe("not_found");
   });
 });
 

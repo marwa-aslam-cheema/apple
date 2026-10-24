@@ -15,6 +15,7 @@ export default async function Home() {
   const featured = (await lobbyGames(db, { category: "Featured" })).slice(0, 6);
   const dailyReady = !!user && (!user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS);
   const tier = user ? tierForXp(user.xp) : null;
+  const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;
 
   return (
     <div className="relative isolate space-y-10">
@@ -69,7 +70,7 @@ export default async function Home() {
           <Link href="/games" className="tap text-sm font-semibold text-gold">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {featured.map((g) => <GameCard key={g.id} game={g} />)}
+          {featured.map((g) => <GameCard key={g.id} game={g} needsCredits={needsCredits} />)}
         </div>
       </section>
 

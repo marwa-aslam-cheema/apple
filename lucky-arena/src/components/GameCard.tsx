@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { Game } from "@/db/schema";
 
@@ -35,7 +37,15 @@ export function GameArt({ hue, category }: { hue: number; category: string }) {
   );
 }
 
-export function GameCard({ game }: { game: Game }) {
+/** Out of credits? Tapping a game quietly sends "I want credits in <game>" to the admin chat (the server double-checks). */
+function askForCredits(gameId: number) {
+  void fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId }), keepalive: true })
+    .then(() => window.dispatchEvent(new Event("la:open-chat"))) // show the player the message that was sent
+    .catch(() => undefined);
+}
+
+export function GameCard({ game, needsCredits = false }: { game: Game; needsCredits?: boolean }) {
+  const onOpen = needsCredits ? () => askForCredits(game.id) : undefined;
   const inner = (
     <>
       <div className="relative aspect-square overflow-hidden rounded-xl">
@@ -59,11 +69,13 @@ export function GameCard({ game }: { game: Game }) {
   const cls = "card block p-2 transition-transform hover:-translate-y-0.5";
   if (game.link) {
     return (
-      <a href={game.link} target="_blank" rel="noopener noreferrer" className={cls} title={game.description}>{inner}</a>
+      <a href={game.link} target="_blank" rel="noopener noreferrer" className={cls} title={game.description} onClick={onOpen}>{inner}</a>
     );
   }
   return game.playable ? (
-    <Link href="/spin" className={cls} title={game.description}>{inner}</Link>
+    <Link href="/spin" className={cls} title={game.description} onClick={onOpen}>{inner}</Link>
+  ) : needsCredits ? (
+    <button type="button" className={`${cls} w-full text-left`} title={game.description} onClick={onOpen}>{inner}</button>
   ) : (
     <div className={`${cls} opacity-90`} title={game.description}>{inner}</div>
   );

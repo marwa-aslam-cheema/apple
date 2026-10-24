@@ -329,6 +329,38 @@ export async function chatConversations(db: Db) {
   });
 }
 
+const REQUEST_REPEAT_MS = 30 * 60_000;
+
+/**
+ * A player asks the admin for credits. With a game id the message names it ("I want credits in <game>"); that automatic
+ * version (clicking a game) is only sent when the player is really out of credits, and an unanswered identical request
+ * is not repeated. Returns whether a message was posted and, if not, why.
+ */
+export async function requestCredits(db: Db, userId: number, opts: { gameId?: number } = {}): Promise<{ sent: boolean; reason?: "has_credits" | "already_requested"; game?: string }> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) throw new AppError("not_found", "User not found.", 404);
+  let game: { title: string } | undefined;
+  if (opts.gameId !== undefined) {
+    [game] = await db.select({ title: games.title }).from(games).where(and(eq(games.id, opts.gameId), eq(games.active, true)));
+    if (!game) throw new AppError("not_found", "Game not found.", 404);
+    // Clicking a game only counts as "I need credits" when there is nothing to play with: no credits and no free spins left.
+    if (user.balance > 0 || user.welcomeSpins > 0 || user.role === "admin") return { sent: false, reason: "has_credits", game: game.title };
+  }
+  const body = game ? `I want credits in ${game.title}` : "I want credits";
+  const [last] = await db
+    .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "user"), eq(chatMessages.body, body)))
+    .orderBy(desc(chatMessages.id))
+    .limit(1);
+  if (last && Date.now() - last.createdAt.getTime() < REQUEST_REPEAT_MS) {
+    const [answered] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), gt(chatMessages.id, last.id))).limit(1);
+    if (!answered) return { sent: false, reason: "already_requested", game: game?.title };
+  }
+  await postChat(db, userId, "user", body);
+  return { sent: true, game: game?.title };
+}
+
 /** Admin adds virtual credits to a player and tells them in the chat. */
 export async function grantCreditsAndNotify(db: Db, userId: number, amount: number, note = "") {
   if (!Number.isInteger(amount) || amount < 1 || amount > 100000) throw new AppError("bad_amount", "Amount must be a whole number from 1 to 100,000.");
