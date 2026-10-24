@@ -603,6 +603,9 @@ describe("linked game needs a username first", () => {
     await postChat(db, u, "admin", "ali99 / pass");
     await setGameAccount(db, u, g.id, "ali99");
     expect((await listGameAccounts(db, u)).map((a) => a.username)).toEqual(["ali99"]);
+    // a page that is older than the admin's change: no new message, the player is told to go in
+    expect(await requestGameAccount(db, u, g.id)).toMatchObject({ sent: false, hasAccount: true });
+    expect((await readChat(db, u, "admin")).filter((m) => m.body.startsWith("I want username")).length).toBe(1);
   });
 });
 

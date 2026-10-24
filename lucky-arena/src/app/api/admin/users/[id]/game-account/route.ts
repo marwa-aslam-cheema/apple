@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { route } from "@/lib/api";
 import { removeGameAccount, setGameAccount } from "@/lib/game-sessions";
 import { requireAdminApi } from "@/lib/session";
+import { bumpSiteVersion } from "@/lib/site-version";
 
 const body = z.object({ gameId: z.coerce.number().int(), username: z.string().optional() });
 
@@ -11,13 +12,17 @@ const body = z.object({ gameId: z.coerce.number().int(), username: z.string().op
 export const PUT = route(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   await requireAdminApi();
   const b = body.parse(await req.json());
-  await setGameAccount(await getDb(), Number((await params).id), b.gameId, b.username ?? "");
+  const db = await getDb();
+  await setGameAccount(db, Number((await params).id), b.gameId, b.username ?? "");
+  await bumpSiteVersion(db); // open player pages notice the new username and stop asking for it
   return NextResponse.json({ ok: true });
 });
 
 export const DELETE = route(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   await requireAdminApi();
   const b = body.parse(await req.json());
-  await removeGameAccount(await getDb(), Number((await params).id), b.gameId);
+  const db = await getDb();
+  await removeGameAccount(db, Number((await params).id), b.gameId);
+  await bumpSiteVersion(db);
   return NextResponse.json({ ok: true });
 });

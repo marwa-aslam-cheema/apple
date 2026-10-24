@@ -45,10 +45,22 @@ function askForCredits(gameId: number) {
 }
 
 /** A linked game needs the player's username for it first: ask the admin, and keep the player in the chat meanwhile. */
-function askForAccount(gameId: number) {
-  void fetch("/api/games/request-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId }), keepalive: true })
-    .then(() => window.dispatchEvent(new Event("la:open-chat")))
-    .catch(() => undefined);
+function askForAccount(gameId: number, href: string) {
+  // The tab is opened right away (browsers block tabs opened later), then sent to the game or closed.
+  const tab = window.open("", "_blank");
+  void fetch("/api/games/request-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId }) })
+    .then((r) => r.json())
+    .then((d) => {
+      if (d.hasAccount) { // the admin already saved the username: this page was just older than that
+        if (tab) tab.location.href = href;
+        else window.location.assign(href);
+        window.dispatchEvent(new Event("la:wallet-refresh"));
+        return;
+      }
+      tab?.close();
+      window.dispatchEvent(new Event("la:open-chat"));
+    })
+    .catch(() => tab?.close());
 }
 
 export function GameCard({ game, needsCredits = false, needsAccount = false }: { game: Game; needsCredits?: boolean; needsAccount?: boolean }) {
@@ -79,7 +91,7 @@ export function GameCard({ game, needsCredits = false, needsAccount = false }: {
   if (href) {
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className={cls} title={game.description} onClick={(e) => {
-        if (needsAccount && !game.adminLink) { e.preventDefault(); askForAccount(game.id); return; } onOpen?.(); setTimeout(() => window.dispatchEvent(new Event("la:wallet-refresh")), 800); }}>{inner}</a>
+        if (needsAccount && !game.adminLink) { e.preventDefault(); askForAccount(game.id, href); return; } onOpen?.(); setTimeout(() => window.dispatchEvent(new Event("la:wallet-refresh")), 800); }}>{inner}</a>
     );
   }
   return game.playable ? (

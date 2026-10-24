@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { chatImages, chatMessages, chatReactions, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
+import { chatImages, chatMessages, chatReactions, gameAccounts, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -461,9 +461,12 @@ const ACCOUNT_REPEAT_MS = 30 * 60_000;
  * A player tapped a linked game but has no username for it yet. The admin gets "I want username and password for <game>"
  * in the chat (not repeated for 30 minutes while it is unanswered). Returns whether a message was posted.
  */
-export async function requestGameAccount(db: Db, userId: number, gameId: number): Promise<{ sent: boolean; game: string }> {
+export async function requestGameAccount(db: Db, userId: number, gameId: number): Promise<{ sent: boolean; game: string; hasAccount?: boolean }> {
   const [game] = await db.select({ title: games.title }).from(games).where(and(eq(games.id, gameId), eq(games.active, true)));
   if (!game) throw new AppError("not_found", "Game not found.", 404);
+  // The page may be older than the admin's change: if the username is already saved, nothing is requested and the player can go in.
+  const [have] = await db.select({ id: gameAccounts.id }).from(gameAccounts).where(and(eq(gameAccounts.userId, userId), eq(gameAccounts.gameId, gameId)));
+  if (have) return { sent: false, game: game.title, hasAccount: true };
   const body = `I want username and password for ${game.title}`;
   const [last] = await db
     .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
