@@ -20,13 +20,18 @@ export function resourceFor(name: string) {
   };
 }
 
-/** The wheel needs at least two active segments with a chance of landing, or spins would fail. */
+/** Each wheel (main and welcome) needs at least two active segments with a chance of landing, or spins would fail. */
 export async function assertWheelPlayable(db: Db) {
-  const [{ value }] = await db
-    .select({ value: count() })
+  const rows = await db
+    .select({ kind: wheelSegments.kind, value: count() })
     .from(wheelSegments)
-    .where(and(eq(wheelSegments.active, true), gt(wheelSegments.weight, 0)));
-  if (value < 2) throw new AppError("wheel_invalid", "Keep at least 2 active wheel segments with weight above 0.");
+    .where(and(eq(wheelSegments.active, true), gt(wheelSegments.weight, 0)))
+    .groupBy(wheelSegments.kind);
+  for (const kind of ["main", "welcome"]) {
+    if ((rows.find((r) => r.kind === kind)?.value ?? 0) < 2) {
+      throw new AppError("wheel_invalid", `Keep at least 2 active "${kind}" wheel segments with weight above 0.`);
+    }
+  }
 }
 
 /**

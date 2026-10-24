@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, createResetRequest, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -49,9 +49,36 @@ describe("auth", () => {
   });
 });
 
+describe("welcome wheel", () => {
+  it("starts new players at zero with exactly two free small-prize spins", async () => {
+    const id = await registerUser(db, { email: "new@x.test", username: "newcomer", password: "password1" });
+    expect(await balanceOf(id)).toBe(0);
+    const first = await spinWheel(db, id);
+    const second = await spinWheel(db, id);
+    expect([first, second].every((r) => r.welcome && r.cost === 0 && [0, 1, 2].includes(r.prize))).toBe(true);
+    expect(second.welcomeLeft).toBe(0);
+    expect(await balanceOf(id)).toBe(first.prize + second.prize);
+    expect(first.prize + second.prize).toBeLessThanOrEqual(4);
+    // After the welcome spins the paid wheel applies, and an empty wallet cannot spin it.
+    if (first.prize + second.prize < SPIN_COST) expect(await code(spinWheel(db, id))).toBe("insufficient_credits");
+  });
+  it("never lets parallel requests use more than the free spins", async () => {
+    const id = await registerUser(db, { email: "par@x.test", username: "parallel", password: "password1" });
+    const results = await Promise.all([1, 2, 3, 4, 5].map(() => spinWheel(db, id).then((r) => r.welcome, () => "failed")));
+    expect(results.filter((r) => r === true)).toHaveLength(2);
+  });
+  it("keeps every welcome prize tiny", async () => {
+    const segs = await activeWheel(db, "welcome");
+    expect(segs.length).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...segs.map((x) => x.credits))).toBeLessThanOrEqual(2);
+  });
+});
+
 describe("wallet and spin", () => {
   it("debits the cost, credits prizes and keeps the ledger consistent", async () => {
     const id = await registerUser(db, { email: "s@x.test", username: "spinner", password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, id));
+    await adminAdjust(db, id, 5000, "test funds");
     for (let i = 0; i < 20; i++) await spinWheel(db, id);
     const rows = await listTransactions(db, id, 500);
     const sum = rows.reduce((t, r) => t + r.amount, 0);
@@ -61,14 +88,14 @@ describe("wallet and spin", () => {
   });
   it("refuses to spin without enough credits and never goes negative", async () => {
     const id = await registerUser(db, { email: "p@x.test", username: "poor", password: "password1" });
-    await db.update(users).set({ balance: SPIN_COST - 1 }).where(eq(users.id, id));
+    await db.update(users).set({ balance: SPIN_COST - 1, welcomeSpins: 0 }).where(eq(users.id, id));
     expect(await code(spinWheel(db, id))).toBe("insufficient_credits");
     expect(await balanceOf(id)).toBe(SPIN_COST - 1);
   });
   it("handles parallel spins without overspending", async () => {
     const id = await registerUser(db, { email: "c@x.test", username: "concurrent", password: "password1" });
-    await db.update(users).set({ balance: SPIN_COST * 2 }).where(eq(users.id, id));
-    await db.update(wheelSegments).set({ credits: 0 }); // prizes off so the arithmetic is exact
+    await db.update(users).set({ balance: SPIN_COST * 2, welcomeSpins: 0 }).where(eq(users.id, id));
+    await db.update(wheelSegments).set({ credits: 0 }).where(eq(wheelSegments.kind, "main")); // prizes off so the arithmetic is exact
     const results = await Promise.all([1, 2, 3, 4].map(() => code(spinWheel(db, id))));
     expect(results.filter((r) => r === "ok")).toHaveLength(2);
     expect(await balanceOf(id)).toBe(0);
@@ -105,6 +132,22 @@ describe("password reset by admin", () => {
     expect(await code(verifyLogin(db, "forgetful", "oldpassword1"))).toBe("bad_credentials");
     expect((await verifyLogin(db, "forgetful", "newpassword1")).id).toBe(id);
     expect(await code(adminSetPassword(db, 999999, "newpassword1"))).toBe("not_found");
+  });
+});
+
+describe("forgot password requests", () => {
+  it("records one open request per account and never reveals unknown accounts", async () => {
+    const { supportRequests } = await import("@/db/schema");
+    const id = await registerUser(db, { email: "fg@x.test", username: "forgot1", password: "password1" });
+    await createResetRequest(db, "FG@x.test");
+    await createResetRequest(db, "forgot1");
+    await createResetRequest(db, "nobody-here");
+    const rows = await db.select().from(supportRequests);
+    const mine = rows.filter((r) => r.userId === id);
+    expect(mine).toHaveLength(1);
+    expect(rows.some((r) => r.userId === null && r.identifier === "nobody-here")).toBe(true);
+    await setRequestStatus(db, mine[0].id, "done");
+    expect(await code(setRequestStatus(db, 999999, "done"))).toBe("not_found");
   });
 });
 

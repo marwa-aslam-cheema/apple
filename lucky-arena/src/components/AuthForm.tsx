@@ -33,7 +33,7 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
   return (
     <form onSubmit={submit} className="card mx-auto w-full max-w-md space-y-4 p-6">
       <h1 className="text-2xl font-extrabold">{isReg ? "Create your account" : "Welcome back"}</h1>
-      {isReg && <p className="text-sm text-muted">Get 1,000 free demo credits. No payment details needed, ever.</p>}
+      {isReg && <p className="text-sm text-muted">Start at zero and spin the free welcome wheel for your first demo credits. No payment details needed, ever.</p>}
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Referral code {refCode} applied: bonus credits for you and your friend.</p>}
       {isReg ? (
         <>
@@ -53,6 +53,7 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
         <input name="password" type="password" required minLength={isReg ? 8 : 1} maxLength={72} autoComplete={isReg ? "new-password" : "current-password"} className="input mt-1" />
       </label>
       {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
+      {!isReg && <p className="text-right text-sm"><Link href="/forgot" className="text-gold underline">Forgot password?</Link></p>}
       <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : isReg ? "Sign up" : "Log in"}</button>
       <p className="text-center text-sm text-muted">
         {isReg ? <>Already have an account? <Link href="/login" className="text-gold underline">Log in</Link></> : <>New here? <Link href="/register" className="text-gold underline">Create an account</Link></>}

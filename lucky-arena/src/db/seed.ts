@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import type { Db } from "./index";
 import { games, promotions, users, wheelSegments } from "./schema";
 
@@ -37,6 +37,14 @@ const SEGMENTS = [
   { label: "JACKPOT 1000", credits: 1000, weight: 1, color: "#ef4444" },
 ]; // expected return ~87% of the 50 credit spin cost (see tests/wheel.test.ts)
 
+// Welcome wheel for brand-new players: tiny prizes, mostly "try next time" (each player only gets WELCOME_SPINS spins).
+const WELCOME_SEGMENTS = [
+  { label: "Try next time", credits: 0, weight: 30, color: "#2b2f5e" },
+  { label: "1 credit", credits: 1, weight: 30, color: "#7c5cff" },
+  { label: "Try next time", credits: 0, weight: 30, color: "#3b3f7a" },
+  { label: "2 credits", credits: 2, weight: 10, color: "#f59e0b" },
+];
+
 export async function seed(db: Db) {
   const [{ value: userCount }] = await db.select({ value: count() }).from(users);
   if (userCount === 0) {
@@ -63,6 +71,8 @@ export async function seed(db: Db) {
   const [{ value: promoCount }] = await db.select({ value: count() }).from(promotions);
   if (promoCount === 0) await db.insert(promotions).values(PROMOS);
 
-  const [{ value: segCount }] = await db.select({ value: count() }).from(wheelSegments);
-  if (segCount === 0) await db.insert(wheelSegments).values(SEGMENTS.map((s, i) => ({ ...s, sortOrder: i })));
+  const [{ value: mainCount }] = await db.select({ value: count() }).from(wheelSegments).where(eq(wheelSegments.kind, "main"));
+  if (mainCount === 0) await db.insert(wheelSegments).values(SEGMENTS.map((s, i) => ({ ...s, kind: "main", sortOrder: i })));
+  const [{ value: welcomeCount }] = await db.select({ value: count() }).from(wheelSegments).where(eq(wheelSegments.kind, "welcome"));
+  if (welcomeCount === 0) await db.insert(wheelSegments).values(WELCOME_SEGMENTS.map((s, i) => ({ ...s, kind: "welcome", sortOrder: i })));
 }

@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("user"),
   balance: integer("balance").notNull().default(0),
+  welcomeSpins: integer("welcome_spins").notNull().default(2),
   xp: integer("xp").notNull().default(0),
   referralCode: text("referral_code").notNull().unique(),
   referredBy: integer("referred_by"),
@@ -75,6 +76,7 @@ export const wheelSegments = pgTable("wheel_segments", {
   label: text("label").notNull(),
   credits: integer("credits").notNull().default(0),
   weight: integer("weight").notNull().default(1),
+  kind: text("kind").notNull().default("main"),
   color: text("color").notNull().default("#7c5cff"),
   sortOrder: integer("sort_order").notNull().default(0),
   active: boolean("active").notNull().default(true),
@@ -87,6 +89,15 @@ export const spins = pgTable("spins", {
   label: text("label").notNull(),
   cost: integer("cost").notNull(),
   prize: integer("prize").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const supportRequests = pgTable("support_requests", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").notNull().default("password_reset"),
+  identifier: text("identifier").notNull(),
+  userId: integer("user_id"),
+  status: text("status").notNull().default("open"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

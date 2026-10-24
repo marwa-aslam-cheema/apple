@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { games, promoClaims, promotions, spins, transactions, users, wheelSegments } from "@/db/schema";
+import { games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -10,6 +10,7 @@ import {
   SIGNUP_BONUS,
   SPIN_COST,
   SPIN_XP,
+  WELCOME_SPINS,
 } from "./config";
 import { tierForXp } from "./vip";
 import { pickSegment } from "./wheel";
@@ -75,9 +76,9 @@ export async function registerUser(
 
       const [user] = await tx
         .insert(users)
-        .values({ email, username, passwordHash, referralCode: newReferralCode(), referredBy: referrer?.id ?? null })
+        .values({ email, username, passwordHash, referralCode: newReferralCode(), referredBy: referrer?.id ?? null, welcomeSpins: WELCOME_SPINS })
         .returning();
-      await applyCredits(tx as unknown as Db, user.id, SIGNUP_BONUS, "signup_bonus", "Welcome bonus");
+      if (SIGNUP_BONUS > 0) await applyCredits(tx as unknown as Db, user.id, SIGNUP_BONUS, "signup_bonus", "Welcome bonus");
 
       if (referrer) {
         const [{ value: rewarded }] = await tx
@@ -111,13 +112,21 @@ export async function verifyLogin(db: Db, identifier: string, password: string) 
   return user;
 }
 
-export async function activeWheel(db: Db) {
-  return db.select().from(wheelSegments).where(eq(wheelSegments.active, true)).orderBy(wheelSegments.sortOrder, wheelSegments.id);
+export async function activeWheel(db: Db, kind: "main" | "welcome" = "main") {
+  return db
+    .select()
+    .from(wheelSegments)
+    .where(and(eq(wheelSegments.active, true), eq(wheelSegments.kind, kind)))
+    .orderBy(wheelSegments.sortOrder, wheelSegments.id);
 }
 
 export async function spinWheel(db: Db, userId: number) {
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
+    // Lock the player's row so two parallel requests cannot spend the same welcome spin twice.
+    const [player] = await t.select({ welcomeSpins: users.welcomeSpins }).from(users).where(eq(users.id, userId)).for("update");
+    if (!player) throw new AppError("not_found", "User not found.", 404);
+    if (player.welcomeSpins > 0) return welcomeSpin(t, userId, player.welcomeSpins);
     const segments = await activeWheel(t);
     if (segments.length < 2) throw new AppError("wheel_unavailable", "The wheel is not configured right now.", 503);
     await applyCredits(t, userId, -SPIN_COST, "spin_cost", "Lucky Spin");
@@ -135,8 +144,24 @@ export async function spinWheel(db: Db, userId: number) {
       .where(eq(users.id, userId))
       .returning({ xp: users.xp });
     await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: SPIN_COST, prize: segment.credits });
-    return { segmentId: segment.id, label: segment.label, prize: segment.credits, cost: SPIN_COST, balance, xp: u.xp };
+    return { segmentId: segment.id, label: segment.label, prize: segment.credits, cost: SPIN_COST, balance, xp: u.xp, welcome: false, welcomeLeft: 0 };
   });
+}
+
+/** Free spin on the small "welcome" wheel. Every new player gets WELCOME_SPINS of these, so at most that many prizes. */
+async function welcomeSpin(t: Db, userId: number, left: number) {
+  const segments = await activeWheel(t, "welcome");
+  if (segments.length < 2) throw new AppError("wheel_unavailable", "The welcome wheel is not configured right now.", 503);
+  const segment = pickSegment(segments);
+  const [u] = await t
+    .update(users)
+    .set({ welcomeSpins: left - 1, xp: sql`${users.xp} + ${SPIN_XP}` })
+    .where(eq(users.id, userId))
+    .returning({ balance: users.balance, xp: users.xp });
+  let balance = u.balance;
+  if (segment.credits > 0) balance = await applyCredits(t, userId, segment.credits, "welcome_prize", `Welcome wheel: ${segment.label}`);
+  await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: 0, prize: segment.credits });
+  return { segmentId: segment.id, label: segment.label, prize: segment.credits, cost: 0, balance, xp: u.xp, welcome: true, welcomeLeft: left - 1 };
 }
 
 export async function claimDaily(db: Db, userId: number, now = new Date()) {
@@ -186,6 +211,26 @@ export async function adminSetPassword(db: Db, userId: number, password: string)
     .where(eq(users.id, userId))
     .returning({ id: users.id });
   if (!done.length) throw new AppError("not_found", "User not found.", 404);
+}
+
+/**
+ * A player asks for a password reset. We only record the request for the admin; nothing is changed and nothing
+ * about whether the account exists is revealed to the caller.
+ */
+export async function createResetRequest(db: Db, identifier: string) {
+  const id = identifier.trim().toLowerCase();
+  const [user] = await db.select({ id: users.id }).from(users).where(sql`${users.email} = ${id} or lower(${users.username}) = ${id}`);
+  const [dup] = await db
+    .select({ id: supportRequests.id })
+    .from(supportRequests)
+    .where(and(eq(supportRequests.status, "open"), user ? eq(supportRequests.userId, user.id) : eq(supportRequests.identifier, id)));
+  if (dup) return;
+  await db.insert(supportRequests).values({ identifier: id, userId: user?.id ?? null });
+}
+
+export async function setRequestStatus(db: Db, requestId: number, status: "open" | "done" | "dismissed") {
+  const done = await db.update(supportRequests).set({ status }).where(eq(supportRequests.id, requestId)).returning({ id: supportRequests.id });
+  if (!done.length) throw new AppError("not_found", "Request not found.", 404);
 }
 
 export function listTransactions(db: Db, userId: number, limit = 50) {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getDb } from "@/db";
 import { GameCard } from "@/components/GameCard";
 import { ClaimButton } from "@/components/ClaimButton";
-import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
+import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, SPIN_COST, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
 import { lobbyGames } from "@/lib/services";
@@ -23,13 +23,13 @@ export default async function Home() {
             Spin, play and climb the <span className="text-gold">VIP ladder</span>
           </h1>
           <p className="mt-3 text-muted">
-            A friendly prototype lobby. Join free, get {fmt(SIGNUP_BONUS)} virtual credits and try the Lucky Spin Wheel. Nothing here costs or pays real money.
+            A friendly prototype lobby. Join free and spin the welcome wheel for your first virtual credits, then try the Lucky Spin Wheel. Nothing here costs or pays real money.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             {user ? (
               <Link href="/spin" className="btn btn-gold">Spin the wheel</Link>
             ) : (
-              <Link href="/register" className="btn btn-gold">Get {fmt(SIGNUP_BONUS)} free credits</Link>
+              <Link href="/register" className="btn btn-gold">Join free and spin</Link>
             )}
             <Link href="/games" className="btn btn-ghost">Browse games</Link>
           </div>
@@ -70,7 +70,7 @@ export default async function Home() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["1. Join free", `Sign up and receive ${fmt(SIGNUP_BONUS)} demo credits instantly.`],
+          ["1. Join free", `Sign up at zero and take ${WELCOME_SPINS} free spins on the welcome wheel for your first credits.`],
           ["2. Play", `Each Lucky Spin costs ${SPIN_COST} credits. Prizes are added to your wallet right away.`],
           ["3. Level up", "Every spin earns XP. Higher VIP tiers unlock bigger daily bonuses."],
         ].map(([t, d]) => (

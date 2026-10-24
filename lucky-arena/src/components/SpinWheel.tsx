@@ -18,10 +18,11 @@ const polar = (deg: number, r = R) => {
   return [R + r * Math.cos(a), R + r * Math.sin(a)];
 };
 
-export function SpinWheel({ segments, cost, balance: initial, signedIn }: { segments: WheelSeg[]; cost: number; balance: number; signedIn: boolean }) {
+export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeLeft: initialLeft }: { segments: WheelSeg[]; cost: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
   const router = useRouter();
   const [angle, setAngle] = useState(0);
   const [balance, setBalance] = useState(initial);
+  const [welcomeLeft, setWelcomeLeft] = useState(initialLeft);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ prize: number; label: string } | null>(null);
   const [error, setError] = useState("");
@@ -43,12 +44,21 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn }: { segm
       const DURATION = reduce ? 600 : 4800;
       setDuration(DURATION);
       const idx = segments.findIndex((s) => s.id === data.segmentId);
+      if (idx < 0) {
+        // The wheel on screen is out of date (e.g. the welcome wheel just ended): show the result and reload.
+        setBalance(data.balance);
+        setWelcomeLeft(data.welcomeLeft);
+        setResult({ prize: data.prize, label: data.label });
+        router.refresh();
+        return;
+      }
       const center = (idx + 0.5) * sa + (Math.random() - 0.5) * sa * 0.6;
       const delta = ((((-center - angleRef.current) % 360) + 360) % 360) + (reduce ? 0 : 360 * 5);
       angleRef.current += delta;
       setAngle(angleRef.current);
       await new Promise((r) => setTimeout(r, DURATION + 100));
       setBalance(data.balance);
+      setWelcomeLeft(data.welcomeLeft);
       setResult({ prize: data.prize, label: data.label });
       router.refresh();
     } catch (e) {
@@ -58,7 +68,8 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn }: { segm
     }
   }
 
-  const canAfford = balance >= cost;
+  const free = welcomeLeft > 0;
+  const canAfford = free || balance >= cost;
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-5">
@@ -98,7 +109,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn }: { segm
         {error && <p className="font-semibold text-danger">{error}</p>}
         {result && (
           <p className="text-lg font-extrabold">
-            {result.prize > 0 ? <span className="text-gold">You won {fmt(result.prize)} credits!</span> : <span className="text-muted">No prize this time. Try again!</span>}
+            {result.prize > 0 ? <span className="text-gold">You won {fmt(result.prize)} credit{result.prize === 1 ? "" : "s"}!</span> : <span className="text-muted">{result.label === "Try next time" ? "Try next time!" : "No prize this time. Try again!"}</span>}
           </p>
         )}
       </div>
@@ -106,7 +117,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn }: { segm
       {signedIn ? (
         <>
           <button className="btn btn-gold w-full max-w-xs text-lg" onClick={spin} disabled={busy || !canAfford}>
-            {busy ? "Spinning..." : `Spin for ${cost} credits`}
+            {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${cost} credits`}
           </button>
           <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> demo credits</p>
           {!canAfford && (
@@ -117,7 +128,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn }: { segm
         </>
       ) : (
         <div className="text-center">
-          <p className="mb-3 text-muted">Sign in to get 1,000 free demo credits and spin.</p>
+          <p className="mb-3 text-muted">Create a free account to start at zero and spin the welcome wheel.</p>
           <Link href="/register" className="btn btn-gold">Create free account</Link>
         </div>
       )}

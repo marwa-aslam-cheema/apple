@@ -8,6 +8,7 @@ export const DDL = [
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    welcome_spins INTEGER NOT NULL DEFAULT 2,
     xp INTEGER NOT NULL DEFAULT 0,
     referral_code TEXT NOT NULL UNIQUE,
     referred_by INTEGER,
@@ -42,6 +43,7 @@ export const DDL = [
   // Added after the first release: keeps databases created earlier working.
   `ALTER TABLE games ADD COLUMN IF NOT EXISTS link TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE games ADD COLUMN IF NOT EXISTS image TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_spins INTEGER NOT NULL DEFAULT 2`,
   `CREATE TABLE IF NOT EXISTS promotions (
     id SERIAL PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
@@ -64,9 +66,19 @@ export const DDL = [
     label TEXT NOT NULL,
     credits INTEGER NOT NULL DEFAULT 0,
     weight INTEGER NOT NULL DEFAULT 1,
+    kind TEXT NOT NULL DEFAULT 'main',
     color TEXT NOT NULL DEFAULT '#7c5cff',
     sort_order INTEGER NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT TRUE
+  )`,
+  `ALTER TABLE wheel_segments ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'main'`,
+  `CREATE TABLE IF NOT EXISTS support_requests (
+    id SERIAL PRIMARY KEY,
+    kind TEXT NOT NULL DEFAULT 'password_reset',
+    identifier TEXT NOT NULL,
+    user_id INTEGER,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
   )`,
   `CREATE TABLE IF NOT EXISTS spins (
     id SERIAL PRIMARY KEY,

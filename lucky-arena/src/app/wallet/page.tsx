@@ -11,6 +11,7 @@ export const metadata: Metadata = { title: "Wallet" };
 
 const LABELS: Record<string, string> = {
   signup_bonus: "Welcome bonus",
+  welcome_prize: "Welcome wheel",
   referral_bonus: "Referral bonus",
   spin_cost: "Lucky Spin",
   spin_win: "Spin prize",

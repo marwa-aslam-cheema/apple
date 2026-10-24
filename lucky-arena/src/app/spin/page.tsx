@@ -12,18 +12,22 @@ export const metadata: Metadata = { title: "Lucky Spin" };
 
 export default async function SpinPage() {
   const [user, db] = await Promise.all([getCurrentUser(), getDb()]);
-  const segments = await activeWheel(db);
+  const welcomeLeft = user?.welcomeSpins ?? 0;
+  const segments = await activeWheel(db, welcomeLeft > 0 ? "welcome" : "main");
   const recent = user ? await db.select().from(spins).where(eq(spins.userId, user.id)).orderBy(desc(spins.id)).limit(8) : [];
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-3xl font-extrabold">Lucky Spin Wheel</h1>
-        <p className="mt-1 text-muted">{SPIN_COST} demo credits per spin. Virtual prizes only.</p>
+        <h1 className="text-3xl font-extrabold">{welcomeLeft > 0 ? "Welcome Wheel" : "Lucky Spin Wheel"}</h1>
+        <p className="mt-1 text-muted">
+          {welcomeLeft > 0 ? `${welcomeLeft} free spin${welcomeLeft > 1 ? "s" : ""} left. Small virtual prizes to get you started.` : `${SPIN_COST} demo credits per spin. Virtual prizes only.`}
+        </p>
       </div>
       <SpinWheel
         segments={segments.map((s) => ({ id: s.id, label: s.label, credits: s.credits, color: s.color }))}
         cost={SPIN_COST}
         balance={user?.balance ?? 0}
+        welcomeLeft={welcomeLeft}
         signedIn={!!user}
       />
       {user && recent.length > 0 && (

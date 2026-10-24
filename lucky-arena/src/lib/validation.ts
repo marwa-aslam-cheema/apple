@@ -43,6 +43,7 @@ export const segmentSchema = z.object({
   label: z.string().trim().min(1).max(20),
   credits: z.coerce.number().int().min(0).max(100000),
   weight: z.coerce.number().int().min(0).max(1000),
+  kind: z.enum(["main", "welcome"]).default("main"),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Colour must look like #7c5cff."),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
   active: z.boolean().default(true),
@@ -55,3 +56,8 @@ export const userAdminSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters.").max(72).optional(),
   role: z.enum(["user", "admin"]).optional(),
 });
+
+export const forgotSchema = z.object({
+  identifier: z.string().trim().min(1, "Enter your email or username.").max(120),
+});
+export const requestStatusSchema = z.object({ status: z.enum(["open", "done", "dismissed"]) });
