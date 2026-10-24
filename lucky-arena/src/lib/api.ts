@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { AppError } from "./services";
+import { AppError, isUniqueViolation } from "./services";
 
 /** Wraps a route handler: AppError and validation errors become clean JSON responses. */
 export function route<A extends unknown[]>(fn: (...args: A) => Promise<Response>) {
@@ -9,6 +9,7 @@ export function route<A extends unknown[]>(fn: (...args: A) => Promise<Response>
       return await fn(...args);
     } catch (e) {
       if (e instanceof AppError) return NextResponse.json({ error: e.message, code: e.code }, { status: e.status });
+      if (isUniqueViolation(e)) return NextResponse.json({ error: "That value is already used. Pick another one.", code: "duplicate" }, { status: 409 });
       if (e instanceof ZodError) {
         return NextResponse.json({ error: e.issues[0]?.message ?? "Invalid input.", code: "invalid" }, { status: 400 });
       }

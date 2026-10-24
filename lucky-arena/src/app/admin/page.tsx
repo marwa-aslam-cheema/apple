@@ -50,6 +50,7 @@ const PROMO_FIELDS: Field[] = [
 const REPLY_FIELDS: Field[] = [
   { key: "title", label: "Button title (short)", type: "text" },
   { key: "body", label: "Message", type: "text" },
+  { key: "shortcut", label: "Shortcut (optional: type it in the chat box to fill this message)", type: "text" },
   { key: "sortOrder", label: "Order", type: "number" },
 ];
 const WHEEL_FIELDS: Field[] = [
@@ -79,8 +80,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const rows = await db.select().from(quickReplies).orderBy(quickReplies.sortOrder, quickReplies.id);
     body = (
       <div className="space-y-4">
-        <p className="card p-4 text-sm">Quick replies appear as buttons above the message box in the admin chat. Click one to fill the box, then press Send. You can also type a message in the chat and press "Save as quick reply".</p>
-        <AdminResource resource="replies" titleKey="title" fields={REPLY_FIELDS} rows={rows} defaults={{ title: "", body: "", sortOrder: rows.length }} />
+        <p className="card p-4 text-sm">Quick replies appear as buttons above the message box in the admin chat. Click one to fill the box, then press Send. Give a reply a shortcut (for example ok) and typing just that word in the chat box fills the whole message. You can also type a message in the chat and press "Save as quick reply".</p>
+        <AdminResource resource="replies" titleKey="title" fields={REPLY_FIELDS} rows={rows} defaults={{ title: "", body: "", shortcut: "", sortOrder: rows.length }} />
       </div>
     );
   } else if (tab === "requests") {

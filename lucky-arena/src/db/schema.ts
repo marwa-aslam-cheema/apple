@@ -116,6 +116,7 @@ export const quickReplies = pgTable("quick_replies", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   body: text("body").notNull(),
+  shortcut: text("shortcut").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fmtDate } from "@/lib/format";
 import { sfxReceived, sfxSent, unlockSfx } from "@/lib/sfx";
+import { buildMap, expandShortcut, normalizeShortcut, type ShortcutMap } from "@/lib/shortcuts";
 
 export interface ChatMsg {
   id: number;
@@ -25,6 +26,10 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
   const input = useRef<HTMLTextAreaElement>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
+  const [shortcut, setShortcut] = useState("");
+  const [map, setMap] = useState<ShortcutMap>({});
+  const expanded = useRef<{ from: string; to: string } | null>(null); // last auto-fill, so Backspace can undo it
+  const suppress = useRef<string | null>(null); // a shortcut the admin undid: do not expand it again until the text changes
 
   const load = useCallback(async () => {
     try {
@@ -68,15 +73,55 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
     return () => window.removeEventListener("la:chat-fill", fill);
   }, [mine]);
 
+  // Admin: load the shortcuts (typing one alone in the box fills the saved reply).
+  useEffect(() => {
+    if (mine !== "admin") return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/admin/replies", { cache: "no-store" });
+        if (res.ok && alive) setMap(buildMap((await res.json()).items));
+      } catch {
+        /* offline: keep the shortcuts we have */
+      }
+    };
+    load();
+    window.addEventListener("la:quick-changed", load);
+    return () => {
+      alive = false;
+      window.removeEventListener("la:quick-changed", load);
+    };
+  }, [mine]);
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  /** Typing a shortcut alone fills the saved reply after a short pause, so longer words like "okay" are not cut in. */
+  function onType(v: string) {
+    setText(v);
+    if (mine !== "admin") return;
+    if (timer.current) clearTimeout(timer.current);
+    const key = normalizeShortcut(v);
+    if (suppress.current && key !== suppress.current) suppress.current = null;
+    if (suppress.current) return;
+    const hit = expandShortcut(v, map);
+    if (hit === null) return;
+    timer.current = setTimeout(() => {
+      expanded.current = { from: v.trim(), to: hit };
+      setText(hit);
+    }, 350);
+  }
+
   async function saveQuick() {
     const body = text.trim();
     if (!body || !title.trim()) return;
     try {
-      const res = await fetch("/api/admin/replies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body }) });
+      const res = await fetch("/api/admin/replies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body, shortcut }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
       setSaving(false);
       setTitle("");
+      setShortcut("");
       window.dispatchEvent(new Event("la:quick-changed"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save.");
@@ -88,7 +133,9 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
   }, [msgs.length]);
 
   async function send() {
-    const body = text.trim();
+    if (timer.current) clearTimeout(timer.current);
+    // Enter right after a shortcut sends the saved reply, not the shortcut itself.
+    const body = (mine === "admin" ? expandShortcut(text, map) : null) ?? text.trim();
     if (!body || busy) return;
     setBusy(true);
     setError("");
@@ -98,6 +145,7 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send.");
       setText("");
+      expanded.current = null;
       sfxSent();
       await load();
     } catch (e) {
@@ -126,6 +174,7 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
           {saving ? (
             <>
               <input className="input !min-h-8 !w-40 !py-1 text-sm" placeholder="Button title" aria-label="Quick reply title" maxLength={30} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input className="input !min-h-8 !w-32 !py-1 text-sm" placeholder="Shortcut (optional)" aria-label="Quick reply shortcut" maxLength={20} value={shortcut} onChange={(e) => setShortcut(e.target.value.replace(/\s/g, ""))} />
               <button type="button" className="btn btn-violet !min-h-8 !px-3 !py-1" disabled={!title.trim()} onClick={saveQuick}>Save</button>
               <button type="button" className="btn btn-ghost !min-h-8 !px-3 !py-1" onClick={() => setSaving(false)}>Cancel</button>
             </>
@@ -146,8 +195,17 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
           placeholder="Type a message"
           aria-label="Message"
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          onChange={(e) => onType(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" && mine === "admin" && expanded.current && text === expanded.current.to) {
+              e.preventDefault(); // undo the auto-fill: back to the shortcut the admin typed
+              suppress.current = normalizeShortcut(expanded.current.from);
+              setText(expanded.current.from);
+              expanded.current = null;
+              return;
+            }
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+          }}
         />
         <button className="btn btn-gold" disabled={busy || !text.trim()}>Send</button>
       </form>

@@ -53,6 +53,7 @@ export const segmentSchema = z.object({
 export const replySchema = z.object({
   title: z.string().trim().min(1, "Give the reply a short title.").max(30),
   body: z.string().trim().min(1, "Write the message.").max(1000),
+  shortcut: z.string().trim().toLowerCase().max(20, "Shortcut: 20 characters at most.").regex(/^\S*$/, "A shortcut cannot contain spaces.").default(""),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
 });
 

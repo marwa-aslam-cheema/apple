@@ -98,8 +98,11 @@ export const DDL = [
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
+    shortcut TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0
   )`,
+  `ALTER TABLE quick_replies ADD COLUMN IF NOT EXISTS shortcut TEXT NOT NULL DEFAULT ''`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS quick_replies_shortcut_idx ON quick_replies (shortcut) WHERE shortcut <> ''`,
   `CREATE TABLE IF NOT EXISTS spins (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
