@@ -26,6 +26,7 @@ const GAME_FIELDS: Field[] = [
   { key: "category", label: "Category", type: "select", options: ["Wheel", "Cards", "Arcade", "Puzzle", "Trivia"] },
   { key: "description", label: "Description", type: "text" },
   { key: "link", label: "Game link (https://...)", type: "text" },
+  { key: "image", label: "Picture link (https://... .png/.jpg)", type: "text" },
   { key: "hue", label: "Colour hue (0-360)", type: "number" },
   { key: "sortOrder", label: "Sort order", type: "number" },
   { key: "featured", label: "Featured", type: "bool" },
@@ -62,7 +63,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = <AdminUsers users={list} selfId={admin.id} />;
   } else if (tab === "games") {
     const rows = await db.select().from(games).orderBy(games.sortOrder, games.id);
-    body = <AdminResource resource="games" titleKey="title" fields={GAME_FIELDS} rows={rows} defaults={{ title: "", slug: "", category: "Arcade", description: "", link: "", hue: 260, sortOrder: 0, featured: false, playable: false, active: true }} />;
+    body = <AdminResource resource="games" titleKey="title" fields={GAME_FIELDS} rows={rows} defaults={{ title: "", slug: "", category: "Arcade", description: "", link: "", image: "", hue: 260, sortOrder: 0, featured: false, playable: false, active: true }} />;
   } else if (tab === "promos") {
     const rows = (await db.select().from(promotions).orderBy(promotions.id)).map(({ createdAt: _c, ...r }) => r);
     body = <AdminResource resource="promos" titleKey="title" fields={PROMO_FIELDS} rows={rows} defaults={{ title: "", code: "", description: "", rewardCredits: 100, claimable: true, active: true }} />;

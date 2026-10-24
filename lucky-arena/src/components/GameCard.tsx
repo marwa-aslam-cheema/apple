@@ -39,7 +39,12 @@ export function GameCard({ game }: { game: Game }) {
   const inner = (
     <>
       <div className="relative aspect-square overflow-hidden rounded-xl">
-        <GameArt hue={game.hue} category={game.category} />
+        {game.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={game.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+        ) : (
+          <GameArt hue={game.hue} category={game.category} />
+        )}
         {game.featured && <span className="absolute left-2 top-2 rounded-full bg-gold px-2 py-0.5 text-[10px] font-extrabold text-black">HOT</span>}
         <span className={`absolute bottom-2 right-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${game.playable || game.link ? "bg-teal text-black" : "bg-black/60 text-muted"}`}>
           {game.playable || game.link ? "PLAY" : "SOON"}

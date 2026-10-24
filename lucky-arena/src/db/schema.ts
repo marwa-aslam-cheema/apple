@@ -40,6 +40,7 @@ export const games = pgTable("games", {
   category: text("category").notNull(),
   description: text("description").notNull().default(""),
   link: text("link").notNull().default(""),
+  image: text("image").notNull().default(""),
   hue: integer("hue").notNull().default(260),
   featured: boolean("featured").notNull().default(false),
   playable: boolean("playable").notNull().default(false),

@@ -61,3 +61,12 @@ describe("game link", () => {
     expect(() => gameSchema.parse({ ...base, link: "example.com" })).toThrow();
   });
 });
+
+describe("game image", () => {
+  const base = { slug: "my-game", title: "My Game", category: "Arcade" };
+  it("accepts http(s) image links only", () => {
+    expect(gameSchema.parse({ ...base, image: "https://example.com/a.png" }).image).toBe("https://example.com/a.png");
+    expect(gameSchema.parse(base).image).toBe("");
+    expect(() => gameSchema.parse({ ...base, image: "javascript:alert(1)" })).toThrow();
+  });
+});
