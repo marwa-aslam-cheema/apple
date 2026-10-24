@@ -50,6 +50,7 @@ const WHEEL_FIELDS: Field[] = [
   { key: "label", label: "Label", type: "text" },
   { key: "credits", label: "Prize credits", type: "number" },
   { key: "kind", label: "Wheel (main = paid spins, welcome = free first spins)", type: "select", options: ["main", "welcome"] },
+  { key: "icon", label: "Icon (an emoji, e.g. a slot machine)", type: "text" },
   { key: "weight", label: "Weight (chance)", type: "number" },
   { key: "color", label: "Colour", type: "color" },
   { key: "sortOrder", label: "Order", type: "number" },
@@ -94,7 +95,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = (
       <div className="space-y-4">
         <p className="card p-4 text-sm">Expected return per paid spin on the main wheel: <b className="text-gold">{(rtp * 100).toFixed(1)}%</b> of the {SPIN_COST} credit cost. Above 100% means the demo economy inflates over time. Keep at least 2 active segments with weight above 0.</p>
-        <AdminResource resource="wheel" titleKey="label" fields={WHEEL_FIELDS} rows={rows} defaults={{ label: "", credits: 0, weight: 10, kind: "main", color: "#7c5cff", sortOrder: rows.length, active: true }} />
+        <AdminResource resource="wheel" titleKey="label" fields={WHEEL_FIELDS} rows={rows} defaults={{ label: "", credits: 0, weight: 10, kind: "main", icon: "", color: "#7c5cff", sortOrder: rows.length, active: true }} />
       </div>
     );
   } else {

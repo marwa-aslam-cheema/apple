@@ -2,15 +2,55 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fmt } from "@/lib/format";
 import { sfxResult, sfxSpin, unlockSfx } from "@/lib/sfx";
+import { segmentLayout } from "@/lib/wheel-layout";
 
 export interface WheelSeg {
   id: number;
   label: string;
+  icon: string;
   credits: number;
   color: string;
+}
+
+interface Win {
+  prize: number;
+  label: string;
+  icon: string;
+}
+
+/** Celebration shown for every prize except "Try again". */
+function WinPopup({ win, onClose }: { win: Win; onClose: () => void }) {
+  const jackpot = win.prize >= 1000;
+  const btn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    btn.current?.focus();
+    const t = setTimeout(onClose, jackpot ? 9000 : 6000);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [jackpot, onClose]);
+  const colors = ["#ffcf4a", "#ff4d8d", "#2fe0a8", "#fff4e0", "#b3123f"];
+  return (
+    <div role="dialog" aria-modal="true" aria-label={jackpot ? "Jackpot" : "You won"} className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <button className="absolute inset-0 bg-black/70 backdrop-blur-sm" aria-label="Close" onClick={onClose} tabIndex={-1} />
+      <div className={`card marquee pop-in relative w-full max-w-sm overflow-hidden p-10 text-center ${jackpot ? "shadow-[0_0_80px_rgba(255,207,74,0.6)]" : ""}`}>
+        {Array.from({ length: jackpot ? 40 : 22 }, (_, i) => (
+          <span key={i} className="confetti" style={{ left: `${(i * 37) % 100}%`, background: colors[i % colors.length], animationDelay: `${(i % 9) * 0.28}s`, animationDuration: `${2.2 + (i % 5) * 0.4}s` }} />
+        ))}
+        <div className="float-slow relative text-7xl" aria-hidden="true">{win.icon || "🎉"}</div>
+        <p className="neon-text relative mt-3 text-xs font-extrabold uppercase tracking-[0.35em]">{jackpot ? "Jackpot!" : "You won"}</p>
+        <p className="gold-text relative font-[family-name:var(--font-display)] text-6xl font-extrabold">+{fmt(win.prize)}</p>
+        <p className="relative mb-5 text-sm text-muted">demo credit{win.prize === 1 ? "" : "s"}</p>
+        <button ref={btn} className="btn btn-gold relative w-full" onClick={onClose}>Collect</button>
+      </div>
+    </div>
+  );
 }
 
 const R = 150;
@@ -27,6 +67,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ prize: number; label: string } | null>(null);
   const [error, setError] = useState("");
+  const [win, setWin] = useState<Win | null>(null);
   const angleRef = useRef(0);
 
   const n = segments.length;
@@ -51,6 +92,8 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
         setBalance(data.balance);
         setWelcomeLeft(data.welcomeLeft);
         setResult({ prize: data.prize, label: data.label });
+        sfxResult(data.prize);
+        if (data.prize > 0) setWin({ prize: data.prize, label: data.label, icon: data.icon ?? "" });
         router.refresh();
         return;
       }
@@ -64,6 +107,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
       setWelcomeLeft(data.welcomeLeft);
       setResult({ prize: data.prize, label: data.label });
       sfxResult(data.prize);
+      if (data.prize > 0) setWin({ prize: data.prize, label: data.label, icon: data.icon ?? "" }); // no popup for "Try again"
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Spin failed.");
@@ -90,17 +134,52 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
           className="relative w-full"
           style={{ transform: `rotate(${angle}deg)`, transition: `transform ${duration}ms cubic-bezier(0.17, 0.67, 0.12, 1)` }}
         >
+          <defs>
+            <linearGradient id="jp" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ff3b3b" />
+              <stop offset="0.5" stopColor="#ffb52e" />
+              <stop offset="1" stopColor="#ff3b3b" />
+            </linearGradient>
+          </defs>
           <circle cx={R} cy={R} r={R - 2} fill="#12142d" stroke="#f5b942" strokeWidth="4" />
           {segments.map((s, i) => {
             const [x1, y1] = polar(i * sa, R - 8);
             const [x2, y2] = polar((i + 1) * sa, R - 8);
-            const [tx, ty] = polar((i + 0.5) * sa, R * 0.66);
+            const L = segmentLayout(s.label, sa);
+            const rText = (L.textInner + L.textOuter) / 2;
+            const maxLen = L.textOuter - L.textInner;
+            const mid = (i + 0.5) * sa;
+            const flip = mid > 180; // left half: read towards the centre so digits are never upside-down
             return (
               <g key={s.id}>
-                <path d={`M${R} ${R} L${x1} ${y1} A${R - 8} ${R - 8} 0 0 1 ${x2} ${y2}Z`} fill={s.color} stroke="#0a0b1e" strokeWidth="2" />
-                <text x={tx} y={ty} fill="white" fontSize={s.label.length > 8 ? 11 : 15} fontWeight="800" textAnchor="middle" dominantBaseline="middle" transform={`rotate(${(i + 0.5) * sa} ${tx} ${ty})`}>
-                  {s.label}
-                </text>
+                <path d={`M${R} ${R} L${x1} ${y1} A${R - 8} ${R - 8} 0 0 1 ${x2} ${y2}Z`} fill={s.credits >= 1000 ? "url(#jp)" : s.color} stroke="#0a0b1e" strokeWidth="2" />
+                {/* Inside this group "up" points from the centre to the rim, so icon and label sit along the slice's own radius. */}
+                <g transform={`rotate(${(i + 0.5) * sa} ${R} ${R})`}>
+                  {s.icon && (
+                    <text x={R} y={R - L.iconRadius} fontSize={L.iconSize} textAnchor="middle" dominantBaseline="central">{s.icon}</text>
+                  )}
+                  <g transform={`rotate(${flip ? 90 : -90} ${R} ${R - rText})`}>
+                    {L.lines.map((line, k) => (
+                      <text
+                        key={k}
+                        x={R}
+                        y={R - rText + (k - (L.lines.length - 1) / 2) * L.fontSize * 1.15}
+                        fontSize={L.fontSize}
+                        fontWeight="800"
+                        fill="white"
+                        stroke="rgba(0,0,0,0.6)"
+                        strokeWidth="2.4"
+                        paintOrder="stroke"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        textLength={line.length * L.fontSize * 0.68 > maxLen ? maxLen : undefined}
+                        lengthAdjust="spacingAndGlyphs"
+                      >
+                        {line}
+                      </text>
+                    ))}
+                  </g>
+                </g>
               </g>
             );
           })}
@@ -115,6 +194,8 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
         </svg>
         </div>
       </div>
+
+      {win && <WinPopup win={win} onClose={() => setWin(null)} />}
 
       <div aria-live="polite" className="min-h-14 text-center">
         {error && <p className="font-semibold text-danger">{error}</p>}

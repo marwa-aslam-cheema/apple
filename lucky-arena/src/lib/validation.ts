@@ -44,6 +44,7 @@ export const segmentSchema = z.object({
   credits: z.coerce.number().int().min(0).max(100000),
   weight: z.coerce.number().int().min(0).max(1000),
   kind: z.enum(["main", "welcome"]).default("main"),
+  icon: z.string().trim().max(8).default(""),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Colour must look like #7c5cff."),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
   active: z.boolean().default(true),

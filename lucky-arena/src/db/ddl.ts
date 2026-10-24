@@ -67,6 +67,7 @@ export const DDL = [
     credits INTEGER NOT NULL DEFAULT 0,
     weight INTEGER NOT NULL DEFAULT 1,
     kind TEXT NOT NULL DEFAULT 'main',
+    icon TEXT NOT NULL DEFAULT '',
     color TEXT NOT NULL DEFAULT '#7c5cff',
     sort_order INTEGER NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT TRUE
@@ -74,6 +75,7 @@ export const DDL = [
   `ALTER TABLE wheel_segments ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'main'`,
   // Recolour wheel segments that still have the first release's default colours (admin-chosen colours are left alone).
   `UPDATE wheel_segments SET color = CASE color WHEN '#2b2f5e' THEN '#17101c' WHEN '#3b3f7a' THEN '#2a1a33' WHEN '#7c5cff' THEN '#b3123f' WHEN '#3b82f6' THEN '#0e6b4c' WHEN '#14b8a6' THEN '#1e5aa8' WHEN '#f472b6' THEN '#d6336c' WHEN '#f59e0b' THEN '#e0a526' WHEN '#ef4444' THEN '#ff3b3b' ELSE color END WHERE color IN ('#2b2f5e','#3b3f7a','#7c5cff','#3b82f6','#14b8a6','#f472b6','#f59e0b','#ef4444')`,
+  `ALTER TABLE wheel_segments ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT ''`,
   `CREATE TABLE IF NOT EXISTS support_requests (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL DEFAULT 'password_reset',

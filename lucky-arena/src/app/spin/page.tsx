@@ -24,7 +24,7 @@ export default async function SpinPage() {
         </p>
       </div>
       <SpinWheel
-        segments={segments.map((s) => ({ id: s.id, label: s.label, credits: s.credits, color: s.color }))}
+        segments={segments.map((s) => ({ id: s.id, label: s.label, icon: s.icon, credits: s.credits, color: s.color }))}
         cost={SPIN_COST}
         balance={user?.balance ?? 0}
         welcomeLeft={welcomeLeft}

@@ -77,6 +77,7 @@ export const wheelSegments = pgTable("wheel_segments", {
   credits: integer("credits").notNull().default(0),
   weight: integer("weight").notNull().default(1),
   kind: text("kind").notNull().default("main"),
+  icon: text("icon").notNull().default(""),
   color: text("color").notNull().default("#7c5cff"),
   sortOrder: integer("sort_order").notNull().default(0),
   active: boolean("active").notNull().default(true),

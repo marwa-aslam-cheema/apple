@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
 import { games, promotions, users, wheelSegments } from "./schema";
 
@@ -25,24 +25,32 @@ const PROMOS = [
   { code: "VIPCLUB", title: "VIP Club", description: "Earn XP with every spin to unlock higher tiers and bigger daily bonuses.", rewardCredits: 0, claimable: false },
 ];
 
-// Weighted so the expected return is slightly below the spin cost, like a real balanced prize wheel.
+// Main wheel: 12 slices, each with its own emoji. Weighted so the expected return stays below the 50 credit spin cost
+// (about 83%, see tests/wheel.test.ts). Rarer = bigger.
 const SEGMENTS = [
-  { label: "Try Again", credits: 0, weight: 48, color: "#17101c" },
-  { label: "20", credits: 20, weight: 48, color: "#b3123f" },
-  { label: "40", credits: 40, weight: 40, color: "#0e6b4c" },
-  { label: "80", credits: 80, weight: 24, color: "#1e5aa8" },
-  { label: "Try Again", credits: 0, weight: 16, color: "#17101c" },
-  { label: "120", credits: 120, weight: 12, color: "#d6336c" },
-  { label: "300", credits: 300, weight: 5, color: "#e0a526" },
-  { label: "JACKPOT 1000", credits: 1000, weight: 1, color: "#ff3b3b" },
-]; // expected return ~87% of the 50 credit spin cost (see tests/wheel.test.ts)
+  { label: "Try Again", icon: "🔄", credits: 0, weight: 50, color: "#17101c" },
+  { label: "10", icon: "🍒", credits: 10, weight: 52, color: "#b3123f" },
+  { label: "20", icon: "🍋", credits: 20, weight: 44, color: "#0e6b4c" },
+  { label: "40", icon: "🔔", credits: 40, weight: 36, color: "#2a1a33" },
+  { label: "Try Again", icon: "🔄", credits: 0, weight: 36, color: "#17101c" },
+  { label: "60", icon: "🍀", credits: 60, weight: 24, color: "#1e5aa8" },
+  { label: "80", icon: "💎", credits: 80, weight: 20, color: "#d6336c" },
+  { label: "100", icon: "👑", credits: 100, weight: 14, color: "#e0a526" },
+  { label: "150", icon: "🎁", credits: 150, weight: 10, color: "#0e6b4c" },
+  { label: "200", icon: "⭐", credits: 200, weight: 8, color: "#b3123f" },
+  { label: "500", icon: "🏆", credits: 500, weight: 2, color: "#2a1a33" },
+  { label: "JACKPOT 1000", icon: "🎰", credits: 1000, weight: 1, color: "#ff3b3b" },
+];
+// The first release's default wheel (no icons). Databases that still hold exactly this get the new wheel.
+const OLD_MAIN_LABELS = ["Try Again", "20", "40", "80", "Try Again", "120", "300", "JACKPOT 1000"];
+const WELCOME_ICONS: Record<string, string> = { "Try next time": "🍀", "1 credit": "🪙", "2 credits": "💰" };
 
 // Welcome wheel for brand-new players: tiny prizes, mostly "try next time" (each player only gets WELCOME_SPINS spins).
 const WELCOME_SEGMENTS = [
-  { label: "Try next time", credits: 0, weight: 30, color: "#17101c" },
-  { label: "1 credit", credits: 1, weight: 30, color: "#b3123f" },
-  { label: "Try next time", credits: 0, weight: 30, color: "#2a1a33" },
-  { label: "2 credits", credits: 2, weight: 10, color: "#e0a526" },
+  { label: "Try next time", icon: "🍀", credits: 0, weight: 30, color: "#17101c" },
+  { label: "1 credit", icon: "🪙", credits: 1, weight: 30, color: "#b3123f" },
+  { label: "Try next time", icon: "🍀", credits: 0, weight: 30, color: "#2a1a33" },
+  { label: "2 credits", icon: "💰", credits: 2, weight: 10, color: "#e0a526" },
 ];
 
 export async function seed(db: Db) {
@@ -71,8 +79,16 @@ export async function seed(db: Db) {
   const [{ value: promoCount }] = await db.select({ value: count() }).from(promotions);
   if (promoCount === 0) await db.insert(promotions).values(PROMOS);
 
-  const [{ value: mainCount }] = await db.select({ value: count() }).from(wheelSegments).where(eq(wheelSegments.kind, "main"));
-  if (mainCount === 0) await db.insert(wheelSegments).values(SEGMENTS.map((s, i) => ({ ...s, kind: "main", sortOrder: i })));
+  const main = await db.select().from(wheelSegments).where(eq(wheelSegments.kind, "main")).orderBy(wheelSegments.sortOrder, wheelSegments.id);
+  const isFirstReleaseWheel = main.length === OLD_MAIN_LABELS.length && main.every((m, i) => m.label === OLD_MAIN_LABELS[i] && m.icon === "");
+  if (main.length === 0 || isFirstReleaseWheel) {
+    if (isFirstReleaseWheel) await db.delete(wheelSegments).where(eq(wheelSegments.kind, "main"));
+    await db.insert(wheelSegments).values(SEGMENTS.map((s, i) => ({ ...s, kind: "main", sortOrder: i })));
+  }
   const [{ value: welcomeCount }] = await db.select({ value: count() }).from(wheelSegments).where(eq(wheelSegments.kind, "welcome"));
   if (welcomeCount === 0) await db.insert(wheelSegments).values(WELCOME_SEGMENTS.map((s, i) => ({ ...s, kind: "welcome", sortOrder: i })));
+  // Welcome segments created before icons existed get the matching icon (custom labels are left alone).
+  for (const [label, icon] of Object.entries(WELCOME_ICONS)) {
+    await db.update(wheelSegments).set({ icon }).where(and(eq(wheelSegments.kind, "welcome"), eq(wheelSegments.label, label), eq(wheelSegments.icon, "")));
+  }
 }

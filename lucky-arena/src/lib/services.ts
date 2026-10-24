@@ -144,7 +144,7 @@ export async function spinWheel(db: Db, userId: number) {
       .where(eq(users.id, userId))
       .returning({ xp: users.xp });
     await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: SPIN_COST, prize: segment.credits });
-    return { segmentId: segment.id, label: segment.label, prize: segment.credits, cost: SPIN_COST, balance, xp: u.xp, welcome: false, welcomeLeft: 0 };
+    return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize: segment.credits, cost: SPIN_COST, balance, xp: u.xp, welcome: false, welcomeLeft: 0 };
   });
 }
 
@@ -161,7 +161,7 @@ async function welcomeSpin(t: Db, userId: number, left: number) {
   let balance = u.balance;
   if (segment.credits > 0) balance = await applyCredits(t, userId, segment.credits, "welcome_prize", `Welcome wheel: ${segment.label}`);
   await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: 0, prize: segment.credits });
-  return { segmentId: segment.id, label: segment.label, prize: segment.credits, cost: 0, balance, xp: u.xp, welcome: true, welcomeLeft: left - 1 };
+  return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize: segment.credits, cost: 0, balance, xp: u.xp, welcome: true, welcomeLeft: left - 1 };
 }
 
 export async function claimDaily(db: Db, userId: number, now = new Date()) {

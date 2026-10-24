@@ -99,9 +99,14 @@ h1, h2 { font-family: var(--font-display); letter-spacing: 0.01em; }
   .float-slower { animation: floaty 9s ease-in-out infinite reverse; }
   @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-12px) rotate(calc(var(--r, 0deg) + 4deg)); } }
 
+  .confetti { position: absolute; top: -14px; width: 8px; height: 14px; border-radius: 2px; pointer-events: none; animation: confetti-fall 3s linear infinite; }
+  @keyframes confetti-fall { to { transform: translateY(28rem) rotate(540deg); opacity: 0; } }
+  .pop-in { animation: pop-in .4s cubic-bezier(.2, 1.4, .4, 1) both; }
+  @keyframes pop-in { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
   .bulb { animation: bulbs 1s steps(1, end) infinite; }
   .bulb:nth-child(even) { animation-delay: .5s; }
   .spotlight { background: conic-gradient(from 180deg at 50% -10%, transparent 150deg, rgba(255, 220, 140, .14) 170deg, transparent 190deg); }
 }
 :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } .confetti { display: none; } }
