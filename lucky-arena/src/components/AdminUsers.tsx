@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { tagList } from "@/lib/tags";
 import { fmt } from "@/lib/format";
 
 export interface AdminUserRow {
@@ -66,7 +67,7 @@ function UserRow({ u, self }: { u: AdminUserRow; self: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-bold">
-            {u.username} {u.role === "admin" && <span className="rounded bg-violet px-1.5 text-xs">admin</span>} {u.banned && <span className="rounded bg-danger px-1.5 text-xs">banned</span>} {u.tag && <span className="rounded bg-violet/30 px-1.5 text-xs">{u.tag}</span>}
+            {u.username} {u.role === "admin" && <span className="rounded bg-violet px-1.5 text-xs">admin</span>} {u.banned && <span className="rounded bg-danger px-1.5 text-xs">banned</span>} {tagList(u.tag).map((t) => <span key={t} className="rounded-full bg-violet/30 px-2 text-xs font-semibold">{t}</span>)}
           </p>
           <p className="truncate text-sm text-ink">{u.email}</p>
         </div>

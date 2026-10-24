@@ -7,6 +7,7 @@ import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
+import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
 import { socialSchema } from "@/lib/validation";
 import { expectedReturn } from "@/lib/wheel";
@@ -577,5 +578,14 @@ describe("chat pictures", () => {
     expect(await code(saveChatImage(db, 1, fake))).toBe("invalid");
     expect(await code(saveChatImage(db, 1, "data:text/html;base64,AAAA"))).toBe("invalid");
     expect(await code(postChat(db, 1, "user", "   "))).toBe("invalid");
+  });
+});
+
+describe("player tags", () => {
+  it("keeps a clean, de-duplicated list", () => {
+    expect(joinTags(["ludo: ali99", " vip ", "vip", "", "a|b"])).toBe("ludo: ali99|vip|a b");
+    expect(tagList("ludo: ali99|vip")).toEqual(["ludo: ali99", "vip"]);
+    expect(tagList("")).toEqual([]);
+    expect(joinTags(Array.from({ length: 12 }, (_, i) => `t${i}`)).split("|")).toHaveLength(8);
   });
 });

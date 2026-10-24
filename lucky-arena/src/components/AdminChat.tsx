@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BroadcastPanel } from "./BroadcastPanel";
 import { ChatBox } from "./ChatBox";
 import { Icon } from "./Icon";
 import { QuickReplies } from "./QuickReplies";
+import { TAGS_MAX, TAG_MAX, joinTags, tagList } from "@/lib/tags";
 
 /** Adds virtual credits to this player and sends them the "Added ..." message in one click. */
 function AddCredits({ userId, onDone }: { userId: number; onDone: () => void }) {
@@ -39,19 +40,58 @@ function AddCredits({ userId, onDone }: { userId: number; onDone: () => void }) 
   );
 }
 
-/** A short note kept beside the player's name (for example their name inside a game). Shown in the list, Users and History too. */
-function TagEditor({ userId, tag, onSaved }: { userId: number; tag: string; onSaved: () => void }) {
-  const [text, setText] = useState(tag);
-  const [saved, setSaved] = useState(false);
-  async function save() {
-    const res = await fetch(`/api/admin/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag: text }) });
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 1500); onSaved(); }
+/** Tags kept beside the player's name (for example their name inside a game). Shown in the list, Users and History too. */
+function TagBar({ userId, tag, onSaved }: { userId: number; tag: string; onSaved: () => void }) {
+  const [tags, setTags] = useState(tagList(tag));
+  const latest = useRef(tags); // the newest list, so two quick additions never overwrite each other
+  latest.current = tags;
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => { setTags(tagList(tag)); setAdding(false); setText(""); setError(""); }, [userId, tag]);
+
+  async function save(next: string[]) {
+    setError("");
+    latest.current = tagList(joinTags(next));
+    setTags(latest.current); // show it straight away; the server confirms in the background
+    const res = await fetch(`/api/admin/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag: joinTags(next) }) });
+    if (!res.ok) return setError("Could not save the tag.");
+    onSaved();
   }
+  function add() {
+    const t = text.trim();
+    setText("");
+    setAdding(false);
+    if (t) void save([...latest.current, t]);
+  }
+
   return (
-    <form className="flex items-center gap-2 border-b border-line bg-surface-2/60 p-2" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-      <input className="input !min-h-9 min-w-0 flex-1 !py-1" placeholder="Tag: e.g. game username" aria-label="Player tag" maxLength={60} value={text} onChange={(e) => setText(e.target.value)} />
-      <button className="btn btn-ghost !min-h-9 !px-3 !py-1" disabled={text.trim() === tag}>{saved ? "Saved" : "Save tag"}</button>
-    </form>
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
+      {tags.map((t) => (
+        <span key={t} className="inline-flex items-center gap-1 rounded-full bg-violet/30 py-0.5 pl-2.5 pr-1 text-xs font-semibold">
+          {t}
+          <button type="button" className="flex h-4 w-4 items-center justify-center rounded-full text-muted hover:bg-black/30 hover:text-ink" aria-label={`Remove tag ${t}`} onClick={() => void save(latest.current.filter((x) => x !== t))}>×</button>
+        </span>
+      ))}
+      {adding ? (
+        <input
+          autoFocus
+          className="input !min-h-7 !w-40 !rounded-full !px-3 !py-0.5 text-xs"
+          placeholder="Type a tag, press Enter"
+          aria-label="New tag"
+          maxLength={TAG_MAX}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } if (e.key === "Escape") { setAdding(false); setText(""); } }}
+          onBlur={add}
+        />
+      ) : tags.length < TAGS_MAX ? (
+        <button type="button" className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-0.5 text-xs font-semibold text-muted hover:border-gold hover:text-gold" onClick={() => setAdding(true)} aria-label="Add a tag">
+          <span aria-hidden="true">+</span> Tag
+        </button>
+      ) : null}
+      {error && <span role="alert" className="text-xs text-danger">{error}</span>}
+    </div>
   );
 }
 
@@ -104,12 +144,22 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
   const counts = { all: list.length, unread: list.filter((c) => c.unread > 0).length, online: list.filter((c) => c.online).length };
   const shown = list.filter((c) => tab === "all" || (tab === "unread" ? c.unread > 0 : c.online));
   const tabs = (
-    <div className="flex gap-1 border-b border-line p-2" role="tablist" aria-label="Filter conversations">
-      {(["all", "unread", "online"] as const).map((t) => (
-        <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`chip flex-1 justify-center !px-2 !py-1 capitalize ${tab === t ? "border-gold text-gold" : ""}`}>
-          {t === "online" && <span className="mr-1 inline-block h-2 w-2 rounded-full bg-green-500" aria-hidden="true" />}{t} ({counts[t]})
-        </button>
-      ))}
+    <div className="p-2">
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1" role="tablist" aria-label="Filter conversations">
+        {([["all", "All"], ["unread", "Unread"], ["online", "Online"]] as const).map(([t, label]) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-xs font-bold transition-colors ${tab === t ? "bg-surface text-gold shadow" : "text-muted hover:text-ink"}`}
+          >
+            {t === "online" && <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" aria-hidden="true" />}
+            <span className="truncate">{label}</span>
+            <span className={`rounded-full px-1.5 text-[10px] ${t === "unread" && counts.unread > 0 ? "bg-gold text-black" : "bg-black/30"}`}>{counts[t]}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -127,10 +177,16 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
               <b className="flex min-w-0 items-center gap-1.5 truncate text-sm">
                 {c.online && <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-green-500 shadow-[0_0_6px_#22c55e]" role="img" aria-label="Online" title="Online" />}
                 <span className="truncate">{c.username}</span>
-                {c.tag && <span className="truncate rounded bg-violet/30 px-1.5 text-[11px] font-semibold text-ink">{c.tag}</span>}
+                
               </b>
               {c.unread > 0 && <span className="rounded-full bg-gold px-2 text-xs font-extrabold text-black">{c.unread}</span>}
             </span>
+            {tagList(c.tag).length > 0 && (
+              <span className="mt-0.5 flex flex-wrap gap-1">
+                {tagList(c.tag).slice(0, 2).map((t) => <span key={t} className="max-w-[8rem] truncate rounded-full bg-violet/30 px-2 text-[10px] font-semibold">{t}</span>)}
+                {tagList(c.tag).length > 2 && <span className="text-[10px] text-muted">+{tagList(c.tag).length - 2}</span>}
+              </span>
+            )}
             <span className="block truncate text-xs text-muted">{c.lastSender === "admin" ? "You: " : ""}{c.last}</span>
           </button>
         </li>
@@ -144,10 +200,10 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
         {compact && <button className="rounded-lg px-2 py-1 hover:bg-surface-2" onClick={() => setThread(false)} aria-label="Back to conversations">&larr;</button>}
         <span className="truncate">
           {current.online && <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-green-500" role="img" aria-label="Online" title="Online" />}
-          {current.username} {current.tag && <span className="rounded bg-violet/30 px-1.5 text-xs">{current.tag}</span>} <span className="font-normal text-muted">· {current.email}</span>
+          {current.username} <span className="font-normal text-muted">· {current.email}</span>
         </span>
       </h2>
-      <TagEditor key={current.userId} userId={current.userId} tag={current.tag} onSaved={refresh} />
+      <TagBar userId={current.userId} tag={current.tag} onSaved={refresh} />
       <AddCredits userId={current.userId} onDone={refresh} />
       <QuickReplies />
       <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "min-h-0 flex-1" : "h-[24rem] max-h-[60vh]"} />
@@ -163,7 +219,7 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-[16rem_1fr]">
+    <div className="grid gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
       <div className="card flex flex-col">
         <div className="border-b border-line p-2">{broadcastButton}</div>
         {tabs}

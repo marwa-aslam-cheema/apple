@@ -7,6 +7,7 @@ import { AdminUserActions } from "@/components/AdminUsers";
 import { games as gamesTable } from "@/db/schema";
 import { listGameAccounts } from "@/lib/game-sessions";
 import { eq } from "drizzle-orm";
+import { tagList } from "@/lib/tags";
 import { fmt, fmtDate } from "@/lib/format";
 import { TX_LABELS } from "@/lib/labels";
 import { requireAdminPage } from "@/lib/session";
@@ -44,7 +45,7 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
       </div>
 
       <section className="card space-y-1 p-5">
-        <h1 className="text-2xl font-extrabold">{u.username} {u.banned && <span className="rounded bg-danger px-2 py-0.5 text-sm">banned</span>} {u.role === "admin" && <span className="rounded bg-violet px-2 py-0.5 text-sm">admin</span>} {u.tag && <span className="rounded bg-violet/30 px-2 py-0.5 text-sm">{u.tag}</span>}</h1>
+        <h1 className="text-2xl font-extrabold">{u.username} {u.banned && <span className="rounded bg-danger px-2 py-0.5 text-sm">banned</span>} {u.role === "admin" && <span className="rounded bg-violet px-2 py-0.5 text-sm">admin</span>} {tagList(u.tag).map((t) => <span key={t} className="rounded-full bg-violet/30 px-2 py-0.5 text-sm">{t}</span>)}</h1>
         <p className="text-ink">{u.email}</p>
         <p className="text-sm text-muted">
           Joined {fmtDate(u.createdAt)} · {tier} VIP ({fmt(u.xp)} XP) · {u.welcomeSpins > 0 ? `${u.welcomeSpins} free welcome spin${u.welcomeSpins === 1 ? "" : "s"} left` : "welcome spins used"}

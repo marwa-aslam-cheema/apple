@@ -67,7 +67,7 @@ export const userAdminSchema = z.object({
   banned: z.boolean().optional(),
   newPassword: z.string().min(8, "Password must be at least 8 characters.").max(72).optional(),
   role: z.enum(["user", "admin"]).optional(),
-  tag: z.string().trim().max(60).optional(),
+  tag: z.string().trim().max(300).optional(),
 });
 
 export const forgotSchema = z.object({

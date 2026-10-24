@@ -5,6 +5,7 @@ import { users } from "@/db/schema";
 import { route } from "@/lib/api";
 import { requireAdminApi } from "@/lib/session";
 import { AppError, adminAdjust, adminSetPassword } from "@/lib/services";
+import { joinTags, tagList } from "@/lib/tags";
 import { userAdminSchema } from "@/lib/validation";
 
 export const PATCH = route(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -19,7 +20,7 @@ export const PATCH = route(async (req: Request, ctx: { params: Promise<{ id: str
     const patch: Partial<typeof users.$inferInsert> = {};
     if (body.banned !== undefined) patch.banned = body.banned;
     if (body.role !== undefined) patch.role = body.role;
-    if (body.tag !== undefined) patch.tag = body.tag;
+    if (body.tag !== undefined) patch.tag = joinTags(tagList(body.tag));
     const done = await db.update(users).set(patch).where(eq(users.id, id)).returning({ id: users.id });
     if (!done.length) throw new AppError("not_found", "User not found.", 404);
   }
