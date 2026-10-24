@@ -57,7 +57,7 @@ export const replySchema = z.object({
   title: z.string().trim().min(1, "Give the reply a short title.").max(30),
   body: z.string().trim().min(1, "Write the message.").max(1000),
   shortcut: z.string().trim().toLowerCase().max(20, "Shortcut: 20 characters at most.").regex(/^\S*$/, "A shortcut cannot contain spaces.").default(""),
-  imageId: z.number().int().positive().nullable().default(null),
+  imageId: z.number().int().min(0).nullable().default(null).transform((v) => v || null), // 0 or empty = no picture
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
 });
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { shrinkImage as shrink } from "@/lib/shrink-image";
 import { fmtDate } from "@/lib/format";
 import { sfxReceived, sfxSent, unlockSfx } from "@/lib/sfx";
 import { buildMap, expandShortcut, normalizeShortcut, type ShortcutMap } from "@/lib/shortcuts";
@@ -12,22 +13,6 @@ export interface ChatMsg {
   body: string;
   imageId?: number | null;
   createdAt: string;
-}
-
-/** Shrinks a photo in the browser first (long side 1280px, JPEG) so uploads are quick and small. */
-async function shrink(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("That file is not a picture.")); i.src = url; });
-    const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
-    const c = document.createElement("canvas");
-    c.width = Math.max(1, Math.round(img.width * scale));
-    c.height = Math.max(1, Math.round(img.height * scale));
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL("image/jpeg", 0.82);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
 }
 
 /** One conversation. `mine` is who is looking at it ("user" = the player, "admin" = staff). */
@@ -48,6 +33,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   const [title, setTitle] = useState("");
   const [shortcut, setShortcut] = useState("");
   const [map, setMap] = useState<ShortcutMap>({});
+  const [pics, setPics] = useState<Record<string, number>>({}); // shortcut -> picture of that quick reply
   const expanded = useRef<{ from: string; to: string } | null>(null); // last auto-fill, so Backspace can undo it
   const suppress = useRef<string | null>(null); // a shortcut the admin undid: do not expand it again until the text changes
 
@@ -103,7 +89,11 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     const load = async () => {
       try {
         const res = await fetch("/api/admin/replies", { cache: "no-store" });
-        if (res.ok && alive) setMap(buildMap((await res.json()).items));
+        if (res.ok && alive) {
+          const items = (await res.json()).items as { shortcut?: string | null; body: string; imageId?: number | null }[];
+          setMap(buildMap(items));
+          setPics(Object.fromEntries(items.filter((r) => r.imageId && r.shortcut).map((r) => [normalizeShortcut(r.shortcut!), r.imageId!])));
+        }
       } catch {
         /* offline: keep the shortcuts we have */
       }
@@ -132,6 +122,8 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     timer.current = setTimeout(() => {
       expanded.current = { from: v.trim(), to: hit };
       setText(hit);
+      const pic = pics[key];
+      if (pic) setImage({ id: pic, preview: `/api/chat/image/${pic}` }); // the quick reply's picture comes along with its text
     }, 350);
   }
 
@@ -184,13 +176,15 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   async function send() {
     if (timer.current) clearTimeout(timer.current);
     // Enter right after a shortcut sends the saved reply, not the shortcut itself.
-    const body = (mine === "admin" ? expandShortcut(text, map) : null) ?? text.trim();
-    if ((!body && !image) || busy || uploading) return;
+    const expandedBody = mine === "admin" ? expandShortcut(text, map) : null;
+    const body = expandedBody ?? text.trim();
+    const sendImage = image ?? (expandedBody !== null && pics[normalizeShortcut(text)] ? { id: pics[normalizeShortcut(text)], preview: "" } : null);
+    if ((!body && !sendImage) || busy || uploading) return;
     setBusy(true);
     setError("");
     unlockSfx();
     try {
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: image?.id }) });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: sendImage?.id }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send.");
       setText("");
@@ -269,6 +263,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
             if (e.key === "Backspace" && mine === "admin" && expanded.current && text === expanded.current.to) {
               e.preventDefault(); // undo the auto-fill: back to the shortcut the admin typed
               suppress.current = normalizeShortcut(expanded.current.from);
+              if (pics[suppress.current] && image?.id === pics[suppress.current]) setImage(null);
               setText(expanded.current.from);
               expanded.current = null;
               return;

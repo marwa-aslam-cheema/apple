@@ -54,6 +54,7 @@ const REPLY_FIELDS: Field[] = [
   { key: "title", label: "Button title (short)", type: "text" },
   { key: "body", label: "Message", type: "textarea" },
   { key: "shortcut", label: "Shortcut (optional: type it in the chat box to fill this message)", type: "text" },
+  { key: "imageId", label: "Picture sent with this reply (optional)", type: "picture" },
   { key: "sortOrder", label: "Order", type: "number" },
 ];
 const SOCIAL_FIELDS: Field[] = [
@@ -100,8 +101,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const rows = await db.select().from(quickReplies).orderBy(quickReplies.sortOrder, quickReplies.id);
     body = (
       <div className="space-y-4">
-        <p className="card p-4 text-sm">Quick replies appear as buttons above the message box in the admin chat. Click one to fill the box, then press Send. Give a reply a shortcut (for example ok) and typing just that word in the chat box fills the whole message. You can also type a message in the chat and press "Save as quick reply". To make a reply that sends a picture, attach the picture in the chat first (the paperclip), then press "Save as quick reply"; those show a paperclip on their button.</p>
-        <AdminResource resource="replies" titleKey="title" fields={REPLY_FIELDS} rows={rows.map(({ imageId: _picture, ...r }) => r)} defaults={{ title: "", body: "", shortcut: "", sortOrder: rows.length }} />
+        <p className="card p-4 text-sm">Quick replies appear as buttons above the message box in the admin chat. Click one to fill the box, then press Send. Give a reply a shortcut (for example ok) and typing just that word in the chat box fills the whole message. You can also type a message in the chat and press "Save as quick reply". Open a reply below to add, change or remove its picture: replies with a picture show a paperclip on their button, and the picture goes out together with the text (also when you use the shortcut).</p>
+        <AdminResource resource="replies" titleKey="title" fields={REPLY_FIELDS} rows={rows.map((r) => ({ ...r, imageId: r.imageId ?? 0 }))} defaults={{ title: "", body: "", shortcut: "", imageId: 0, sortOrder: rows.length }} />
       </div>
     );
   } else if (tab === "requests") {

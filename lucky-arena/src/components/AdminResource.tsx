@@ -2,16 +2,57 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { shrinkImage } from "@/lib/shrink-image";
 
 export interface Field {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "bool" | "select" | "color";
+  type: "text" | "textarea" | "number" | "bool" | "select" | "color" | "picture";
   options?: string[];
 }
 type Row = Record<string, string | number | boolean>;
 
+/** Add, change or remove the picture that goes out with a quick reply. 0 means no picture. */
+function PictureInput({ f, value, onChange }: { f: Field; value: number; onChange: (v: number) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/chat/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl: await shrinkImage(file) }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not upload.");
+      onChange(data.imageId);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not upload.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-1 sm:col-span-2 lg:col-span-4">
+      <p className="text-xs font-semibold text-muted">{f.label}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        {value > 0 && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`/api/chat/image/${value}`} alt="Picture for this reply" className="h-16 w-16 rounded-lg object-cover" />
+        )}
+        <label className="btn btn-ghost cursor-pointer !min-h-9 !px-3 !py-1 text-sm">
+          {busy ? "Uploading..." : value > 0 ? "Change picture" : "Add picture"}
+          <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
+        {value > 0 && <button type="button" className="text-sm text-danger underline" onClick={() => onChange(0)}>Remove picture</button>}
+        <span className="text-xs text-muted">Press Save to keep the change.</span>
+      </div>
+      {err && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
+    </div>
+  );
+}
+
 function Input({ f, value, onChange }: { f: Field; value: Row[string]; onChange: (v: Row[string]) => void }) {
+  if (f.type === "picture") return <PictureInput f={f} value={Number(value) || 0} onChange={onChange} />;
   const id = `f-${f.key}-${Math.random().toString(36).slice(2, 7)}`;
   if (f.type === "bool") {
     return (
