@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { spins } from "@/db/schema";
 import { SpinWheel } from "@/components/SpinWheel";
 import { SPIN_COST } from "@/lib/config";
+import { wheelLabel } from "@/lib/wheel-display";
 import { fmt, fmtDate } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
 import { activeWheel } from "@/lib/services";
@@ -20,12 +21,13 @@ export default async function SpinPage() {
       <div className="text-center">
         <h1 className="gold-text text-4xl font-extrabold uppercase">{welcomeLeft > 0 ? "Welcome Wheel" : "Lucky Spin Wheel"}</h1>
         <p className="mt-1 text-muted">
-          {welcomeLeft > 0 ? `${welcomeLeft} free spin${welcomeLeft > 1 ? "s" : ""} left. Small prizes to get you started.` : `${SPIN_COST} credits per spin. Good luck!`}
+          {welcomeLeft > 0 ? `${welcomeLeft} free spin${welcomeLeft > 1 ? "s" : ""} left. Small prizes to get you started.` : "Pick your bet, from 1 to 1,000 credits. Prizes grow with your bet. Good luck!"}
         </p>
       </div>
       <SpinWheel
-        segments={segments.map((s) => ({ id: s.id, label: s.label, icon: s.icon, credits: s.credits, color: s.color }))}
-        cost={SPIN_COST}
+        segments={segments.map((s) => ({ id: s.id, label: wheelLabel(s, welcomeLeft > 0 ? "welcome" : "main"), icon: s.icon, credits: s.credits, color: s.color }))}
+        defaultBet={SPIN_COST}
+        maxMultiplier={Math.max(1, ...segments.map((s) => s.credits / SPIN_COST))}
         balance={user?.balance ?? 0}
         welcomeLeft={welcomeLeft}
         signedIn={!!user}

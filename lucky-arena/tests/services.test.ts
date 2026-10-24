@@ -262,6 +262,53 @@ describe("player history for the admin", () => {
   });
 });
 
+describe("bet size", () => {
+  async function richPlayer(name: string) {
+    const id = await registerUser(db, { email: `${name}@x.test`, username: name, password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, id));
+    await adminAdjust(db, id, 50000, "test funds");
+    return id;
+  }
+  it("charges the chosen bet and pays in proportion", async () => {
+    const id = await richPlayer("bettor1");
+    for (const bet of [1, 5, 50, 333, 1000]) {
+      const before = await balanceOf(id);
+      const r = await spinWheel(db, id, bet);
+      expect(r.cost).toBe(bet);
+      expect(await balanceOf(id)).toBe(before - bet + r.prize);
+      expect(r.balance).toBe(before - bet + r.prize);
+      expect(r.prize).toBeLessThanOrEqual(bet * 20 + 1); // best segment is 20x
+    }
+    const rows = await listTransactions(db, id, 200);
+    expect(rows.reduce((t, x) => t + x.amount, 0)).toBe(await balanceOf(id)); // the ledger still adds up
+  });
+  it("rejects bets outside 1 to 1000 and bets above the balance", async () => {
+    const id = await richPlayer("bettor2");
+    for (const bad of [0, -5, 1001, 1.5, Number.NaN]) expect(await code(spinWheel(db, id, bad))).toBe("bad_bet");
+    const poor = await registerUser(db, { email: "poor2@x.test", username: "poorbettor", password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, poor));
+    await adminAdjust(db, poor, 100, "small");
+    expect(await code(spinWheel(db, poor, 101))).toBe("insufficient_credits");
+    expect(await balanceOf(poor)).toBe(100);
+    expect(await code(spinWheel(db, poor, 100))).toBe("ok");
+  });
+  it("gives XP in proportion to the bet", async () => {
+    const id = await richPlayer("bettor3");
+    const [{ xp: x0 }] = await db.select().from(users).where(eq(users.id, id));
+    await spinWheel(db, id, 1000); // 200 XP
+    const [{ xp: x1 }] = await db.select().from(users).where(eq(users.id, id));
+    expect(x1 - x0).toBe(200);
+    await spinWheel(db, id, 4); // too small for any XP
+    const [{ xp: x2 }] = await db.select().from(users).where(eq(users.id, id));
+    expect(x2 - x1).toBe(0);
+  });
+  it("lets the free welcome spins ignore the bet", async () => {
+    const id = await registerUser(db, { email: "wb@x.test", username: "welcomebet", password: "password1" });
+    const r = await spinWheel(db, id, 1000);
+    expect(r).toMatchObject({ welcome: true, cost: 0 });
+  });
+});
+
 describe("lobby", () => {
   it("searches and filters by category", async () => {
     const wheel = await lobbyGames(db, { category: "Wheel" });

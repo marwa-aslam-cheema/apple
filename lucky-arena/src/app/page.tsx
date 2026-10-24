@@ -4,7 +4,7 @@ import { GameCard } from "@/components/GameCard";
 import { CasinoBackdrop } from "@/components/CasinoBackdrop";
 import { ChipIcon } from "@/components/Logo";
 import { ClaimButton } from "@/components/ClaimButton";
-import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, SPIN_COST, WELCOME_SPINS } from "@/lib/config";
+import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
 import { lobbyGames } from "@/lib/services";
@@ -76,7 +76,7 @@ export default async function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         {[
           ["1. Join free", `Sign up at zero and take ${WELCOME_SPINS} free spins on the welcome wheel for your first credits.`],
-          ["2. Play", `Each Lucky Spin costs ${SPIN_COST} credits. Prizes are added to your wallet right away.`],
+          ["2. Play", "Pick your own bet from 1 to 1,000 credits on the Lucky Spin. Prizes grow with your bet and land in your wallet right away."],
           ["3. Level up", "Every spin earns XP. Higher VIP tiers unlock bigger daily bonuses."],
         ].map(([t, d]) => (
           <div key={t} className="card p-5">

@@ -55,7 +55,7 @@ const REPLY_FIELDS: Field[] = [
 ];
 const WHEEL_FIELDS: Field[] = [
   { key: "label", label: "Label", type: "text" },
-  { key: "credits", label: "Prize credits", type: "number" },
+  { key: "credits", label: "Prize at a 50-credit bet (main wheel shows it as a multiplier: 100 = 2x)", type: "number" },
   { key: "kind", label: "Wheel (main = paid spins, welcome = free first spins)", type: "select", options: ["main", "welcome"] },
   { key: "icon", label: "Icon (an emoji, e.g. a slot machine)", type: "text" },
   { key: "weight", label: "Weight (chance)", type: "number" },

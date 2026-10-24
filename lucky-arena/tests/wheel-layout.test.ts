@@ -6,6 +6,7 @@ import { activeWheel } from "@/lib/services";
 import { SPIN_COST } from "@/lib/config";
 import { chordAt, fits, segmentLayout, splitLabel } from "@/lib/wheel-layout";
 import { expectedReturn } from "@/lib/wheel";
+import { multiplierText, wheelLabel } from "@/lib/wheel-display";
 import { eq } from "drizzle-orm";
 
 let db: Db;
@@ -56,5 +57,23 @@ describe("seeded wheels", () => {
     await db.update(wheelSegments).set({ label: "Mine" }).where(eq(wheelSegments.credits, 10));
     await seed(db);
     expect((await activeWheel(db, "main")).some((s) => s.label === "Mine")).toBe(true);
+  });
+});
+
+describe("wheel labels follow the bet", () => {
+  it("shows multipliers on the main wheel", () => {
+    expect(multiplierText(100)).toBe("2x");
+    expect(multiplierText(10)).toBe("0.2x");
+    expect(multiplierText(1000)).toBe("20x");
+    expect(wheelLabel({ label: "60", credits: 60 }, "main")).toBe("1.2x");
+    expect(wheelLabel({ label: "JACKPOT 1000", credits: 1000 }, "main")).toBe("JACKPOT 20x");
+    expect(wheelLabel({ label: "Try Again", credits: 0 }, "main")).toBe("Try Again");
+    expect(wheelLabel({ label: "Lucky 7", credits: 350 }, "main")).toBe("Lucky 7");
+    expect(wheelLabel({ label: "2 credits", credits: 2 }, "welcome")).toBe("2 credits");
+  });
+  it("those labels still fit inside their slices", async () => {
+    const segs = await activeWheel(db, "main");
+    const sa = 360 / segs.length;
+    for (const s of segs) expect(fits(wheelLabel(s, "main"), sa), wheelLabel(s, "main")).toBe(true);
   });
 });

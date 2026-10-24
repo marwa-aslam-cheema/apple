@@ -14,7 +14,7 @@ export default async function VipPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-extrabold">VIP Club</h1>
-        <p className="mt-1 text-muted">Earn {SPIN_XP} XP on every Lucky Spin. Climb tiers for bigger daily bonuses.</p>
+        <p className="mt-1 text-muted">Earn {SPIN_XP} XP for every 50 credits you bet on the Lucky Spin. Climb tiers for bigger daily bonuses.</p>
       </header>
       {cur ? (
         <section className="card p-5">

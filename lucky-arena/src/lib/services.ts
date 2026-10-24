@@ -5,6 +5,8 @@ import { chatMessages, games, promoClaims, promotions, spins, supportRequests, t
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
+  MAX_BET,
+  MIN_BET,
   REFERRAL_BONUS,
   REFERRAL_MAX_REWARDS,
   SIGNUP_BONUS,
@@ -13,7 +15,7 @@ import {
   WELCOME_SPINS,
 } from "./config";
 import { tierForXp } from "./vip";
-import { pickSegment } from "./wheel";
+import { payout, pickSegment } from "./wheel";
 
 export class AppError extends Error {
   constructor(
@@ -120,31 +122,33 @@ export async function activeWheel(db: Db, kind: "main" | "welcome" = "main") {
     .orderBy(wheelSegments.sortOrder, wheelSegments.id);
 }
 
-export async function spinWheel(db: Db, userId: number) {
+export async function spinWheel(db: Db, userId: number, bet: number = SPIN_COST) {
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
     // Lock the player's row so two parallel requests cannot spend the same welcome spin twice.
     const [player] = await t.select({ welcomeSpins: users.welcomeSpins }).from(users).where(eq(users.id, userId)).for("update");
     if (!player) throw new AppError("not_found", "User not found.", 404);
-    if (player.welcomeSpins > 0) return welcomeSpin(t, userId, player.welcomeSpins);
+    if (player.welcomeSpins > 0) return welcomeSpin(t, userId, player.welcomeSpins); // free spins ignore the bet
+    if (!Number.isInteger(bet) || bet < MIN_BET || bet > MAX_BET) throw new AppError("bad_bet", `Bet must be a whole number from ${MIN_BET} to ${MAX_BET}.`);
     const segments = await activeWheel(t);
     if (segments.length < 2) throw new AppError("wheel_unavailable", "The wheel is not configured right now.", 503);
-    await applyCredits(t, userId, -SPIN_COST, "spin_cost", "Lucky Spin");
+    await applyCredits(t, userId, -bet, "spin_cost", "Lucky Spin");
     const segment = pickSegment(segments);
+    const prize = payout(segment.credits, bet, SPIN_COST);
     let balance: number;
-    if (segment.credits > 0) {
-      balance = await applyCredits(t, userId, segment.credits, "spin_win", `Won ${segment.label}`);
+    if (prize > 0) {
+      balance = await applyCredits(t, userId, prize, "spin_win", `Won ${prize.toLocaleString("en-US")}`);
     } else {
       const [u] = await t.select({ balance: users.balance }).from(users).where(eq(users.id, userId));
       balance = u.balance;
     }
     const [u] = await t
       .update(users)
-      .set({ xp: sql`${users.xp} + ${SPIN_XP}` })
+      .set({ xp: sql`${users.xp} + ${Math.floor((bet * SPIN_XP) / SPIN_COST)}` }) // XP grows with what you stake
       .where(eq(users.id, userId))
       .returning({ xp: users.xp });
-    await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: SPIN_COST, prize: segment.credits });
-    return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize: segment.credits, cost: SPIN_COST, balance, xp: u.xp, welcome: false, welcomeLeft: 0 };
+    await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: bet, prize });
+    return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize, cost: bet, balance, xp: u.xp, welcome: false, welcomeLeft: 0 };
   });
 }
 

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { BetPicker } from "./BetPicker";
+import { MAX_BET, MIN_BET } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { sfxResult, sfxSpin, unlockSfx } from "@/lib/sfx";
 import { segmentLayout } from "@/lib/wheel-layout";
@@ -59,7 +61,7 @@ const polar = (deg: number, r = R) => {
   return [R + r * Math.cos(a), R + r * Math.sin(a)];
 };
 
-export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeLeft: initialLeft }: { segments: WheelSeg[]; cost: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
+export function SpinWheel({ segments, defaultBet, maxMultiplier, balance: initial, signedIn, welcomeLeft: initialLeft }: { segments: WheelSeg[]; defaultBet: number; maxMultiplier: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
   const router = useRouter();
   const [angle, setAngle] = useState(0);
   const [balance, setBalance] = useState(initial);
@@ -68,6 +70,22 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
   const [result, setResult] = useState<{ prize: number; label: string } | null>(null);
   const [error, setError] = useState("");
   const [win, setWin] = useState<Win | null>(null);
+  const [bet, setBet] = useState(defaultBet);
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem("la_bet"));
+      if (Number.isInteger(saved) && saved >= MIN_BET && saved <= MAX_BET) setBet(saved);
+    } catch {
+      /* private mode: use the default bet */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("la_bet", String(bet));
+    } catch {
+      /* not saved: fine */
+    }
+  }, [bet]);
   const angleRef = useRef(0);
 
   const n = segments.length;
@@ -80,7 +98,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
     setResult(null);
     setBusy(true);
     try {
-      const res = await fetch("/api/spin", { method: "POST" });
+      const res = await fetch("/api/spin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(welcomeLeft > 0 ? {} : { bet }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Spin failed.");
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -105,6 +123,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
       await new Promise((r) => setTimeout(r, DURATION + 100));
       setBalance(data.balance);
       setWelcomeLeft(data.welcomeLeft);
+      if (data.balance >= MIN_BET) setBet((b) => Math.min(b, data.balance)); // do not leave a bet the wallet cannot cover
       setResult({ prize: data.prize, label: data.label });
       sfxResult(data.prize);
       if (data.prize > 0) setWin({ prize: data.prize, label: data.label, icon: data.icon ?? "" }); // no popup for "Try again"
@@ -117,7 +136,7 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
   }
 
   const free = welcomeLeft > 0;
-  const canAfford = free || balance >= cost;
+  const canAfford = free || balance >= bet;
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-5">
@@ -208,13 +227,14 @@ export function SpinWheel({ segments, cost, balance: initial, signedIn, welcomeL
 
       {signedIn ? (
         <>
+          {!free && <BetPicker bet={bet} onChange={setBet} balance={balance} disabled={busy} maxMultiplier={maxMultiplier} />}
           <button className="btn btn-gold w-full max-w-xs text-lg" onClick={spin} disabled={busy || !canAfford}>
-            {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${cost} credits`}
+            {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${fmt(bet)} credit${bet === 1 ? "" : "s"}`}
           </button>
           <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> credits</p>
           {!canAfford && (
             <p className="text-center text-sm text-muted">
-              Not enough credits. Claim your <Link className="text-gold underline" href="/wallet">daily bonus</Link> or check <Link className="text-gold underline" href="/promotions">promotions</Link>.
+              {balance >= MIN_BET ? "Your balance does not cover this bet: lower it, or " : "Not enough credits. "}claim your <Link className="text-gold underline" href="/wallet">daily bonus</Link> or check <Link className="text-gold underline" href="/promotions">promotions</Link>.
             </p>
           )}
         </>

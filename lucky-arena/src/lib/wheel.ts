@@ -27,3 +27,16 @@ export function expectedReturn(segments: SegmentLike[], cost: number): number {
   if (!total || cost <= 0) return 0;
   return pool.reduce((sum, s) => sum + (s.credits * s.weight) / total, 0) / cost;
 }
+
+/**
+ * What a segment pays for a given bet. A segment's `credits` is its prize at the reference bet (SPIN_COST), so it scales
+ * with the bet: credits x bet / SPIN_COST. When that is not a whole number the remainder is paid as a whole credit with
+ * exactly that probability, so the expected prize is always exact (the wheel's return does not change with the bet).
+ */
+export function payout(credits: number, bet: number, referenceBet: number, rand: (max: number) => number = randomInt): number {
+  if (credits <= 0) return 0;
+  const exact = credits * bet;
+  const whole = Math.floor(exact / referenceBet);
+  const remainder = exact % referenceBet;
+  return whole + (remainder > 0 && rand(referenceBet) < remainder ? 1 : 0);
+}

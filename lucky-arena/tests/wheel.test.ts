@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectedReturn, pickSegment } from "@/lib/wheel";
+import { expectedReturn, payout, pickSegment } from "@/lib/wheel";
 import { tierForXp } from "@/lib/vip";
 
 const segs = [
@@ -68,5 +68,28 @@ describe("game image", () => {
     expect(gameSchema.parse({ ...base, image: "https://example.com/a.png" }).image).toBe("https://example.com/a.png");
     expect(gameSchema.parse(base).image).toBe("");
     expect(() => gameSchema.parse({ ...base, image: "javascript:alert(1)" })).toThrow();
+  });
+});
+
+describe("payout scales with the bet", () => {
+  it("pays credits x bet / reference bet", () => {
+    expect(payout(100, 50, 50)).toBe(100); // the reference bet pays the listed prize
+    expect(payout(100, 100, 50)).toBe(200);
+    expect(payout(1000, 1000, 50)).toBe(20000);
+    expect(payout(0, 500, 50)).toBe(0);
+  });
+  it("is exact in expectation for every bet: the wheel return does not change with the bet", () => {
+    for (const credits of [10, 20, 40, 60, 80, 100, 150, 200, 500, 1000]) {
+      for (const bet of [1, 2, 3, 7, 13, 49, 50, 51, 99, 250, 777, 1000]) {
+        let sum = 0;
+        for (let r = 0; r < 50; r++) sum += payout(credits, bet, 50, () => r); // every possible roll once
+        expect(sum / 50).toBeCloseTo((credits * bet) / 50, 10);
+      }
+    }
+  });
+  it("pays a whole credit with the right chance when the prize is fractional", () => {
+    expect(payout(10, 1, 50, () => 0)).toBe(1); // 0.2 credits: wins 1 on rolls 0..9
+    expect(payout(10, 1, 50, () => 9)).toBe(1);
+    expect(payout(10, 1, 50, () => 10)).toBe(0);
   });
 });
