@@ -165,6 +165,8 @@ export const DDL = [
   )`,
   `ALTER TABLE wallet_options ADD COLUMN IF NOT EXISTS code TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS hidden_by_user BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS hidden_by_admin BOOLEAN NOT NULL DEFAULT FALSE`,
   `CREATE TABLE IF NOT EXISTS chat_reactions (
     id SERIAL PRIMARY KEY,
     message_id INTEGER NOT NULL,

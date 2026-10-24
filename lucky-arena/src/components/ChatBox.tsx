@@ -49,10 +49,10 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     try {
       const res = await fetch(`${url}?after=${lastId.current}`, { cache: "no-store" });
       if (!res.ok) return;
-      const { messages, meta } = (await res.json()) as { messages: ChatMsg[]; meta?: { id: number; deleted: boolean; reactions: NonNullable<ChatMsg["reactions"]> }[] };
+      const { messages, meta } = (await res.json()) as { messages: ChatMsg[]; meta?: { id: number; deleted: boolean; hidden?: boolean; reactions: NonNullable<ChatMsg["reactions"]> }[] };
       // Reactions and deletions on messages that are already on screen.
       if (meta?.length) {
-        setMsgs((cur) => cur.map((x) => {
+        setMsgs((cur) => cur.filter((x) => !meta.find((y) => y.id === x.id)?.hidden).map((x) => {
           const m = meta.find((y) => y.id === x.id);
           if (!m) return x;
           return m.deleted ? { ...x, deleted: true, body: "", imageId: null, reactions: [] } : { ...x, deleted: false, reactions: m.reactions };
@@ -183,9 +183,9 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     setMenu(null);
     setError("");
     // Show the change straight away; the next poll confirms it.
-    setMsgs((cur) => cur.map((x) => {
+    if (body.action === "delete") setMsgs((cur) => cur.filter((x) => x.id !== m.id)); // gone from this side straight away
+    else setMsgs((cur) => cur.map((x) => {
       if (x.id !== m.id) return x;
-      if (body.action === "delete") return { ...x, deleted: true, body: "", imageId: null, reactions: [] };
       const had = x.reactions ?? [];
       let next = had.map((r) => (r.mine ? { ...r, count: r.count - 1, mine: false } : r)).filter((r) => r.count > 0);
       if (body.emoji) {
@@ -277,7 +277,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
         {msgs.length === 0 && <p className="py-8 text-center text-sm text-muted">No messages yet.</p>}
         {msgs.map((m) => {
           const own = m.sender === mine;
-          const canDelete = !m.deleted && (own || mine === "admin");
+          const canDelete = !m.deleted;
           return (
             <div key={m.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
               <div className={`group flex max-w-[88%] items-end gap-1 ${own ? "flex-row-reverse" : ""}`}>
@@ -307,7 +307,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
                     <button key={e} type="button" role="menuitem" aria-label={`React ${e}`} className="h-8 w-8 rounded-lg text-lg hover:bg-surface-2" onClick={() => void act(m, { action: "react", emoji: m.reactions?.some((r) => r.mine && r.emoji === e) ? null : e })}>{e}</button>
                   ))}
                   {m.body && <button type="button" role="menuitem" className="chip !py-1 text-xs hover:border-gold" onClick={() => void copyText(m)}>Copy</button>}
-                  {canDelete && <button type="button" role="menuitem" className="chip !py-1 text-xs text-danger hover:border-danger" onClick={() => { if (confirm("Delete this message for everyone?")) void act(m, { action: "delete" }); }}>Delete</button>}
+                  {canDelete && <button type="button" role="menuitem" className="chip !py-1 text-xs text-danger hover:border-danger" onClick={() => { if (confirm("Delete this message from your side? The other person will still see it.")) void act(m, { action: "delete" }); }}>Delete for me</button>}
                 </div>
               )}
               {!!m.reactions?.length && !m.deleted && (

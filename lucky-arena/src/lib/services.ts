@@ -282,7 +282,7 @@ export async function readChatImage(db: Db, id: number, viewer: { id: number; ro
   const [img] = await db.select().from(chatImages).where(eq(chatImages.id, id));
   if (!img) throw new AppError("not_found", "Picture not found.", 404);
   if (viewer.role !== "admin") {
-    const [m] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.imageId, id), eq(chatMessages.userId, viewer.id), isNull(chatMessages.deletedAt))).limit(1);
+    const [m] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.imageId, id), eq(chatMessages.userId, viewer.id), isNull(chatMessages.deletedAt), eq(chatMessages.hiddenByUser, false))).limit(1);
     if (!m) throw new AppError("not_found", "Picture not found.", 404);
   }
   return { mime: img.mime, bytes: Buffer.from(img.data, "base64") };
@@ -292,7 +292,7 @@ export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"
 
 /** Deleted flags and reactions for the newest messages of a thread, so open chats can refresh what they already show. */
 export async function chatMeta(db: Db, threadUserId: number, viewer: "user" | "admin") {
-  const msgs = await db.select({ id: chatMessages.id, deletedAt: chatMessages.deletedAt }).from(chatMessages).where(eq(chatMessages.userId, threadUserId)).orderBy(desc(chatMessages.id)).limit(200);
+  const msgs = await db.select({ id: chatMessages.id, deletedAt: chatMessages.deletedAt, hidden: viewer === "user" ? chatMessages.hiddenByUser : chatMessages.hiddenByAdmin }).from(chatMessages).where(eq(chatMessages.userId, threadUserId)).orderBy(desc(chatMessages.id)).limit(200);
   if (msgs.length === 0) return [];
   const reacts = await db.select().from(chatReactions).where(inArray(chatReactions.messageId, msgs.map((m) => m.id)));
   return msgs.map((m) => {
@@ -304,17 +304,18 @@ export async function chatMeta(db: Db, threadUserId: number, viewer: "user" | "a
       if (r.side === viewer) g.mine = true;
       groups.set(r.emoji, g);
     }
-    return { id: m.id, deleted: !!m.deletedAt, reactions: m.deletedAt ? [] : [...groups.values()] };
+    return { id: m.id, deleted: !!m.deletedAt, hidden: m.hidden, reactions: m.deletedAt ? [] : [...groups.values()] };
   });
 }
 
-/** The sender can delete their own message; the admin can delete any message in any thread. */
+/** "Delete for me": the message disappears from this side only. The other person still sees it. */
 export async function deleteChatMessage(db: Db, threadUserId: number, id: number, side: "user" | "admin") {
-  const [m] = await db.select().from(chatMessages).where(and(eq(chatMessages.id, id), eq(chatMessages.userId, threadUserId)));
-  if (!m) throw new AppError("not_found", "Message not found.", 404);
-  if (side === "user" && m.sender !== "user") throw new AppError("forbidden", "You can only delete your own messages.", 403);
-  if (!m.deletedAt) await db.update(chatMessages).set({ deletedAt: new Date() }).where(eq(chatMessages.id, id));
-  await db.delete(chatReactions).where(eq(chatReactions.messageId, id));
+  const done = await db
+    .update(chatMessages)
+    .set(side === "user" ? { hiddenByUser: true } : { hiddenByAdmin: true })
+    .where(and(eq(chatMessages.id, id), eq(chatMessages.userId, threadUserId)))
+    .returning({ id: chatMessages.id });
+  if (!done.length) throw new AppError("not_found", "Message not found.", 404);
 }
 
 /** One reaction per side on a message. null removes it. */
@@ -355,7 +356,7 @@ export async function readChat(db: Db, userId: number, viewer: "user" | "admin",
   const rows = await db
     .select()
     .from(chatMessages)
-    .where(and(eq(chatMessages.userId, userId), gt(chatMessages.id, after)))
+    .where(and(eq(chatMessages.userId, userId), gt(chatMessages.id, after), eq(viewer === "user" ? chatMessages.hiddenByUser : chatMessages.hiddenByAdmin, false)))
     .orderBy(asc(chatMessages.id))
     .limit(200);
   if (viewer === "user") {

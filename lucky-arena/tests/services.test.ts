@@ -620,7 +620,7 @@ describe("wallet cards", () => {
 });
 
 describe("chat reactions and deleting", () => {
-  it("keeps one reaction per side and deletes for everyone", async () => {
+  it("keeps one reaction per side and deletes for one side only", async () => {
     const u = await registerUser(db, { email: "rx@x.test", username: "react_user", password: "password1" });
     const mine = await postChat(db, u, "user", "hello there");
     const theirs = await postChat(db, u, "admin", "hi!");
@@ -633,13 +633,14 @@ describe("chat reactions and deleting", () => {
     expect((await chatMeta(db, u, "user")).find((m) => m.id === mine.id)!.reactions).toEqual([{ emoji: "👍", count: 1, mine: false }]);
     expect(await code(reactChatMessage(db, u, mine.id, "user", "🧨"))).toBe("invalid");
 
-    expect(await code(deleteChatMessage(db, u, theirs.id, "user"))).toBe("forbidden"); // a player cannot delete the admin's message
+    // "Delete for me": gone from one side only
     await deleteChatMessage(db, u, mine.id, "user");
-    const row = (await readChat(db, u, "admin")).find((m) => m.id === mine.id)!;
-    expect(row).toMatchObject({ deleted: true, body: "", imageId: null });
-    expect((await chatMeta(db, u, "admin")).find((m) => m.id === mine.id)).toMatchObject({ deleted: true, reactions: [] });
-    expect(await code(reactChatMessage(db, u, mine.id, "admin", "👍"))).toBe("not_found");
-    await deleteChatMessage(db, u, theirs.id, "admin"); // the admin may delete anything
-    expect((await chatConversations(db)).find((c) => c.userId === u)?.last).toBe("Message deleted");
+    expect((await readChat(db, u, "user")).some((m) => m.id === mine.id)).toBe(false);
+    expect((await readChat(db, u, "admin")).find((m) => m.id === mine.id)).toMatchObject({ body: "hello there", deleted: false });
+    expect((await chatMeta(db, u, "user")).find((m) => m.id === mine.id)?.hidden).toBe(true);
+    expect((await chatMeta(db, u, "admin")).find((m) => m.id === mine.id)?.hidden).toBe(false);
+    await deleteChatMessage(db, u, theirs.id, "admin"); // the admin hides the admin's own message from the admin view
+    expect((await readChat(db, u, "user")).some((m) => m.id === theirs.id)).toBe(true);
+    expect(await code(deleteChatMessage(db, u, 999999, "user"))).toBe("not_found");
   });
 });
