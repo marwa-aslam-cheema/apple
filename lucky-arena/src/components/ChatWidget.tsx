@@ -37,6 +37,12 @@ export function ChatWidget({ role }: { role: string }) {
   }, [open]);
 
   useEffect(() => {
+    const openIt = () => setOpen(true);
+    window.addEventListener("la:open-chat", openIt);
+    return () => window.removeEventListener("la:open-chat", openIt);
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

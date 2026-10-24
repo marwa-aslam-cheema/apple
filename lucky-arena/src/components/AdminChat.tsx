@@ -3,6 +3,39 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChatBox } from "./ChatBox";
 
+/** Adds virtual credits to this player and sends them the "Added ..." message in one click. */
+function AddCredits({ userId, onDone }: { userId: number; onDone: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function add() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/chat/${userId}/credit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount: Number(amount) }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed.");
+      setMsg({ ok: true, text: `Added. Balance ${data.balance.toLocaleString("en-US")}` });
+      setAmount("");
+      window.dispatchEvent(new Event("la:chat-refresh")); // show the "Added ..." message in this thread right away
+      onDone();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Failed." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/60 p-2">
+      <input type="number" min={1} max={100000} inputMode="numeric" className="input !min-h-9 w-28 !py-1" placeholder="Credits" aria-label="Credits to add" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <button className="btn btn-gold !min-h-9 !px-3 !py-1" disabled={busy || !(Number(amount) >= 1)} onClick={add}>Add credits</button>
+      {msg && <span role="status" className={`text-xs font-semibold ${msg.ok ? "text-teal" : "text-danger"}`}>{msg.text}</span>}
+    </div>
+  );
+}
+
 interface Convo {
   userId: number;
   username: string;
@@ -65,7 +98,8 @@ export function AdminChat({ compact = false }: { compact?: boolean }) {
         {compact && <button className="rounded-lg px-2 py-1 hover:bg-surface-2" onClick={() => setThread(false)} aria-label="Back to conversations">&larr;</button>}
         <span className="truncate">{current.username} <span className="font-normal text-muted">· {current.email}</span></span>
       </h2>
-      <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "h-[calc(100%-2.75rem)]" : "h-[28rem] max-h-[70vh]"} />
+      <AddCredits userId={current.userId} onDone={refresh} />
+      <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "h-[calc(100%-5.75rem)]" : "h-[26rem] max-h-[65vh]"} />
     </>
   ) : null;
 

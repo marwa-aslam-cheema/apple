@@ -299,6 +299,17 @@ export async function chatConversations(db: Db) {
   });
 }
 
+/** Admin adds virtual credits to a player and tells them in the chat. */
+export async function grantCreditsAndNotify(db: Db, userId: number, amount: number, note = "") {
+  if (!Number.isInteger(amount) || amount < 1 || amount > 100000) throw new AppError("bad_amount", "Amount must be a whole number from 1 to 100,000.");
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const balance = await adminAdjust(t, userId, amount, note || "Credits added on request");
+    await postChat(t, userId, "admin", `Added ${amount.toLocaleString("en-US")} credits to your wallet. Balance: ${balance.toLocaleString("en-US")}.`);
+    return balance;
+  });
+}
+
 export function listTransactions(db: Db, userId: number, limit = 50) {
   return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.id)).limit(limit);
 }

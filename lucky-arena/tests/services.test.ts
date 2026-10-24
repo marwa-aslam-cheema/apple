@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -179,6 +179,26 @@ describe("support chat", () => {
     const id = await registerUser(db, { email: "c3@x.test", username: "chatter3", password: "password1" });
     expect(await code(postChat(db, id, "user", "   "))).toBe("invalid");
     expect(await code(postChat(db, id, "user", "x".repeat(1001)))).toBe("invalid");
+  });
+});
+
+describe("credit requests", () => {
+  it("admin adds credits and the player is told in chat", async () => {
+    const id = await registerUser(db, { email: "cr@x.test", username: "requester", password: "password1" });
+    await postChat(db, id, "user", "I want credits");
+    const balance = await grantCreditsAndNotify(db, id, 500);
+    expect(balance).toBe(500);
+    expect(await balanceOf(id)).toBe(500);
+    const thread = await readChat(db, id, "user");
+    expect(thread.map((m) => m.body)).toEqual(["I want credits", "Added 500 credits to your wallet. Balance: 500."]);
+    const tx = await listTransactions(db, id, 5);
+    expect(tx[0]).toMatchObject({ type: "admin_adjust", amount: 500 });
+  });
+  it("rejects bad amounts and unknown players without leaving a message", async () => {
+    const id = await registerUser(db, { email: "cr2@x.test", username: "requester2", password: "password1" });
+    for (const bad of [0, -5, 1.5, 100001]) expect(await code(grantCreditsAndNotify(db, id, bad))).toBe("bad_amount");
+    expect(await code(grantCreditsAndNotify(db, 999999, 10))).toBe("not_found");
+    expect(await readChat(db, id, "user")).toHaveLength(0);
   });
 });
 

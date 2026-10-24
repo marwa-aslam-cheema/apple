@@ -148,6 +148,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
                 <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>
               </Link>
+              <Link href="/wallet#request" aria-label="Add credits: open wallet" title="Add credits" className="-ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-gold/60 bg-gradient-to-b from-[#ffe58f] to-[#d38f08] text-xl font-extrabold leading-none text-[#2a1700] shadow-[0_0_14px_rgba(255,207,74,0.3)] sm:h-10 sm:w-10">+</Link>
               <button className="btn btn-ghost hidden sm:inline-flex" onClick={logout}>Sign out</button>
             </>
           ) : (

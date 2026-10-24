@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fmtDate } from "@/lib/format";
 import { sfxReceived, sfxSent, unlockSfx } from "@/lib/sfx";
@@ -13,6 +14,7 @@ export interface ChatMsg {
 
 /** One conversation. `mine` is who is looking at it ("user" = the player, "admin" = staff). */
 export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[70vh]" }: { url: string; mine: "user" | "admin"; onActivity?: () => void; className?: string }) {
+  const router = useRouter();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +29,10 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
       if (!res.ok) return;
       const { messages } = (await res.json()) as { messages: ChatMsg[] };
       if (messages.length) {
-        if (!firstLoad.current && messages.some((m) => m.sender !== mine)) sfxReceived();
+        if (!firstLoad.current && messages.some((m) => m.sender !== mine)) {
+          sfxReceived();
+          router.refresh(); // an admin message may have added credits: update the balance in the top bar
+        }
         lastId.current = messages[messages.length - 1].id;
         setMsgs((m) => [...m, ...messages.filter((x) => !m.some((y) => y.id === x.id))]);
         onActivity?.();
@@ -37,12 +42,16 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
     } finally {
       firstLoad.current = false;
     }
-  }, [url, onActivity, mine]);
+  }, [url, onActivity, mine, router]);
 
   useEffect(() => {
     load();
+    window.addEventListener("la:chat-refresh", load);
     const t = setInterval(() => document.visibilityState === "visible" && load(), 4000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("la:chat-refresh", load);
+    };
   }, [load]);
 
   useEffect(() => {
