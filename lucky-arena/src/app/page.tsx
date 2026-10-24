@@ -7,12 +7,14 @@ import { ClaimButton } from "@/components/ClaimButton";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
+import { listGameAccounts } from "@/lib/game-sessions";
 import { lobbyGames } from "@/lib/services";
 import { tierForXp } from "@/lib/vip";
 
 export default async function Home() {
   const [user, db] = await Promise.all([getCurrentUser(), getDb()]);
   const featured = (await lobbyGames(db, { category: "Featured", admin: user?.role === "admin" })).slice(0, 6);
+  const accounts = new Set((user ? await listGameAccounts(db, user.id) : []).map((a) => a.gameId));
   const dailyReady = !!user && (!user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS);
   const tier = user ? tierForXp(user.xp) : null;
   const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;
@@ -70,7 +72,7 @@ export default async function Home() {
           <Link href="/games" className="tap text-sm font-semibold text-gold">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {featured.map((g) => <GameCard key={g.id} game={g} needsCredits={needsCredits} />)}
+          {featured.map((g) => <GameCard key={g.id} game={g} needsCredits={needsCredits} needsAccount={!!user && user.role !== "admin" && !accounts.has(g.id)} />)}
         </div>
       </section>
 

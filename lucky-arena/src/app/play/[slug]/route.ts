@@ -2,8 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { games } from "@/db/schema";
-import { buildLaunchUrl, enterGame } from "@/lib/game-sessions";
+import { buildLaunchUrl, enterGame, listGameAccounts } from "@/lib/game-sessions";
 import { getCurrentUser } from "@/lib/session";
+import { requestGameAccount } from "@/lib/services";
 
 /**
  * Opening a game that lives on another address. The player's credits move into the game (the site shows 0 meanwhile)
@@ -19,10 +20,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   if (!game || !game.link) return NextResponse.redirect(new URL("/games", base));
   let target = game.link;
   if (user.role !== "admin") {
+    // No username for this game yet: nobody gets in. The admin is asked to set one up, and the player waits in the chat.
+    const acct = (await listGameAccounts(db, user.id)).find((a) => a.gameId === game.id);
+    if (!acct) {
+      await requestGameAccount(db, user.id, game.id);
+      return NextResponse.redirect(new URL(`/games?waiting=${encodeURIComponent(game.slug)}`, base));
+    }
     const session = await enterGame(db, user.id, game.id);
     if (session) {
-      const { listGameAccounts } = await import("@/lib/game-sessions");
-      const acct = (await listGameAccounts(db, user.id)).find((a) => a.gameId === game.id);
       target = buildLaunchUrl(game.link, { origin: base, token: session.token, player: user.username, gameUsername: acct?.username ?? null, balance: session.balance });
     }
   }

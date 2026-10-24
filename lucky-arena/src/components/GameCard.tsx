@@ -44,7 +44,14 @@ function askForCredits(gameId: number) {
     .catch(() => undefined);
 }
 
-export function GameCard({ game, needsCredits = false }: { game: Game; needsCredits?: boolean }) {
+/** A linked game needs the player's username for it first: ask the admin, and keep the player in the chat meanwhile. */
+function askForAccount(gameId: number) {
+  void fetch("/api/games/request-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId }), keepalive: true })
+    .then(() => window.dispatchEvent(new Event("la:open-chat")))
+    .catch(() => undefined);
+}
+
+export function GameCard({ game, needsCredits = false, needsAccount = false }: { game: Game; needsCredits?: boolean; needsAccount?: boolean }) {
   const onOpen = needsCredits ? () => askForCredits(game.id) : undefined;
   const inner = (
     <>
@@ -71,7 +78,8 @@ export function GameCard({ game, needsCredits = false }: { game: Game; needsCred
   const href = game.adminLink || (game.link ? `/play/${game.slug}` : "");
   if (href) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={cls} title={game.description} onClick={() => { onOpen?.(); setTimeout(() => window.dispatchEvent(new Event("la:wallet-refresh")), 800); }}>{inner}</a>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={cls} title={game.description} onClick={(e) => {
+        if (needsAccount && !game.adminLink) { e.preventDefault(); askForAccount(game.id); return; } onOpen?.(); setTimeout(() => window.dispatchEvent(new Event("la:wallet-refresh")), 800); }}>{inner}</a>
     );
   }
   return game.playable ? (

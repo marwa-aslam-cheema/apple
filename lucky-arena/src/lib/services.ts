@@ -411,6 +411,30 @@ export async function chatConversations(db: Db) {
   return rows.sort((x, y) => Number(y.unread > 0) - Number(x.unread > 0) || y.lastId - x.lastId);
 }
 
+const ACCOUNT_REPEAT_MS = 30 * 60_000;
+
+/**
+ * A player tapped a linked game but has no username for it yet. The admin gets "I want username and password for <game>"
+ * in the chat (not repeated for 30 minutes while it is unanswered). Returns whether a message was posted.
+ */
+export async function requestGameAccount(db: Db, userId: number, gameId: number): Promise<{ sent: boolean; game: string }> {
+  const [game] = await db.select({ title: games.title }).from(games).where(and(eq(games.id, gameId), eq(games.active, true)));
+  if (!game) throw new AppError("not_found", "Game not found.", 404);
+  const body = `I want username and password for ${game.title}`;
+  const [last] = await db
+    .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "user"), eq(chatMessages.body, body)))
+    .orderBy(desc(chatMessages.id))
+    .limit(1);
+  if (last && Date.now() - last.createdAt.getTime() < ACCOUNT_REPEAT_MS) {
+    const [answered] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), gt(chatMessages.id, last.id))).limit(1);
+    if (!answered) return { sent: false, game: game.title };
+  }
+  await postChat(db, userId, "user", body);
+  return { sent: true, game: game.title };
+}
+
 const REQUEST_REPEAT_MS = 30 * 60_000;
 
 /**

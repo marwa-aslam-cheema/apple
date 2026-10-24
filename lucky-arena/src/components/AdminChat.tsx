@@ -202,6 +202,7 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
           {current.online && <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-green-500" role="img" aria-label="Online" title="Online" />}
           {current.username} <span className="font-normal text-muted">· {current.email}</span>
         </span>
+        <a href={`/admin/users/${current.userId}`} className="chip ml-auto shrink-0 !py-0.5 text-xs hover:border-gold" title="Game usernames, credits and history">Game usernames</a>
       </h2>
       <TagBar userId={current.userId} tag={current.tag} onSaved={refresh} />
       <AddCredits userId={current.userId} onDone={refresh} />

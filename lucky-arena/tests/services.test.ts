@@ -5,7 +5,7 @@ import { gameSessions, games, spins, transactions, users, wheelSegments } from "
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, requestGameAccount, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
@@ -587,5 +587,18 @@ describe("player tags", () => {
     expect(tagList("ludo: ali99|vip")).toEqual(["ludo: ali99", "vip"]);
     expect(tagList("")).toEqual([]);
     expect(joinTags(Array.from({ length: 12 }, (_, i) => `t${i}`)).split("|")).toHaveLength(8);
+  });
+});
+
+describe("linked game needs a username first", () => {
+  it("asks the admin once, and again only after they answered", async () => {
+    const u = await registerUser(db, { email: "acct@x.test", username: "acct_user", password: "password1" });
+    const [g] = await db.insert(games).values({ slug: "ludo-acct", title: "Ludo Test", category: "Arcade", link: "https://example.com" }).returning();
+    expect((await requestGameAccount(db, u, g.id)).sent).toBe(true);
+    expect((await requestGameAccount(db, u, g.id)).sent).toBe(false); // unanswered: not repeated
+    expect((await readChat(db, u, "admin")).map((m) => m.body)).toEqual(["I want username and password for Ludo Test"]);
+    await postChat(db, u, "admin", "ali99 / pass");
+    await setGameAccount(db, u, g.id, "ali99");
+    expect((await listGameAccounts(db, u)).map((a) => a.username)).toEqual(["ali99"]);
   });
 });
