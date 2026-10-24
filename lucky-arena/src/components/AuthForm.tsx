@@ -57,10 +57,10 @@ export function AuthForm({ mode, refCode }: { mode: "login" | "register"; refCod
         <input name="password" type="password" required minLength={isReg ? 8 : 1} maxLength={72} autoComplete={isReg ? "new-password" : "current-password"} className="input mt-1" />
       </label>
       {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
-      {!isReg && <p className="text-right text-sm"><Link href="/forgot" className="text-gold underline">Forgot password?</Link></p>}
+      {!isReg && <p className="text-right text-sm"><Link href="/forgot" className="tap text-gold underline">Forgot password?</Link></p>}
       <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : isReg ? "Sign up" : "Log in"}</button>
       <p className="text-center text-sm text-muted">
-        {isReg ? <>Already have an account? <Link href="/login" className="text-gold underline">Log in</Link></> : <>New here? <Link href="/register" className="text-gold underline">Create an account</Link></>}
+        {isReg ? <>Already have an account? <Link href="/login" className="tap text-gold underline">Log in</Link></> : <>New here? <Link href="/register" className="tap text-gold underline">Create an account</Link></>}
       </p>
     </form>
   );

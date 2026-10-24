@@ -26,7 +26,7 @@ export default async function VipPage() {
           </div>
         </section>
       ) : (
-        <p className="card p-5 text-muted"><Link href="/register" className="text-gold underline">Sign up</Link> to start earning XP.</p>
+        <p className="card p-5 text-muted"><Link href="/register" className="tap text-gold underline">Sign up</Link> to start earning XP.</p>
       )}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {VIP_TIERS.map((t, i) => (

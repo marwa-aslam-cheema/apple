@@ -56,7 +56,7 @@ export default async function Home() {
             <div className="h-2.5 overflow-hidden rounded-full bg-bg" role="progressbar" aria-valuenow={Math.round(tier!.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
               <div className="h-full rounded-full bg-gradient-to-r from-violet to-pink" style={{ width: `${tier!.progress * 100}%` }} />
             </div>
-            <Link href="/vip" className="mt-3 inline-block text-sm font-semibold text-gold">See VIP perks</Link>
+            <Link href="/vip" className="tap mt-3 text-sm font-semibold text-gold">See VIP perks</Link>
           </div>
         </section>
       )}
@@ -64,7 +64,7 @@ export default async function Home() {
       <section>
         <div className="mb-3 flex items-end justify-between">
           <h2 className="gold-text text-2xl font-extrabold uppercase">Featured games</h2>
-          <Link href="/games" className="text-sm font-semibold text-gold">View all</Link>
+          <Link href="/games" className="tap text-sm font-semibold text-gold">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {featured.map((g) => <GameCard key={g.id} game={g} />)}

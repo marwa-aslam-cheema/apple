@@ -43,7 +43,7 @@ export function ForgotForm() {
       </label>
       {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
       <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Sending..." : "Send request"}</button>
-      <p className="text-center text-sm"><Link href="/login" className="text-gold underline">Back to log in</Link></p>
+      <p className="text-center text-sm"><Link href="/login" className="tap text-gold underline">Back to log in</Link></p>
     </form>
   );
 }

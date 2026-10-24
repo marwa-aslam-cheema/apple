@@ -127,7 +127,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
       )}
 
       {/* Top bar */}
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-bg/85 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg/85 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
         <button className="rounded-lg p-2 hover:bg-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
           <Icon name="menu" />
         </button>
@@ -144,7 +144,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
               >
                 <Icon name={musicOn ? "music" : "mute"} className="h-5 w-5" />
               </button>
-              <Link href="/wallet" className="flex items-center gap-2 rounded-xl border border-gold/60 bg-surface px-3 py-2 text-sm font-extrabold text-gold shadow-[0_0_14px_rgba(255,207,74,0.18)]" aria-label="Wallet balance">
+              <Link href="/wallet" className="flex items-center gap-1.5 rounded-xl border border-gold/60 bg-surface px-2.5 py-2 text-sm font-extrabold sm:gap-2 sm:px-3 text-gold shadow-[0_0_14px_rgba(255,207,74,0.18)]" aria-label="Wallet balance">
                 <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>
               </Link>

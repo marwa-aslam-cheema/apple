@@ -104,6 +104,9 @@ h1, h2 { font-family: var(--font-display); letter-spacing: 0.01em; }
   .pop-in { animation: pop-in .4s cubic-bezier(.2, 1.4, .4, 1) both; }
   @keyframes pop-in { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+  /* Text links keep their look but get a 44px-tall touch area. */
+  .tap { display: inline-block; padding: .7rem .35rem; margin: -.7rem -.35rem; }
+
   .bulb { animation: bulbs 1s steps(1, end) infinite; }
   .bulb:nth-child(even) { animation-delay: .5s; }
   .spotlight { background: conic-gradient(from 180deg at 50% -10%, transparent 150deg, rgba(255, 220, 140, .14) 170deg, transparent 190deg); }

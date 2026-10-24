@@ -47,7 +47,7 @@ export default async function ProfilePage() {
       </section>
 
       <section className="card p-5">
-        <div className="flex items-center justify-between"><h2 className="font-bold">VIP progress</h2><Link href="/vip" className="text-sm font-semibold text-gold">Details</Link></div>
+        <div className="flex items-center justify-between"><h2 className="font-bold">VIP progress</h2><Link href="/vip" className="tap text-sm font-semibold text-gold">Details</Link></div>
         <p className="mb-2 mt-1 text-sm text-muted">{fmt(user.xp)} XP{t.next ? ` · next: ${t.next.name} at ${fmt(t.next.minXp)} XP` : " · top tier"}</p>
         <div className="h-2.5 overflow-hidden rounded-full bg-bg"><div className="h-full rounded-full bg-gradient-to-r from-violet to-pink" style={{ width: `${t.progress * 100}%` }} /></div>
       </section>
@@ -55,7 +55,7 @@ export default async function ProfilePage() {
       <section className="card p-5">
         <h2 className="mb-2 font-bold">Recent activity</h2>
         {recent.length === 0 ? (
-          <p className="text-sm text-muted">No spins yet. <Link href="/spin" className="text-gold underline">Try the wheel</Link>.</p>
+          <p className="text-sm text-muted">No spins yet. <Link href="/spin" className="tap text-gold underline">Try the wheel</Link>.</p>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {recent.map((s) => (
