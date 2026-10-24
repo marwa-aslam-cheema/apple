@@ -180,7 +180,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
         </p>
       </footer>
 
-      <InstallBanner />
+      {user?.role !== "admin" && <InstallBanner />} {/* the admin has the sidebar entry and works at a desk: no nag over the forms */}
       {user && !pathname.startsWith("/chat") && <ChatWidget role={user.role} />}
 
       {/* Mobile bottom tabs */}

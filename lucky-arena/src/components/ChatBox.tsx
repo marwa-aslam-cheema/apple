@@ -128,6 +128,14 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
     }
   }
 
+  // The message box grows with what is typed or filled in (multi-line replies), up to about six lines.
+  useEffect(() => {
+    const el = input.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
+  }, [text]);
+
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight });
   }, [msgs.length]);

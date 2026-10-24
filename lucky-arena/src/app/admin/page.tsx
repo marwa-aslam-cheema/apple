@@ -42,14 +42,14 @@ const GAME_FIELDS: Field[] = [
 const PROMO_FIELDS: Field[] = [
   { key: "title", label: "Title", type: "text" },
   { key: "code", label: "Code", type: "text" },
-  { key: "description", label: "Description", type: "text" },
+  { key: "description", label: "Description", type: "textarea" },
   { key: "rewardCredits", label: "Reward credits", type: "number" },
   { key: "claimable", label: "Claimable once", type: "bool" },
   { key: "active", label: "Visible", type: "bool" },
 ];
 const REPLY_FIELDS: Field[] = [
   { key: "title", label: "Button title (short)", type: "text" },
-  { key: "body", label: "Message", type: "text" },
+  { key: "body", label: "Message", type: "textarea" },
   { key: "shortcut", label: "Shortcut (optional: type it in the chat box to fill this message)", type: "text" },
   { key: "sortOrder", label: "Order", type: "number" },
 ];

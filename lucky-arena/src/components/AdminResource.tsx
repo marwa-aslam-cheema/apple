@@ -6,7 +6,7 @@ import { useState } from "react";
 export interface Field {
   key: string;
   label: string;
-  type: "text" | "number" | "bool" | "select" | "color";
+  type: "text" | "textarea" | "number" | "bool" | "select" | "color";
   options?: string[];
 }
 type Row = Record<string, string | number | boolean>;
@@ -18,6 +18,15 @@ function Input({ f, value, onChange }: { f: Field; value: Row[string]; onChange:
       <label className="flex min-h-11 items-center gap-2 text-sm font-semibold">
         <input type="checkbox" className="h-5 w-5 accent-violet" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
         {f.label}
+      </label>
+    );
+  }
+  if (f.type === "textarea") {
+    return (
+      <label htmlFor={id} className="block text-xs font-semibold text-muted sm:col-span-2 lg:col-span-4">
+        {f.label}
+        <textarea id={id} rows={6} className="input mt-1 min-h-32 resize-y whitespace-pre-wrap" value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} />
+        <span className="mt-1 block font-normal">Press Enter for a new line.</span>
       </label>
     );
   }
