@@ -134,6 +134,15 @@ export const DDL = [
   `CREATE UNIQUE INDEX IF NOT EXISTS quick_replies_shortcut_idx ON quick_replies (shortcut) WHERE shortcut <> ''`,
   `CREATE TABLE IF NOT EXISTS site_state (id INTEGER PRIMARY KEY, version INTEGER NOT NULL DEFAULT 0)`,
   `INSERT INTO site_state (id, version) VALUES (1, 0) ON CONFLICT (id) DO NOTHING`,
+  `CREATE TABLE IF NOT EXISTS chat_images (
+    id SERIAL PRIMARY KEY,
+    owner_id INTEGER NOT NULL,
+    mime TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_id INTEGER`,
+  `ALTER TABLE quick_replies ADD COLUMN IF NOT EXISTS image_id INTEGER`,
   `CREATE TABLE IF NOT EXISTS push_subscriptions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,

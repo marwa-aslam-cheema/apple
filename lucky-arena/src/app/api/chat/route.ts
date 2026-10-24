@@ -14,6 +14,6 @@ export const GET = route(async (req: Request) => {
 export const POST = route(async (req: Request) => {
   const user = await requireUserApi();
   rateLimit(`chat:${user.id}`, 20, 60_000);
-  const { body } = z.object({ body: z.string().max(5000) }).parse(await req.json());
-  return NextResponse.json(await postChat(await getDb(), user.id, "user", body), { status: 201 });
+  const { body, imageId } = z.object({ body: z.string().max(5000), imageId: z.number().int().positive().optional() }).parse(await req.json());
+  return NextResponse.json(await postChat(await getDb(), user.id, "user", body, imageId), { status: 201 });
 });

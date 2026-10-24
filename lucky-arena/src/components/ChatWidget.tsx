@@ -70,7 +70,7 @@ export function ChatWidget({ role }: { role: string }) {
             </p>
           )}
           <div className="min-h-0 flex-1">
-            {isAdmin ? <AdminChat compact /> : <ChatBox url={guest ? "/api/guest/chat" : "/api/chat"} mine="user" className="h-full" />}
+            {isAdmin ? <AdminChat compact /> : <ChatBox url={guest ? "/api/guest/chat" : "/api/chat"} mine="user" allowImages={!guest} className="h-full" />}
           </div>
         </section>
       )}

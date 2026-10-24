@@ -123,3 +123,7 @@ Players who tap **Turn on notifications** (side menu) get a phone notification w
 2. Put the two keys in the environment as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (and `VAPID_SUBJECT=mailto:you@example.com`), then restart.
 
 Without keys the button is hidden and nothing is sent.
+
+## Pictures in chat
+
+Players and the admin can attach a picture (paperclip next to the message box). Photos are shrunk in the browser first, stored in the database, and only the admin and the player whose chat it was sent in can open them. Only real JPG/PNG/GIF/WebP files up to about 1.5 MB are accepted (checked by content). A quick reply can carry a picture: attach it, type the text, press "Save as quick reply". Signed-out support chat is text only.

@@ -117,6 +117,7 @@ export const chatMessages = pgTable("chat_messages", {
   body: text("body").notNull(),
   readByAdmin: boolean("read_by_admin").notNull().default(false),
   readByUser: boolean("read_by_user").notNull().default(false),
+  imageId: integer("image_id"), // a picture attached to the message
   kind: text("kind").notNull().default("chat"), // "broadcast" = sent to everyone at once
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -126,7 +127,17 @@ export const quickReplies = pgTable("quick_replies", {
   title: text("title").notNull(),
   body: text("body").notNull(),
   shortcut: text("shortcut").notNull().default(""),
+  imageId: integer("image_id"), // optional picture sent together with the reply
   sortOrder: integer("sort_order").notNull().default(0),
+});
+
+/** Pictures sent in chat. Kept in the database (base64) so they work on any host. */
+export const chatImages = pgTable("chat_images", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("owner_id").notNull(), // who uploaded it
+  mime: text("mime").notNull(),
+  data: text("data").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 /** One row (id 1): a counter that goes up whenever the admin changes what players see, so open pages know to reload. */

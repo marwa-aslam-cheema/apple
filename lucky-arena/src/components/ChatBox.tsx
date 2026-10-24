@@ -10,11 +10,28 @@ export interface ChatMsg {
   id: number;
   sender: string;
   body: string;
+  imageId?: number | null;
   createdAt: string;
 }
 
+/** Shrinks a photo in the browser first (long side 1280px, JPEG) so uploads are quick and small. */
+async function shrink(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("That file is not a picture.")); i.src = url; });
+    const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.width * scale));
+    c.height = Math.max(1, Math.round(img.height * scale));
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.82);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** One conversation. `mine` is who is looking at it ("user" = the player, "admin" = staff). */
-export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[70vh]" }: { url: string; mine: "user" | "admin"; onActivity?: () => void; className?: string }) {
+export function ChatBox({ url, mine, onActivity, allowImages = true, className = "h-[28rem] max-h-[70vh]" }: { url: string; mine: "user" | "admin"; onActivity?: () => void; allowImages?: boolean; className?: string }) {
   const router = useRouter();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
@@ -24,6 +41,9 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
   const firstLoad = useRef(true);
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const [image, setImage] = useState<{ id: number; preview: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [shortcut, setShortcut] = useState("");
@@ -66,7 +86,10 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
   useEffect(() => {
     if (mine !== "admin") return;
     const fill = (e: Event) => {
-      setText((e as CustomEvent<string>).detail);
+      const d = (e as CustomEvent<string | { text: string; imageId?: number | null }>).detail;
+      const reply = typeof d === "string" ? { text: d, imageId: null } : d;
+      setImage(reply.imageId ? { id: reply.imageId, preview: `/api/chat/image/${reply.imageId}` } : null); // a quick reply can carry a picture
+      setText(reply.text);
       input.current?.focus();
     };
     window.addEventListener("la:chat-fill", fill);
@@ -116,7 +139,7 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
     const body = text.trim();
     if (!body || !title.trim()) return;
     try {
-      const res = await fetch("/api/admin/replies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body, shortcut }) });
+      const res = await fetch("/api/admin/replies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body, shortcut, imageId: image?.id ?? null }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
       setSaving(false);
@@ -140,19 +163,38 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
     box.current?.scrollTo({ top: box.current.scrollHeight });
   }, [msgs.length]);
 
+  async function pick(f: File | undefined) {
+    if (!f) return;
+    setError("");
+    setUploading(true);
+    try {
+      const dataUrl = await shrink(f);
+      const res = await fetch("/api/chat/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not upload the picture.");
+      setImage({ id: data.imageId, preview: dataUrl });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not upload the picture.");
+    } finally {
+      setUploading(false);
+      if (file.current) file.current.value = "";
+    }
+  }
+
   async function send() {
     if (timer.current) clearTimeout(timer.current);
     // Enter right after a shortcut sends the saved reply, not the shortcut itself.
     const body = (mine === "admin" ? expandShortcut(text, map) : null) ?? text.trim();
-    if (!body || busy) return;
+    if ((!body && !image) || busy || uploading) return;
     setBusy(true);
     setError("");
     unlockSfx();
     try {
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: image?.id }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send.");
       setText("");
+      setImage(null);
       expanded.current = null;
       sfxSent();
       await load();
@@ -170,14 +212,20 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
         {msgs.map((m) => (
           <div key={m.id} className={`flex ${m.sender === mine ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.sender === mine ? "bg-violet text-white" : "bg-surface-2"}`}>
-              <p className="whitespace-pre-wrap break-words">{m.body}</p>
+              {m.imageId && (
+                <a href={`/api/chat/image/${m.imageId}`} target="_blank" rel="noopener noreferrer" className="mb-1 block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/chat/image/${m.imageId}`} alt="Picture in the chat" loading="lazy" className="max-h-60 w-full rounded-lg object-cover" />
+                </a>
+              )}
+              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
               <p className="mt-1 text-[10px] opacity-60">{m.sender === "admin" && mine === "user" ? "Support · " : ""}{fmtDate(m.createdAt)}</p>
             </div>
           </div>
         ))}
       </div>
       {error && <p role="alert" className="px-3 text-sm font-semibold text-danger">{error}</p>}
-      {mine === "admin" && text.trim() && (
+      {mine === "admin" && (text.trim() || image) && (
         <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 pt-2 text-xs">
           {saving ? (
             <>
@@ -191,10 +239,23 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
           )}
         </div>
       )}
+      {image && (
+        <div className="flex items-center gap-2 border-t border-line px-3 pt-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={image.preview} alt="Picture to send" className="h-14 w-14 rounded-lg object-cover" />
+          <button type="button" className="text-xs text-gold underline" onClick={() => setImage(null)}>Remove picture</button>
+        </div>
+      )}
       <form
         className="flex gap-2 border-t border-line p-3"
         onSubmit={(e) => { e.preventDefault(); send(); }}
       >
+        {allowImages && (
+          <>
+            <input ref={file} type="file" accept="image/*" className="hidden" aria-label="Choose a picture" onChange={(e) => void pick(e.target.files?.[0])} />
+            <button type="button" className="btn btn-ghost !px-3" aria-label="Attach a picture" title="Attach a picture" disabled={busy || uploading} onClick={() => file.current?.click()}>{uploading ? "..." : "📎"}</button>
+          </>
+        )}
         <textarea
           ref={input}
           className="input min-h-11 flex-1 resize-none"
@@ -215,7 +276,7 @@ export function ChatBox({ url, mine, onActivity, className = "h-[28rem] max-h-[7
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
           }}
         />
-        <button className="btn btn-gold" disabled={busy || !text.trim()}>Send</button>
+        <button className="btn btn-gold" disabled={busy || uploading || (!text.trim() && !image)}>Send</button>
       </form>
     </div>
   );

@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { chatMessages, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { chatImages, chatMessages, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -256,17 +256,56 @@ export async function createGuest(db: Db, tag = ""): Promise<number> {
   return g.id;
 }
 
-export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string) {
+const IMAGE_MAX_BYTES = 1_500_000;
+function sniffImage(b: Buffer): string | null {
+  if (b.length > 12 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length > 12 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (b.length > 12 && b.subarray(0, 4).toString("latin1") === "GIF8") return "image/gif";
+  if (b.length > 12 && b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
+  return null;
+}
+
+/** Stores a picture for chat. Only real jpeg/png/gif/webp files up to about 1.5 MB are accepted (checked by content, not by name). */
+export async function saveChatImage(db: Db, ownerId: number, dataUrl: string): Promise<number> {
+  const m = /^data:image\/[a-z+.-]+;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!m) throw new AppError("invalid", "Choose a picture file.");
+  const bytes = Buffer.from(m[1], "base64");
+  if (bytes.length > IMAGE_MAX_BYTES) throw new AppError("too_big", "That picture is too big (max about 1.5 MB).", 413);
+  const mime = sniffImage(bytes);
+  if (!mime) throw new AppError("invalid", "Only JPG, PNG, GIF or WebP pictures can be sent.");
+  const [row] = await db.insert(chatImages).values({ ownerId, mime, data: m[1] }).returning({ id: chatImages.id });
+  return row.id;
+}
+
+/** A picture may be opened by the admin, or by the player whose conversation it was sent in. */
+export async function readChatImage(db: Db, id: number, viewer: { id: number; role: string }) {
+  const [img] = await db.select().from(chatImages).where(eq(chatImages.id, id));
+  if (!img) throw new AppError("not_found", "Picture not found.", 404);
+  if (viewer.role !== "admin") {
+    const [m] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.imageId, id), eq(chatMessages.userId, viewer.id))).limit(1);
+    if (!m) throw new AppError("not_found", "Picture not found.", 404);
+  }
+  return { mime: img.mime, bytes: Buffer.from(img.data, "base64") };
+}
+
+export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string, imageId?: number | null) {
   const text = body.trim();
-  if (!text) throw new AppError("invalid", "Write a message first.");
+  if (!text && !imageId) throw new AppError("invalid", "Write a message first.");
+  if (imageId) {
+    const [img] = await db.select({ ownerId: chatImages.ownerId }).from(chatImages).where(eq(chatImages.id, imageId));
+    const [owner] = img ? await db.select({ role: users.role }).from(users).where(eq(users.id, img.ownerId)) : [];
+    // A player can only send their own uploads; the admin can send any picture an admin uploaded (also quick-reply pictures).
+    const okOwner = sender === "user" ? img?.ownerId === userId : owner?.role === "admin";
+    if (!img || !okOwner) throw new AppError("invalid", "That picture cannot be sent.");
+  }
   if (text.length > 1000) throw new AppError("invalid", "Message is too long (max 1000 characters).");
   const [row] = await db
     .insert(chatMessages)
-    .values({ userId, sender, body: text, readByAdmin: sender === "admin", readByUser: sender === "user" })
+    .values({ userId, sender, body: text, imageId: imageId ?? null, readByAdmin: sender === "admin", readByUser: sender === "user" })
     .returning();
   // A phone notification for whoever is not looking at the site: the player gets the admin's reply, the admin gets the player's message.
-  if (sender === "admin") void notifyUsers(db, [userId], { title: "Lucky Arena support", body: text.slice(0, 120), url: "/chat" }, { skipActiveWithinMs: 20_000 });
-  else void adminIds(db).then((ids) => notifyUsers(db, ids, { title: "New player message", body: text.slice(0, 120), url: "/admin?tab=chat&user=" + userId }, { skipActiveWithinMs: 20_000 }));
+  if (sender === "admin") void notifyUsers(db, [userId], { title: "Lucky Arena support", body: text.slice(0, 120) || "Sent a picture", url: "/chat" }, { skipActiveWithinMs: 20_000 });
+  else void adminIds(db).then((ids) => notifyUsers(db, ids, { title: "New player message", body: text.slice(0, 120) || "Sent a picture", url: "/admin?tab=chat&user=" + userId }, { skipActiveWithinMs: 20_000 }));
   return row;
 }
 

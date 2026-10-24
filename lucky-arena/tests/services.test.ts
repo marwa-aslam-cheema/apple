@@ -5,7 +5,7 @@ import { gameSessions, games, spins, transactions, users, wheelSegments } from "
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { safeNext } from "@/lib/safe-next";
 import { socialSchema } from "@/lib/validation";
@@ -556,5 +556,26 @@ describe("sign-in return path", () => {
     expect(safeNext("//evil.com")).toBeUndefined();
     expect(safeNext("https://evil.com")).toBeUndefined();
     expect(safeNext(undefined)).toBeUndefined();
+  });
+});
+
+describe("chat pictures", () => {
+  const PNG = "data:image/png;base64," + Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 1, 2, 3]).toString("base64");
+  it("stores real pictures and only shows them in the right conversation", async () => {
+    const a = await registerUser(db, { email: "pic1@x.test", username: "pic_one", password: "password1" });
+    const b = await registerUser(db, { email: "pic2@x.test", username: "pic_two", password: "password1" });
+    const id = await saveChatImage(db, a, PNG);
+    await postChat(db, a, "user", "", id); // a picture alone is a valid message
+    expect((await readChat(db, a, "admin")).at(-1)).toMatchObject({ imageId: id, body: "" });
+    expect((await readChatImage(db, id, { id: a, role: "user" })).mime).toBe("image/png");
+    expect((await readChatImage(db, id, { id: 1, role: "admin" })).bytes.length).toBeGreaterThan(8);
+    expect(await code(readChatImage(db, id, { id: b, role: "user" }))).toBe("not_found"); // another player cannot open it
+    expect(await code(postChat(db, b, "user", "mine now", id))).toBe("invalid"); // nor send someone else's upload
+  });
+  it("rejects files that are not pictures", async () => {
+    const fake = "data:image/png;base64," + Buffer.from("<svg onload=alert(1)>hello world").toString("base64");
+    expect(await code(saveChatImage(db, 1, fake))).toBe("invalid");
+    expect(await code(saveChatImage(db, 1, "data:text/html;base64,AAAA"))).toBe("invalid");
+    expect(await code(postChat(db, 1, "user", "   "))).toBe("invalid");
   });
 });

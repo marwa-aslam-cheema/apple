@@ -8,6 +8,7 @@ interface Reply {
   title: string;
   body: string;
   shortcut: string;
+  imageId?: number | null;
 }
 
 /** Saved admin messages: click one to drop it into the chat box (then press Send). */
@@ -37,9 +38,9 @@ export function QuickReplies({ onPick }: { onPick?: (text: string) => void }) {
           type="button"
           title={r.shortcut ? `${r.body}\n(shortcut: ${r.shortcut})` : r.body}
           className="chip shrink-0 hover:border-gold hover:text-ink"
-          onClick={() => (onPick ? onPick(r.body) : window.dispatchEvent(new CustomEvent("la:chat-fill", { detail: r.body })))}
+          onClick={() => (onPick ? onPick(r.body) : window.dispatchEvent(new CustomEvent("la:chat-fill", { detail: { text: r.body, imageId: r.imageId ?? null } })))}
         >
-          {r.title}
+          {r.imageId ? "📎 " : ""}{r.title}
         </button>
       ))}
       {items.length === 0 && <span className="text-xs text-muted">No quick replies yet.</span>}
