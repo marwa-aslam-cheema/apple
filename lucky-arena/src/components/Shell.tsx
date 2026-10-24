@@ -216,7 +216,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
 
       <footer className="mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10">
         <p>
-          Lucky Arena is play-money fun for friends. Credits have no cash value and cannot be withdrawn. 18+
+          Lucky Arena
         </p>
       </footer>
 

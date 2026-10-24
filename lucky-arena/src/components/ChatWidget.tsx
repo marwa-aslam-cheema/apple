@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { sfxReceived } from "@/lib/sfx";
 import { AdminChat } from "./AdminChat";
@@ -61,6 +62,11 @@ export function ChatWidget({ role }: { role: string }) {
             <b className="text-sm">{isAdmin ? "Player messages" : "Support chat"}</b>
             <button className="rounded-lg p-1.5 hover:bg-surface" onClick={() => setOpen(false)} aria-label="Close chat"><Icon name="x" className="h-4 w-4" /></button>
           </header>
+          {guest && (
+            <p className="border-b border-line bg-surface-2/60 px-3 py-2 text-xs text-muted">
+              Forgot your password? <Link href="/forgot" onClick={() => setOpen(false)} className="font-bold text-gold underline">Send a reset request</Link> and the admin will reply here.
+            </p>
+          )}
           <div className="min-h-0 flex-1">
             {isAdmin ? <AdminChat compact /> : <ChatBox url={guest ? "/api/guest/chat" : "/api/chat"} mine="user" className="h-full" />}
           </div>
