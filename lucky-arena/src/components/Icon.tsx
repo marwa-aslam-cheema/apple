@@ -14,6 +14,7 @@ const paths: Record<string, string> = {
   chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z",
   music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
   mute: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 3l18 18",
+  download: "M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16",
   copy: "M9 9h11v11H9zM5 15V4h11",
 };
 

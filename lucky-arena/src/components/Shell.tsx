@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { fmt } from "@/lib/format";
 import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unlockAudio } from "@/lib/music";
 import { ChatWidget } from "./ChatWidget";
+import { InstallBanner, useInstall } from "./pwa";
 import { Icon } from "./Icon";
 import { ChipIcon, Logo } from "./Logo";
 
@@ -31,6 +32,7 @@ const TABS = ["/", "/games", "/spin", "/wallet", "/profile"];
 export function Shell({ user, children }: { user: ShellUser | null; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const pwa = useInstall();
   const [open, setOpen] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
   const [trackName, setTrackName] = useState("");
@@ -100,6 +102,15 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
           {i.label}
         </Link>
       ))}
+      {!pwa.installed && (
+        <button
+          onClick={() => { setOpen(false); void pwa.install(); }}
+          className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-gold/60 px-3 py-3 text-left text-sm font-semibold text-gold transition-colors hover:bg-surface-2"
+        >
+          <Icon name="download" />
+          Install app
+        </button>
+      )}
     </nav>
   );
 
@@ -169,6 +180,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
         </p>
       </footer>
 
+      <InstallBanner />
       {user && !pathname.startsWith("/chat") && <ChatWidget role={user.role} />}
 
       {/* Mobile bottom tabs */}
