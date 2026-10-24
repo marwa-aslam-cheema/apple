@@ -129,6 +129,12 @@ export const quickReplies = pgTable("quick_replies", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+/** One row (id 1): a counter that goes up whenever the admin changes what players see, so open pages know to reload. */
+export const siteState = pgTable("site_state", {
+  id: integer("id").primaryKey(),
+  version: integer("version").notNull().default(0),
+});
+
 /** A phone (browser) that agreed to receive notifications. */
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),

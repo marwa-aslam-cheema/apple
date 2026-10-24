@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { AppError } from "@/lib/services";
 import { route } from "@/lib/api";
 import { requireAdminApi } from "@/lib/session";
+import { bumpSiteVersion } from "@/lib/site-version";
 import { resourceFor, assertWheelPlayable, parsePatch } from "@/lib/admin";
 
 type Ctx = { params: Promise<{ resource: string; id: string }> };
@@ -23,6 +24,7 @@ export const PATCH = route(async (req: Request, ctx: Ctx) => {
     if (resource === "wheel") await assertWheelPlayable(tx as never);
     return updated;
   });
+  await bumpSiteVersion(db);
   return NextResponse.json(row);
 });
 
@@ -36,5 +38,6 @@ export const DELETE = route(async (_req: Request, ctx: Ctx) => {
     if (!deleted.length) throw new AppError("not_found", "Not found.", 404);
     if (resource === "wheel") await assertWheelPlayable(tx as never);
   });
+  await bumpSiteVersion(db);
   return NextResponse.json({ ok: true });
 });

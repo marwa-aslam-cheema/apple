@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { route } from "@/lib/api";
+import { bumpSiteVersion } from "@/lib/site-version";
 import { requireAdminApi } from "@/lib/session";
 import { resourceFor, assertWheelPlayable } from "@/lib/admin";
 
@@ -23,5 +24,6 @@ export const POST = route(async (req: Request, ctx: { params: Promise<{ resource
     if (resource === "wheel") await assertWheelPlayable(tx as never);
     return created;
   });
+  await bumpSiteVersion(db);
   return NextResponse.json(row, { status: 201 });
 });

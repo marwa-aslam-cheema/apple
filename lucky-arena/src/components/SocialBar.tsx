@@ -21,11 +21,14 @@ export function SocialBar({ title = "Follow us", className = "" }: { title?: str
   const [links, setLinks] = useState<SocialLink[]>(cache ?? []);
   useEffect(() => {
     let alive = true;
-    fetch("/api/social", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (alive && d) { cache = d.links; setLinks(d.links); } })
-      .catch(() => undefined);
-    return () => { alive = false; };
+    const load = () =>
+      fetch("/api/social", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (alive && d) { cache = d.links; setLinks(d.links); } })
+        .catch(() => undefined);
+    void load();
+    window.addEventListener("la:content-changed", load); // the admin changed something: fetch the new list
+    return () => { alive = false; window.removeEventListener("la:content-changed", load); };
   }, []);
   if (links.length === 0) return null;
   return (

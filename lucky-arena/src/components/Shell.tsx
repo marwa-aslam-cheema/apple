@@ -7,6 +7,7 @@ import { fmt } from "@/lib/format";
 import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unlockAudio } from "@/lib/music";
 import { ChatWidget } from "./ChatWidget";
 import { InstallBanner, useInstall } from "./pwa";
+import { LiveRefresh } from "./LiveRefresh";
 import { PushToggle } from "./PushToggle";
 import { SocialBar } from "./SocialBar";
 import { Icon } from "./Icon";
@@ -229,6 +230,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
         </div>
       </header>
 
+      <LiveRefresh />
       <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 lg:pb-12">{children}</main>
 
       <footer className="mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10">
