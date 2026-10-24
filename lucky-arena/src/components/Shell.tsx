@@ -104,7 +104,7 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
   );
 
   return (
-    <div className="min-h-screen lg:pl-64">
+    <div className="min-h-screen overflow-x-clip lg:pl-64">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-gradient-to-b from-[#26112a] via-[#150a18] to-[#0b0509] shadow-[inset_-1px_0_0_rgba(255,207,74,0.12)] lg:flex">
         <div className="p-5"><Link href="/" aria-label="Lucky Arena home"><Logo /></Link></div>
@@ -153,8 +153,8 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
             </>
           ) : (
             <>
-              <Link href="/login" className="btn btn-ghost">Log in</Link>
-              <Link href="/register" className="btn btn-gold">Sign up</Link>
+              <Link href="/login" className="btn btn-ghost whitespace-nowrap !px-3">Log in</Link>
+              <Link href="/register" className="btn btn-gold whitespace-nowrap !px-3">Sign up</Link>
             </>
           )}
         </div>

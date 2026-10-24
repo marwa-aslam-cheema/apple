@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/db";
 import { GameCard } from "@/components/GameCard";
+import { CasinoBackdrop } from "@/components/CasinoBackdrop";
 import { ChipIcon } from "@/components/Logo";
 import { ClaimButton } from "@/components/ClaimButton";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, SPIN_COST, WELCOME_SPINS } from "@/lib/config";
@@ -16,8 +17,9 @@ export default async function Home() {
   const tier = user ? tierForXp(user.xp) : null;
 
   return (
-    <div className="space-y-10">
-      <section className="marquee relative overflow-hidden bg-gradient-to-br from-[#4a0b26] via-[#1d0b1d] to-[#0d060f] p-8 sm:p-14">
+    <div className="relative isolate space-y-10">
+      <CasinoBackdrop />
+      <section className="marquee relative overflow-hidden bg-gradient-to-br from-[#4a0b26]/80 via-[#1d0b1d]/70 to-[#0d060f]/75 p-8 backdrop-blur-[2px] sm:p-14">
         <div className="spotlight pointer-events-none absolute inset-0" aria-hidden="true" />
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 select-none sm:block" aria-hidden="true">
           <span className="float-slow absolute right-24 top-8 text-8xl text-[#b3123f]/70 [--r:-8deg]">♥</span>
