@@ -4,7 +4,8 @@ import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminSite } from "@/components/AdminSite";
-import { getSite } from "@/lib/site";
+import { DEFAULT_SHARE_CAPTION, getShare, getSite } from "@/lib/site";
+import { AdminInvitePost } from "@/components/AdminInvitePost";
 import { AdminWalletLabels } from "@/components/AdminWalletLabels";
 import { getWalletLabels } from "@/lib/wallet-labels";
 import { AdminGameKeys } from "@/components/AdminGameKeys";
@@ -106,7 +107,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
   } else if (tab === "site") {
     const site = await getSite(db);
-    body = <AdminSite name={site.name} logo={site.logo} />;
+    const share = await getShare(db);
+    body = (
+      <div className="space-y-6">
+        <AdminSite name={site.name} logo={site.logo} />
+        <AdminInvitePost caption={share.caption} image={share.image} bonus={share.bonus} defaultCaption={DEFAULT_SHARE_CAPTION} />
+      </div>
+    );
   } else if (tab === "wallet") {
     const rows = await db.select().from(walletOptions).orderBy(walletOptions.sortOrder, walletOptions.id);
     const labels = await getWalletLabels(db);

@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 
 /** Ready-made invite post: picture, caption, and share buttons. */
-export function ShareKit({ code }: { code: string }) {
+export function ShareKit({ code, caption: initialCaption, image: customImage, bonus, siteName }: { code: string; caption: string; image: string; bonus: string; siteName: string }) {
   const [origin, setOrigin] = useState("");
-  const [caption, setCaption] = useState(`Join me on Lucky Arena and get FREE SPINS! 🎰✨ Spin the welcome wheel and play with friends. Play-money fun, no cash prizes. Use my code ${code}:`);
+  const [caption, setCaption] = useState(initialCaption);
+  const [bonusCopied, setBonusCopied] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
   useEffect(() => {
@@ -15,7 +16,8 @@ export function ShareKit({ code }: { code: string }) {
   }, []);
 
   const link = `${origin}/register?ref=${code}`;
-  const image = `/invite/image?code=${code}`;
+  const image = customImage || `/invite/image?code=${code}`;
+  const downloadHref = customImage || `${image}&download=1`;
   const enc = encodeURIComponent;
   const targets = [
     { name: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}` },
@@ -36,16 +38,27 @@ export function ShareKit({ code }: { code: string }) {
   return (
     <div className="grid gap-5 md:grid-cols-[minmax(0,18rem)_1fr]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={image} alt="Invite post: join Lucky Arena and get free spins" width={1080} height={1080} className="w-full rounded-2xl border border-line" />
+      <img src={image} alt={`Invite post: join ${siteName} and get free spins`} className="h-auto w-full rounded-2xl border border-line" />
       <div className="space-y-4">
+        {bonus && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/50 bg-surface-2/60 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs text-muted">Free chips code</p>
+              <code className="block truncate text-lg font-extrabold text-gold">{bonus}</code>
+            </div>
+            <button type="button" className="chip shrink-0 hover:border-gold" onClick={async () => { try { await navigator.clipboard.writeText(bonus); setBonusCopied(true); setTimeout(() => setBonusCopied(false), 1800); } catch { /* clipboard blocked */ } }}>
+              <Icon name="copy" className="h-4 w-4" />{bonusCopied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        )}
         <label className="block text-sm font-semibold">Caption (edit it if you like)
           <textarea className="input mt-1 min-h-28" value={caption} maxLength={400} onChange={(e) => setCaption(e.target.value)} />
         </label>
         <div className="flex flex-wrap gap-2">
-          <a className="btn btn-gold" href={`${image}&download=1`} download>Download picture</a>
+          <a className="btn btn-gold" href={downloadHref} download>Download picture</a>
           <button className="btn btn-violet" onClick={copy}><Icon name="copy" className="h-4 w-4" />{copied ? "Copied!" : "Copy caption and link"}</button>
           {canShare && (
-            <button className="btn btn-ghost" onClick={() => navigator.share({ title: "Lucky Arena", text: caption, url: link }).catch(() => undefined)}>Share...</button>
+            <button className="btn btn-ghost" onClick={() => navigator.share({ title: siteName, text: caption, url: link }).catch(() => undefined)}>Share...</button>
           )}
         </div>
         <div className="flex flex-wrap gap-2" aria-label="Share on">

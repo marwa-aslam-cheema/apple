@@ -7,6 +7,7 @@ import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
+import { fillCaption } from "@/lib/site";
 import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
 import { socialSchema } from "@/lib/validation";
@@ -642,5 +643,12 @@ describe("chat reactions and deleting", () => {
     await deleteChatMessage(db, u, theirs.id, "admin"); // the admin hides the admin's own message from the admin view
     expect((await readChat(db, u, "user")).some((m) => m.id === theirs.id)).toBe(true);
     expect(await code(deleteChatMessage(db, u, 999999, "user"))).toBe("not_found");
+  });
+});
+
+describe("invite post text", () => {
+  it("fills in the placeholders for each player", () => {
+    expect(fillCaption("Join {site}! Code {code}, free chips: {bonus}", { site: "Royal Club", code: "AB12CD", bonus: "FREE500" })).toBe("Join Royal Club! Code AB12CD, free chips: FREE500");
+    expect(fillCaption("{code} {code}", { site: "x", code: "Z9", bonus: "" })).toBe("Z9 Z9");
   });
 });

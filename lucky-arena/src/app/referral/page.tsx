@@ -6,6 +6,7 @@ import { CopyLink } from "@/components/CopyLink";
 import { ShareKit } from "@/components/ShareKit";
 import { REFERRAL_BONUS } from "@/lib/config";
 import { fmt } from "@/lib/format";
+import { fillCaption, getShare, getSite } from "@/lib/site";
 import { requireUserPage } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Referral" };
@@ -17,6 +18,7 @@ export default async function ReferralPage() {
     db.select({ username: users.username, createdAt: users.createdAt }).from(users).where(eq(users.referredBy, user.id)).orderBy(desc(users.id)).limit(20),
     db.select({ amount: transactions.amount }).from(transactions).where(and(eq(transactions.userId, user.id), eq(transactions.type, "referral_bonus"))),
   ]);
+  const [share, site] = [await getShare(db), await getSite(db)];
   const earned = bonus.reduce((t, r) => t + r.amount, 0);
 
   return (
@@ -32,7 +34,7 @@ export default async function ReferralPage() {
       </section>
       <section className="card space-y-3 p-5">
         <h2 className="gold-text text-2xl font-extrabold uppercase">Share your invite</h2>
-        <ShareKit code={user.referralCode} />
+        <ShareKit code={user.referralCode} caption={fillCaption(share.caption, { site: site.name, code: user.referralCode, bonus: share.bonus })} image={share.image} bonus={share.bonus} siteName={site.name} />
       </section>
       <section className="grid grid-cols-2 gap-3">
         <div className="card p-4"><p className="text-xs text-muted">Friends joined</p><p className="text-2xl font-extrabold">{friends.length}</p></div>
