@@ -547,6 +547,8 @@ describe("social links", () => {
   it("accepts web links only", () => {
     expect(socialSchema.parse({ kind: "WhatsApp", url: "https://wa.me/123" }).label).toBe("");
     expect(() => socialSchema.parse({ kind: "Facebook", url: "javascript:alert(1)" })).toThrow();
+    expect(socialSchema.parse({ kind: "WhatsApp", url: "+92 300 1234567" })).toMatchObject({ url: "https://wa.me/923001234567" }); // a number becomes a link
+    expect(() => socialSchema.parse({ kind: "Facebook", url: "+92 300 1234567" })).toThrow(); // only for WhatsApp
     expect(() => socialSchema.parse({ kind: "Nope", url: "https://x.com" })).toThrow();
   });
 });

@@ -76,13 +76,24 @@ export const forgotSchema = z.object({
 export const requestStatusSchema = z.object({ status: z.enum(["open", "done", "dismissed"]) });
 
 export const SOCIAL_KINDS = ["Facebook", "WhatsApp", "Instagram", "Telegram", "TikTok", "YouTube", "Other"] as const;
-export const socialSchema = z.object({
+/** A WhatsApp number typed instead of a link ("+92 300 1234567") becomes its wa.me link. */
+export function normalizeSocial(v: unknown): unknown {
+  if (typeof v !== "object" || v === null) return v;
+  const o = v as { kind?: string; url?: unknown };
+  if (o.kind === "WhatsApp" && typeof o.url === "string" && /^\+?[\d\s\-()]{6,25}$/.test(o.url.trim())) {
+    const digits = o.url.replace(/\D/g, "");
+    if (digits.length >= 7 && digits.length <= 15) return { ...o, url: `https://wa.me/${digits}` };
+  }
+  return v;
+}
+
+export const socialSchema = z.preprocess(normalizeSocial, z.object({
   kind: z.enum(SOCIAL_KINDS).default("Other"),
   label: z.string().trim().max(40).default(""),
   url: z.string().trim().max(300).refine((v) => /^https?:\/\/[^\s]+$/i.test(v), "Link must start with http:// or https://"),
   sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
   active: z.boolean().default(true),
-});
+}));
 
 export const walletOptionSchema = z.object({
   kind: z.enum(["topup", "reward"]).default("topup"),

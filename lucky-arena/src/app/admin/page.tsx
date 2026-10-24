@@ -75,7 +75,7 @@ const WALLET_FIELDS: Field[] = [
 const SOCIAL_FIELDS: Field[] = [
   { key: "kind", label: "Network", type: "select", options: ["Facebook", "WhatsApp", "Instagram", "Telegram", "TikTok", "YouTube", "Other"] },
   { key: "label", label: "Name shown to players (optional, e.g. Lucky Arena Page)", type: "text" },
-  { key: "url", label: "Link (https://...  WhatsApp: https://wa.me/1234567890)", type: "text" },
+  { key: "url", label: "Link (https://...). For WhatsApp you can type the number with the country code instead, e.g. +92 300 1234567", type: "text" },
   { key: "sortOrder", label: "Order", type: "number" },
   { key: "active", label: "Visible", type: "bool" },
 ];
