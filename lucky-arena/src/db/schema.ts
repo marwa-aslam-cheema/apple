@@ -156,6 +156,17 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+/** Cards on the player\'s wallet page, written by the admin: "topup" options and "reward" options. */
+export const walletOptions = pgTable("wallet_options", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").notNull().default("topup"),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  image: text("image").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+});
+
 /** Social pages the admin shows to players (Facebook page, WhatsApp, Instagram...). */
 export const socialLinks = pgTable("social_links", {
   id: serial("id").primaryKey(),

@@ -152,6 +152,15 @@ export const DDL = [
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS push_user_idx ON push_subscriptions (user_id)`,
+  `CREATE TABLE IF NOT EXISTS wallet_options (
+    id SERIAL PRIMARY KEY,
+    kind TEXT NOT NULL DEFAULT 'topup',
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    image TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active BOOLEAN NOT NULL DEFAULT TRUE
+  )`,
   `CREATE TABLE IF NOT EXISTS social_links (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL DEFAULT 'Other',

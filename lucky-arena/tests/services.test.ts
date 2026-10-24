@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db } from "@/db";
-import { gameSessions, games, spins, transactions, users, wheelSegments } from "@/db/schema";
+import { gameSessions, games, spins, walletOptions, transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, requestGameAccount, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
@@ -600,5 +600,19 @@ describe("linked game needs a username first", () => {
     await postChat(db, u, "admin", "ali99 / pass");
     await setGameAccount(db, u, g.id, "ali99");
     expect((await listGameAccounts(db, u)).map((a) => a.username)).toEqual(["ali99"]);
+  });
+});
+
+describe("wallet cards", () => {
+  it("sends the chosen card to the admin chat", async () => {
+    const u = await registerUser(db, { email: "wc@x.test", username: "wallet_card", password: "password1" });
+    const [top] = await db.insert(walletOptions).values({ kind: "topup", title: "500 credits" }).returning();
+    const [rew] = await db.insert(walletOptions).values({ kind: "reward", title: "VIP badge" }).returning();
+    const [off] = await db.insert(walletOptions).values({ kind: "topup", title: "Hidden", active: false }).returning();
+    expect((await requestWalletOption(db, u, top.id)).sent).toBe(true);
+    expect((await requestWalletOption(db, u, top.id)).sent).toBe(false); // unanswered: not repeated
+    await requestWalletOption(db, u, rew.id);
+    expect(await code(requestWalletOption(db, u, off.id))).toBe("not_found");
+    expect((await readChat(db, u, "admin")).map((m) => m.body)).toEqual(["I need a top-up: 500 credits", "I want the reward: VIP badge"]);
   });
 });

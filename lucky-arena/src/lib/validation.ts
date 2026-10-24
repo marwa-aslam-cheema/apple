@@ -83,3 +83,12 @@ export const socialSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
   active: z.boolean().default(true),
 });
+
+export const walletOptionSchema = z.object({
+  kind: z.enum(["topup", "reward"]).default("topup"),
+  title: z.string().trim().min(1, "Give the option a title.").max(40),
+  description: z.string().trim().max(300).default(""),
+  image: z.string().trim().max(500).refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v) || /^\/api\/game-image\/\d+$/.test(v), "Image must be an uploaded picture").default(""),
+  sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
+  active: z.boolean().default(true),
+});

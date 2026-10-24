@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getDb } from "@/db";
 import { ClaimButton } from "@/components/ClaimButton";
-import { RequestCredits } from "@/components/RequestCredits";
+import { WalletActions } from "@/components/WalletActions";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS } from "@/lib/config";
 import { fmt, fmtDate } from "@/lib/format";
 import { TX_LABELS } from "@/lib/labels";
@@ -40,11 +40,7 @@ export default async function WalletPage() {
         </div>
       </div>
 
-      <section className="card p-5" id="request">
-        <h2 className="font-bold">Need more credits?</h2>
-        <p className="mb-3 mt-1 text-sm text-muted">Send a request and the admin will answer in your chat.</p>
-        <RequestCredits />
-      </section>
+      <WalletActions />
 
       <section className="card overflow-hidden">
         <h2 className="border-b border-line p-4 font-bold">Transaction history</h2>

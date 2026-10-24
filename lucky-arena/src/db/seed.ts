@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { games, promotions, quickReplies, users, wheelSegments } from "./schema";
+import { games, promotions, quickReplies, users, walletOptions, wheelSegments } from "./schema";
 
 const GAMES = [
   { slug: "lucky-spin", title: "Lucky Spin Wheel", category: "Wheel", hue: 262, featured: true, playable: true, description: "Spin the wheel and win credits. Fully playable." },
@@ -63,6 +63,18 @@ const QUICK_REPLIES = [
   { title: "Thanks", shortcut: "/thanks", body: "Thanks for your patience. Enjoy the games!" },
 ];
 
+// Starting cards for the wallet page. The admin edits, replaces or deletes all of them (Admin > Wallet).
+const WALLET_OPTIONS = [
+  { kind: "topup", title: "100 credits", description: "A small top-up to keep playing." },
+  { kind: "topup", title: "500 credits", description: "A bigger top-up for a longer session." },
+  { kind: "topup", title: "1,000 credits", description: "The big one." },
+  { kind: "topup", title: "Custom amount", description: "Tell the admin how many credits you would like." },
+  { kind: "reward", title: "VIP badge", description: "Show off a special badge next to your name." },
+  { kind: "reward", title: "Free spin pack", description: "A bundle of free spins on the Lucky Wheel." },
+  { kind: "reward", title: "Early game access", description: "Try new games before everyone else." },
+  { kind: "reward", title: "Something else", description: "Ask the admin what rewards are available." },
+];
+
 export async function seed(db: Db) {
   const [{ value: userCount }] = await db.select({ value: count() }).from(users);
   if (userCount === 0) {
@@ -85,6 +97,9 @@ export async function seed(db: Db) {
 
   const [{ value: gameCount }] = await db.select({ value: count() }).from(games);
   if (gameCount === 0) await db.insert(games).values(GAMES.map((g, i) => ({ ...g, sortOrder: i })));
+
+  const [{ value: walletCount }] = await db.select({ value: count() }).from(walletOptions);
+  if (walletCount === 0) await db.insert(walletOptions).values(WALLET_OPTIONS.map((o, i) => ({ ...o, sortOrder: i })));
 
   const [{ value: promoCount }] = await db.select({ value: count() }).from(promotions);
   if (promoCount === 0) await db.insert(promotions).values(PROMOS);

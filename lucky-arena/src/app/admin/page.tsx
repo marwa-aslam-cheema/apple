@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { games, promotions, quickReplies, socialLinks, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { games, promotions, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminGameKeys } from "@/components/AdminGameKeys";
 import { AdminResource, type Field } from "@/components/AdminResource";
 import { AdminChat } from "@/components/AdminChat";
@@ -25,6 +25,7 @@ const TABS = [
   ["games", "Games"],
   ["promos", "Promotions"],
   ["wheel", "Wheel"],
+  ["wallet", "Wallet"],
   ["social", "Social"],
 ] as const;
 
@@ -56,6 +57,14 @@ const REPLY_FIELDS: Field[] = [
   { key: "shortcut", label: "Shortcut (optional: type it in the chat box to fill this message)", type: "text" },
   { key: "imageId", label: "Picture sent with this reply (optional)", type: "picture" },
   { key: "sortOrder", label: "Order", type: "number" },
+];
+const WALLET_FIELDS: Field[] = [
+  { key: "kind", label: "Shows under", type: "select", options: ["topup", "reward"] },
+  { key: "title", label: "Title", type: "text" },
+  { key: "description", label: "Text (write anything you like)", type: "textarea" },
+  { key: "image", label: "Picture (optional: pick a file)", type: "gameimage" },
+  { key: "sortOrder", label: "Order", type: "number" },
+  { key: "active", label: "Visible", type: "bool" },
 ];
 const SOCIAL_FIELDS: Field[] = [
   { key: "kind", label: "Network", type: "select", options: ["Facebook", "WhatsApp", "Instagram", "Telegram", "TikTok", "YouTube", "Other"] },
@@ -89,6 +98,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const target = Number(userParam);
     const [who] = Number.isInteger(target) && target > 0 ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, target)) : [];
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
+  } else if (tab === "wallet") {
+    const rows = await db.select().from(walletOptions).orderBy(walletOptions.sortOrder, walletOptions.id);
+    body = (
+      <div className="space-y-4">
+        <p className="card p-4 text-sm">The wallet page has two buttons, <b>I want a top-up</b> and <b>Rewards</b>. Each opens the cards below: "Shows under" topup or reward. Edit the title and text, add a picture, add new cards or delete them. When a player taps a card, you get it in the chat (for example "I need a top-up: 500 credits").</p>
+        <AdminResource resource="wallet" titleKey="title" fields={WALLET_FIELDS} rows={rows} defaults={{ kind: "topup", title: "", description: "", image: "", sortOrder: rows.length, active: true }} />
+      </div>
+    );
   } else if (tab === "social") {
     const rows = await db.select().from(socialLinks).orderBy(socialLinks.sortOrder, socialLinks.id);
     body = (

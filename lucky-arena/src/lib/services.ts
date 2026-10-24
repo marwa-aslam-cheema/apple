@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { chatImages, chatMessages, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { chatImages, chatMessages, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -433,6 +433,25 @@ export async function requestGameAccount(db: Db, userId: number, gameId: number)
   }
   await postChat(db, userId, "user", body);
   return { sent: true, game: game.title };
+}
+
+/** The player picked a top-up or reward card on the wallet page: the admin gets it in the chat. */
+export async function requestWalletOption(db: Db, userId: number, optionId: number): Promise<{ sent: boolean; title: string }> {
+  const [opt] = await db.select().from(walletOptions).where(and(eq(walletOptions.id, optionId), eq(walletOptions.active, true)));
+  if (!opt) throw new AppError("not_found", "That option is not available.", 404);
+  const body = opt.kind === "reward" ? `I want the reward: ${opt.title}` : `I need a top-up: ${opt.title}`;
+  const [last] = await db
+    .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "user"), eq(chatMessages.body, body)))
+    .orderBy(desc(chatMessages.id))
+    .limit(1);
+  if (last && Date.now() - last.createdAt.getTime() < ACCOUNT_REPEAT_MS) {
+    const [answered] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), gt(chatMessages.id, last.id))).limit(1);
+    if (!answered) return { sent: false, title: opt.title };
+  }
+  await postChat(db, userId, "user", body);
+  return { sent: true, title: opt.title };
 }
 
 const REQUEST_REPEAT_MS = 30 * 60_000;

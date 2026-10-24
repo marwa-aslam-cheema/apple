@@ -1,9 +1,9 @@
 import { and, count, eq, gt } from "drizzle-orm";
 import type { z } from "zod";
 import type { Db } from "@/db";
-import { games, promotions, quickReplies, socialLinks, wheelSegments } from "@/db/schema";
+import { games, promotions, quickReplies, socialLinks, walletOptions, wheelSegments } from "@/db/schema";
 import { AppError } from "./services";
-import { gameSchema, promoSchema, replySchema, segmentSchema, socialSchema } from "./validation";
+import { gameSchema, promoSchema, replySchema, segmentSchema, socialSchema, walletOptionSchema } from "./validation";
 
 const resources = {
   games: { table: games, schema: gameSchema },
@@ -11,6 +11,7 @@ const resources = {
   wheel: { table: wheelSegments, schema: segmentSchema },
   replies: { table: quickReplies, schema: replySchema },
   social: { table: socialLinks, schema: socialSchema },
+  wallet: { table: walletOptions, schema: walletOptionSchema },
 } as const;
 
 export function resourceFor(name: string) {
