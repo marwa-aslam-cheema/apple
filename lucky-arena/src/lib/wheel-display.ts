@@ -16,3 +16,11 @@ export function wheelLabel(seg: { label: string; credits: number }, kind: "main"
   if (seg.label.trim() === String(seg.credits)) return multiplierText(seg.credits);
   return seg.label;
 }
+
+/** What a slice prints at the current bet: the real credits it would pay, so the wheel grows with the bet. */
+export function betLabel(seg: { label: string; credits: number }, kind: "main" | "welcome", bet: number): string {
+  if (kind === "welcome" || seg.credits <= 0) return seg.label;
+  const paid = Math.max(1, Math.round((seg.credits * bet) / SPIN_COST));
+  const text = paid >= 10000 ? `${Math.round(paid / 100) / 10}K` : String(paid);
+  return /^jackpot/i.test(seg.label) ? `JACKPOT ${text}` : text;
+}

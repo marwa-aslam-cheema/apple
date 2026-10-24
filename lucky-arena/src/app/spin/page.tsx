@@ -4,7 +4,6 @@ import { getDb } from "@/db";
 import { spins } from "@/db/schema";
 import { SpinWheel } from "@/components/SpinWheel";
 import { SPIN_COST } from "@/lib/config";
-import { wheelLabel } from "@/lib/wheel-display";
 import { fmt, fmtDate } from "@/lib/format";
 import { getOpenSession } from "@/lib/game-sessions";
 import { getCurrentUser } from "@/lib/session";
@@ -27,7 +26,8 @@ export default async function SpinPage() {
         </p>
       </div>
       <SpinWheel
-        segments={segments.map((s) => ({ id: s.id, label: wheelLabel(s, welcomeLeft > 0 ? "welcome" : "main"), icon: s.icon, credits: s.credits, color: s.color }))}
+        segments={segments.map((s) => ({ id: s.id, label: s.label, icon: s.icon, credits: s.credits, color: s.color }))}
+        kind={welcomeLeft > 0 ? "welcome" : "main"}
         defaultBet={SPIN_COST}
         maxMultiplier={Math.max(1, ...segments.map((s) => s.credits / SPIN_COST))}
         balance={(user?.balance ?? 0) + (open && !open.external ? open.balance : 0)}

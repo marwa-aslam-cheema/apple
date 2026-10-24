@@ -190,6 +190,11 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
                 <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>
               </Link>
+              {inGame && (
+                <span className="rounded-xl border border-teal/60 bg-surface px-2.5 py-2 text-xs font-bold text-teal" data-testid="game-balance" title={`Your credits inside ${inGame.title}`}>
+                  {inGame.title}: {fmt(inGame.balance)}
+                </span>
+              )}
               {inGame && inGame.external && (
                 <button type="button" onClick={leaveGame} className="rounded-xl border border-teal/60 bg-surface px-2.5 py-2 text-xs font-bold text-teal" data-testid="in-game" title={`In ${inGame.title}. Tap to bring your credits back.`}>
                   In {inGame.title}: back to wallet

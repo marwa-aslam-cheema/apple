@@ -7,6 +7,7 @@ import { BetPicker } from "./BetPicker";
 import { MAX_BET, MIN_BET } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { sfxResult, sfxSpin, unlockSfx } from "@/lib/sfx";
+import { betLabel } from "@/lib/wheel-display";
 import { segmentLayout } from "@/lib/wheel-layout";
 
 export interface WheelSeg {
@@ -61,7 +62,7 @@ const polar = (deg: number, r = R) => {
   return [R + r * Math.cos(a), R + r * Math.sin(a)];
 };
 
-export function SpinWheel({ segments, defaultBet, maxMultiplier, balance: initial, signedIn, welcomeLeft: initialLeft }: { segments: WheelSeg[]; defaultBet: number; maxMultiplier: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
+export function SpinWheel({ kind, segments, defaultBet, maxMultiplier, balance: initial, signedIn, welcomeLeft: initialLeft }: { kind: "main" | "welcome"; segments: WheelSeg[]; defaultBet: number; maxMultiplier: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
   const router = useRouter();
   const [angle, setAngle] = useState(0);
   const [balance, setBalance] = useState(initial);
@@ -164,7 +165,8 @@ export function SpinWheel({ segments, defaultBet, maxMultiplier, balance: initia
           {segments.map((s, i) => {
             const [x1, y1] = polar(i * sa, R - 8);
             const [x2, y2] = polar((i + 1) * sa, R - 8);
-            const L = segmentLayout(s.label, sa);
+            const text = betLabel(s, free ? "welcome" : kind, bet);
+            const L = segmentLayout(text, sa);
             const rText = (L.textInner + L.textOuter) / 2;
             const maxLen = L.textOuter - L.textInner;
             const mid = (i + 0.5) * sa;
@@ -228,9 +230,13 @@ export function SpinWheel({ segments, defaultBet, maxMultiplier, balance: initia
       {signedIn ? (
         <>
           {!free && <BetPicker bet={bet} onChange={setBet} balance={balance} disabled={busy} maxMultiplier={maxMultiplier} />}
-          <button className="btn btn-gold w-full max-w-xs text-lg" onClick={spin} disabled={busy || !canAfford}>
-            {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${fmt(bet)} credit${bet === 1 ? "" : "s"}`}
-          </button>
+          <div className="flex w-full max-w-xs items-center gap-2">
+            {!free && <button type="button" className="btn btn-ghost !px-4 text-xl" aria-label="Lower the bet" disabled={busy || bet <= MIN_BET} onClick={() => setBet((b) => Math.max(MIN_BET, b - (b <= 10 ? 1 : b <= 100 ? 10 : b <= 500 ? 50 : 100)))}>-</button>}
+            <button className="btn btn-gold min-w-0 flex-1 text-lg" onClick={spin} disabled={busy || !canAfford}>
+              {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${fmt(bet)} credit${bet === 1 ? "" : "s"}`}
+            </button>
+            {!free && <button type="button" className="btn btn-ghost !px-4 text-xl" aria-label="Raise the bet" disabled={busy || bet >= MAX_BET} onClick={() => setBet((b) => Math.min(MAX_BET, b + (b < 10 ? 1 : b < 100 ? 10 : b < 500 ? 50 : 100)))}>+</button>}
+          </div>
           <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> credits</p>
           {!canAfford && (
             <p className="text-center text-sm text-muted">
