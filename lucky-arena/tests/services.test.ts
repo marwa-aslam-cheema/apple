@@ -1,13 +1,14 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db } from "@/db";
-import { games, transactions, users, wheelSegments } from "@/db/schema";
+import { gameSessions, games, spins, transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
+import { absorbWallet, apiReport, apiSession, apiSettle, buildLaunchUrl, closeExpiredSessions, enterGame, exitGame, getOpenSession, listGameAccounts, regenerateApiKey, removeGameAccount, setGameAccount } from "@/lib/game-sessions";
 
 let db: Db;
 beforeAll(async () => {
@@ -17,6 +18,7 @@ beforeAll(async () => {
 });
 
 const balanceOf = async (id: number) => (await db.select().from(users).where(eq(users.id, id)))[0].balance;
+const totalOf = async (id: number) => (await balanceOf(id)) + ((await getOpenSession(db, id))?.balance ?? 0); // wallet + inside the open game
 const code = async (p: Promise<unknown>) => p.then(() => "ok", (e) => (e instanceof AppError ? e.code : String(e)));
 
 describe("seed", () => {
@@ -75,16 +77,22 @@ describe("welcome wheel", () => {
 });
 
 describe("wallet and spin", () => {
-  it("debits the cost, credits prizes and keeps the ledger consistent", async () => {
+  it("moves credits into the game, plays from there and keeps the ledger consistent", async () => {
     const id = await registerUser(db, { email: "s@x.test", username: "spinner", password: "password1" });
     await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, id));
     await adminAdjust(db, id, 5000, "test funds");
     for (let i = 0; i < 20; i++) await spinWheel(db, id);
+    const played = await db.select().from(spins).where(eq(spins.userId, id));
+    expect(played).toHaveLength(20);
+    const net = played.reduce((t, r) => t + r.prize - r.cost, 0);
+    expect(await balanceOf(id)).toBe(0); // everything is in the game
+    expect(await totalOf(id)).toBe(5000 + net);
+    const back = await exitGame(db, id);
+    expect(back?.returned).toBe(5000 + net); // leaving brings it home
+    expect(await balanceOf(id)).toBe(5000 + net);
     const rows = await listTransactions(db, id, 500);
-    const sum = rows.reduce((t, r) => t + r.amount, 0);
-    expect(sum).toBe(await balanceOf(id));
-    expect(rows[0].balanceAfter).toBe(await balanceOf(id));
-    expect(rows.filter((r) => r.type === "spin_cost")).toHaveLength(20);
+    expect(rows.reduce((t, r) => t + r.amount, 0)).toBe(await balanceOf(id)); // the wallet ledger still adds up
+    expect(rows.map((r) => r.type)).toEqual(expect.arrayContaining(["game_stake", "game_return"]));
   });
   it("refuses to spin without enough credits and never goes negative", async () => {
     const id = await registerUser(db, { email: "p@x.test", username: "poor", password: "password1" });
@@ -272,13 +280,14 @@ describe("bet size", () => {
   it("charges the chosen bet and pays in proportion", async () => {
     const id = await richPlayer("bettor1");
     for (const bet of [1, 5, 50, 333, 1000]) {
-      const before = await balanceOf(id);
+      const before = await totalOf(id);
       const r = await spinWheel(db, id, bet);
       expect(r.cost).toBe(bet);
-      expect(await balanceOf(id)).toBe(before - bet + r.prize);
-      expect(r.balance).toBe(before - bet + r.prize);
+      expect(await totalOf(id)).toBe(before - bet + r.prize);
+      expect(r.balance).toBe(before - bet + r.prize); // the balance shown is the one inside the game
       expect(r.prize).toBeLessThanOrEqual(bet * 20 + 1); // best segment is 20x
     }
+    await exitGame(db, id);
     const rows = await listTransactions(db, id, 200);
     expect(rows.reduce((t, x) => t + x.amount, 0)).toBe(await balanceOf(id)); // the ledger still adds up
   });
@@ -351,6 +360,150 @@ describe("credit request from a game", () => {
   it("rejects an unknown game", async () => {
     const id = await broke("brokefive");
     expect(await code(requestCredits(db, id, { gameId: 424242 }))).toBe("not_found");
+  });
+});
+
+describe("game sessions", () => {
+  const gid = async (slug: string) => (await db.select().from(games).where(eq(games.slug, slug)))[0].id;
+  async function player(name: string, credits: number) {
+    const id = await registerUser(db, { email: `${name}@x.test`, username: name, password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, id));
+    if (credits) await adminAdjust(db, id, credits, "funds");
+    return id;
+  }
+  it("entering a game takes the credits in (wallet shows 0) and leaving brings the rest back", async () => {
+    const id = await player("seat1", 300);
+    const s = await enterGame(db, id, await gid("card-quest"));
+    expect(s).toMatchObject({ stake: 300, balance: 300, gameTitle: "Card Quest" });
+    expect(await balanceOf(id)).toBe(0);
+    expect(await exitGame(db, id)).toMatchObject({ returned: 300, game: "Card Quest" });
+    expect(await balanceOf(id)).toBe(300);
+    expect(await getOpenSession(db, id)).toBeNull();
+    expect(await exitGame(db, id)).toBeNull(); // leaving twice is harmless
+  });
+  it("opens no session without credits, or for a game that does not use credits", async () => {
+    const broke = await player("seat2", 0);
+    expect(await enterGame(db, broke, await gid("card-quest"))).toBeNull();
+    const rich = await player("seat3", 100);
+    const free = await gid("memory-mint");
+    await db.update(games).set({ walletMode: "none" }).where(eq(games.id, free));
+    expect(await enterGame(db, rich, free)).toBeNull();
+    expect(await balanceOf(rich)).toBe(100);
+    expect(await code(enterGame(db, rich, 999999))).toBe("not_found");
+  });
+  it("one game at a time: entering another game brings the first game's credits home and takes them into the new one", async () => {
+    const id = await player("seat4", 200);
+    await enterGame(db, id, await gid("tower-stack"));
+    await db.update(gameSessions).set({ balance: 120 }).where(eq(gameSessions.userId, id)); // lost 80 in the first game
+    const second = await enterGame(db, id, await gid("comet-run"));
+    expect(second).toMatchObject({ gameTitle: "Comet Run", stake: 120, balance: 120 });
+    const open = await db.select().from(gameSessions).where(eq(gameSessions.userId, id));
+    expect(open.filter((r) => r.status === "open")).toHaveLength(1);
+    expect(open.find((r) => r.status === "closed")?.returned).toBe(120);
+  });
+  it("credits added by the admin while in a game are taken into the game", async () => {
+    const id = await player("seat5", 100);
+    await enterGame(db, id, await gid("pixel-pop"));
+    await adminAdjust(db, id, 50, "gift");
+    expect(await balanceOf(id)).toBe(50);
+    const again = await enterGame(db, id, await gid("pixel-pop"));
+    expect(again).toMatchObject({ stake: 150, balance: 150 });
+    expect(await balanceOf(id)).toBe(0);
+  });
+  it("the wheel is played from inside the game, and admin credits join it on the next spin", async () => {
+    const id = await player("seat6", 400);
+    const r1 = await spinWheel(db, id, 100);
+    expect(r1.inGame).toBe(true);
+    expect(await balanceOf(id)).toBe(0);
+    await adminAdjust(db, id, 1000, "gift");
+    const r2 = await spinWheel(db, id, 1000); // only possible because the gift moved into the game
+    expect(r2.inGame).toBe(true);
+    expect(await balanceOf(id)).toBe(0);
+    expect((await getOpenSession(db, id))?.gameSlug).toBe("lucky-spin");
+  });
+  it("a session nobody touches gives the credits back", async () => {
+    const id = await player("seat7", 250);
+    await enterGame(db, id, await gid("word-orbit"));
+    await closeExpiredSessions(db, id);
+    expect(await balanceOf(id)).toBe(0); // still fresh: nothing happens
+    await db.update(gameSessions).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(gameSessions.userId, id));
+    await closeExpiredSessions(db, id);
+    expect(await balanceOf(id)).toBe(250);
+    expect(await getOpenSession(db, id)).toBeNull();
+  });
+  it("a player with credits inside a game is not treated as out of credits", async () => {
+    const id = await player("seat8", 100);
+    await enterGame(db, id, await gid("tile-tango"));
+    expect(await balanceOf(id)).toBe(0);
+    expect(await requestCredits(db, id, { gameId: await gid("star-fortune") })).toMatchObject({ sent: false, reason: "has_credits" });
+    void absorbWallet; // exported for the wheel; covered through the tests above
+  });
+});
+
+describe("the game API (a game's own server)", () => {
+  const gid = async (slug: string) => (await db.select().from(games).where(eq(games.slug, slug)))[0];
+  async function inGame(name: string, credits: number, slug = "number-nest") {
+    const id = await registerUser(db, { email: `${name}@x.test`, username: name, password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, id));
+    await adminAdjust(db, id, credits, "funds");
+    const game = await gid(slug);
+    const s = await enterGame(db, id, game.id);
+    return { id, game, token: s!.token };
+  }
+  it("reads a session with the right key only", async () => {
+    const { token, game } = await inGame("api1", 500);
+    expect(await apiSession(db, token, game.apiKey)).toMatchObject({ status: "open", player: "api1", stake: 500, balance: 500, gameUsername: null });
+    expect(await code(apiSession(db, token, "wrong-key"))).toBe("unauthorized");
+    expect(await code(apiSession(db, "no-such-token", game.apiKey))).toBe("unauthorized");
+    const other = await gid("history-hunt"); // another game's key does not open this game's session
+    expect(await code(apiSession(db, token, other.apiKey))).toBe("unauthorized");
+  });
+  it("shows the player's own login name in the game when the admin saved one", async () => {
+    const { id, token, game } = await inGame("api2", 100);
+    await setGameAccount(db, id, game.id, "  ludo_king99 ");
+    expect((await apiSession(db, token, game.apiKey)).gameUsername).toBe("ludo_king99");
+    await setGameAccount(db, id, game.id, "ludo_king100"); // saving again replaces it
+    expect((await listGameAccounts(db, id)).map((a) => a.username)).toEqual(["ludo_king100"]);
+    await removeGameAccount(db, id, game.id);
+    expect(await listGameAccounts(db, id)).toEqual([]);
+    expect(await code(setGameAccount(db, id, game.id, "   "))).toBe("invalid");
+  });
+  it("accepts live balance reports without moving any credits", async () => {
+    const { id, token, game } = await inGame("api3", 100);
+    await apiReport(db, token, game.apiKey, 340);
+    expect((await getOpenSession(db, id))?.balance).toBe(340);
+    expect(await balanceOf(id)).toBe(0);
+    for (const bad of [-1, 1.5, "10", null, 1e12]) expect(await code(apiReport(db, token, game.apiKey, bad))).toBe("bad_balance");
+  });
+  it("settles once: the final balance goes to the wallet, and settling again pays nothing", async () => {
+    const { id, token, game } = await inGame("api4", 100);
+    expect(await apiSettle(db, token, game.apiKey, 275)).toMatchObject({ ok: true, returned: 275 });
+    expect(await balanceOf(id)).toBe(275);
+    expect(await getOpenSession(db, id)).toBeNull();
+    expect(await code(apiSettle(db, token, game.apiKey, 99999))).toBe("session_closed");
+    expect(await balanceOf(id)).toBe(275);
+    expect(await code(apiReport(db, token, game.apiKey, 5))).toBe("session_closed");
+    const ledger = await listTransactions(db, id, 10);
+    expect(ledger[0]).toMatchObject({ type: "game_return", amount: 275 });
+    expect(ledger.reduce((t, r) => t + r.amount, 0)).toBe(275);
+  });
+  it("settling with 0 means the player lost everything", async () => {
+    const { id, token, game } = await inGame("api5", 80);
+    expect(await apiSettle(db, token, game.apiKey, 0)).toMatchObject({ returned: 0 });
+    expect(await balanceOf(id)).toBe(0);
+  });
+  it("a new key makes the old one stop working", async () => {
+    const { token, game } = await inGame("api6", 10);
+    const fresh = await regenerateApiKey(db, game.id);
+    expect(fresh).not.toBe(game.apiKey);
+    expect(await code(apiSession(db, token, game.apiKey))).toBe("unauthorized");
+    expect((await apiSession(db, token, fresh)).status).toBe("open");
+  });
+  it("builds the launch address without losing the game's own query", () => {
+    const u = new URL(buildLaunchUrl("https://ludo.example/play?room=7", { origin: "https://arena.example", token: "tok", player: "ann", gameUsername: "ann_ludo", balance: 250 }));
+    expect(u.searchParams.get("room")).toBe("7");
+    expect(Object.fromEntries([...u.searchParams].filter(([k]) => k.startsWith("lucky_")))).toEqual({ lucky_session: "tok", lucky_site: "https://arena.example", lucky_player: "ann_ludo", lucky_balance: "250" });
+    expect(new URL(buildLaunchUrl("https://x.example/", { origin: "o", token: "t", player: "ann", gameUsername: null, balance: 1 })).searchParams.get("lucky_player")).toBe("ann");
   });
 });
 

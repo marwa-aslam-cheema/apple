@@ -93,3 +93,24 @@ src/db             Drizzle schema, DDL, seed, driver selection (PGlite vs pg)
 src/lib            services (wallet, spin, promos...), session, validation, wheel/VIP logic
 tests              vitest suites
 ```
+
+## Games and credits: how the wallet behaves
+
+- **Games on this site (Lucky Spin):** when a player starts playing, their credits move into the game. The top bar shows 0 and the game shows the balance. When they leave the page, whatever is left goes back to the wallet.
+- **Games on another address (a link):** players open them through `/play/<slug>`. Their credits move into the game, the top bar shows 0 and a "back to wallet" button appears. Credits return when the game settles, when the player taps that button, or automatically after 6 hours.
+- **Two links per game:** *Game link* is what players get. *Admin link* is the game's own back-office page and is only ever sent to admins (an admin's card opens it). Never store a game's admin password on this site.
+- **Game usernames:** a player's name inside a game's own login is saved per game (Admin > player History > Game usernames) and sent to the game as `lucky_player`.
+
+### Connecting your own game (play money only)
+
+Only needed if the game's own server can call this site. Without it, the site still zeroes the wallet on entry; an admin then adds or removes credits by hand when the player returns.
+
+The game is opened as `<game link>?lucky_session=<token>&lucky_site=<this site>&lucky_player=<name>&lucky_balance=<n>`. The game's **server** then calls this site with the game's API key (Admin > Games > API keys), sent as `Authorization: Bearer <key>`:
+
+| Call | Purpose |
+|---|---|
+| `GET  {site}/api/game-api/session?session=<token>` | Who is playing and the starting balance |
+| `POST {site}/api/game-api/report` `{ "session": "<token>", "balance": 700 }` | Show the live balance (moves no credits) |
+| `POST {site}/api/game-api/settle` `{ "session": "<token>", "balance": 700 }` | Player left: credits return to the wallet. Works once per session |
+
+Balances are whole numbers. Credits are play money with no cash value.

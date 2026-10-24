@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { chatMessages, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { chatMessages, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -14,41 +14,18 @@ import {
   SPIN_XP,
   WELCOME_SPINS,
 } from "./config";
+import { INTERNAL_TTL_MS, enterGame, getOpenSession } from "./game-sessions";
 import { tierForXp } from "./vip";
 import { payout, pickSegment } from "./wheel";
 
-export class AppError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
-}
-
-export function isUniqueViolation(e: unknown): boolean {
-  const err = e as { code?: string; cause?: { code?: string } };
-  return err?.code === "23505" || err?.cause?.code === "23505";
-}
+export { AppError, applyCredits, isUniqueViolation } from "./ledger";
+import { AppError, applyCredits, isUniqueViolation } from "./ledger";
 
 function newReferralCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
   for (let i = 0; i < 8; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
   return out;
-}
-
-/** Adds (or removes, when negative) virtual credits and writes the ledger row. Never lets the balance go below 0. */
-export async function applyCredits(db: Db, userId: number, amount: number, type: string, note = "") {
-  const [row] = await db
-    .update(users)
-    .set({ balance: sql`${users.balance} + ${amount}` })
-    .where(and(eq(users.id, userId), sql`${users.balance} + ${amount} >= 0`))
-    .returning({ balance: users.balance });
-  if (!row) throw new AppError("insufficient_credits", "Not enough credits.", 402);
-  await db.insert(transactions).values({ userId, type, amount, balanceAfter: row.balance, note });
-  return row.balance;
 }
 
 export async function registerUser(
@@ -125,18 +102,42 @@ export async function activeWheel(db: Db, kind: "main" | "welcome" = "main") {
 export async function spinWheel(db: Db, userId: number, bet: number = SPIN_COST) {
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
-    // Lock the player's row so two parallel requests cannot spend the same welcome spin twice.
+    // Lock the player's row so two parallel requests cannot spend the same welcome spin or the same credits twice.
     const [player] = await t.select({ welcomeSpins: users.welcomeSpins }).from(users).where(eq(users.id, userId)).for("update");
     if (!player) throw new AppError("not_found", "User not found.", 404);
     if (player.welcomeSpins > 0) return welcomeSpin(t, userId, player.welcomeSpins); // free spins ignore the bet
     if (!Number.isInteger(bet) || bet < MIN_BET || bet > MAX_BET) throw new AppError("bad_bet", `Bet must be a whole number from ${MIN_BET} to ${MAX_BET}.`);
     const segments = await activeWheel(t);
     if (segments.length < 2) throw new AppError("wheel_unavailable", "The wheel is not configured right now.", 503);
-    await applyCredits(t, userId, -bet, "spin_cost", "Lucky Spin");
+
+    // The wheel is a game on this site: playing it means taking a seat, so the credits sit in the game, not the wallet.
+    const [wheel] = await t.select({ id: games.id }).from(games).where(eq(games.slug, WHEEL_SLUG));
+    let session = wheel ? await enterGame(t, userId, wheel.id) : null;
+    if (session && session.gameId !== wheel!.id) session = null;
+    const inGame = !!session;
+
+    if (inGame) {
+      const [paid] = await t
+        .update(gameSessions)
+        .set({ balance: sql`${gameSessions.balance} - ${bet}` })
+        .where(and(eq(gameSessions.id, session!.id), sql`${gameSessions.balance} >= ${bet}`))
+        .returning({ balance: gameSessions.balance });
+      if (!paid) throw new AppError("insufficient_credits", "Not enough credits.", 402);
+    } else {
+      await applyCredits(t, userId, -bet, "spin_cost", "Lucky Spin");
+    }
+
     const segment = pickSegment(segments);
     const prize = payout(segment.credits, bet, SPIN_COST);
     let balance: number;
-    if (prize > 0) {
+    if (inGame) {
+      const [won] = await t
+        .update(gameSessions)
+        .set({ balance: sql`${gameSessions.balance} + ${prize}`, expiresAt: new Date(Date.now() + INTERNAL_TTL_MS) })
+        .where(eq(gameSessions.id, session!.id))
+        .returning({ balance: gameSessions.balance });
+      balance = won.balance;
+    } else if (prize > 0) {
       balance = await applyCredits(t, userId, prize, "spin_win", `Won ${prize.toLocaleString("en-US")}`);
     } else {
       const [u] = await t.select({ balance: users.balance }).from(users).where(eq(users.id, userId));
@@ -148,7 +149,7 @@ export async function spinWheel(db: Db, userId: number, bet: number = SPIN_COST)
       .where(eq(users.id, userId))
       .returning({ xp: users.xp });
     await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: bet, prize });
-    return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize, cost: bet, balance, xp: u.xp, welcome: false, welcomeLeft: 0 };
+    return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize, cost: bet, balance, xp: u.xp, welcome: false, welcomeLeft: 0, inGame };
   });
 }
 
@@ -165,7 +166,7 @@ async function welcomeSpin(t: Db, userId: number, left: number) {
   let balance = u.balance;
   if (segment.credits > 0) balance = await applyCredits(t, userId, segment.credits, "welcome_prize", `Welcome wheel: ${segment.label}`);
   await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: 0, prize: segment.credits });
-  return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize: segment.credits, cost: 0, balance, xp: u.xp, welcome: true, welcomeLeft: left - 1 };
+  return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize: segment.credits, cost: 0, balance, xp: u.xp, welcome: true, welcomeLeft: left - 1, inGame: false };
 }
 
 export async function claimDaily(db: Db, userId: number, now = new Date()) {
@@ -274,6 +275,7 @@ export async function userUnreadCount(db: Db, userId: number) {
   return r.n;
 }
 
+export const WHEEL_SLUG = "lucky-spin";
 const BROADCAST_CHUNK = 500;
 
 /** Players who would receive a message sent to all: everyone except admins and banned accounts. */
@@ -344,7 +346,8 @@ export async function requestCredits(db: Db, userId: number, opts: { gameId?: nu
     [game] = await db.select({ title: games.title }).from(games).where(and(eq(games.id, opts.gameId), eq(games.active, true)));
     if (!game) throw new AppError("not_found", "Game not found.", 404);
     // Clicking a game only counts as "I need credits" when there is nothing to play with: no credits and no free spins left.
-    if (user.balance > 0 || user.welcomeSpins > 0 || user.role === "admin") return { sent: false, reason: "has_credits", game: game.title };
+    const inGameCredits = (await getOpenSession(db, userId))?.balance ?? 0;
+    if (user.balance + inGameCredits > 0 || user.welcomeSpins > 0 || user.role === "admin") return { sent: false, reason: "has_credits", game: game.title };
   }
   const body = game ? `I want credits in ${game.title}` : "I want credits";
   const [last] = await db
@@ -428,8 +431,9 @@ export async function userStats(db: Db, userId: number) {
   return { plays: s.plays, won: s.won, spent: s.spent, referrals: r.value };
 }
 
-export async function lobbyGames(db: Db, opts: { q?: string; category?: string } = {}) {
-  const rows = await db.select().from(games).where(eq(games.active, true)).orderBy(games.sortOrder, games.id);
+export async function lobbyGames(db: Db, opts: { q?: string; category?: string; admin?: boolean } = {}) {
+  // The game API key never leaves the server, and the admin link is only handed to admins.
+  const rows = (await db.select().from(games).where(eq(games.active, true)).orderBy(games.sortOrder, games.id)).map((g) => ({ ...g, apiKey: "", adminLink: opts.admin ? g.adminLink : "" }));
   const q = opts.q?.trim().toLowerCase();
   return rows.filter((g) => {
     if (opts.category && opts.category !== "All") {

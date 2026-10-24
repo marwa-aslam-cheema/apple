@@ -6,6 +6,7 @@ import { SpinWheel } from "@/components/SpinWheel";
 import { SPIN_COST } from "@/lib/config";
 import { wheelLabel } from "@/lib/wheel-display";
 import { fmt, fmtDate } from "@/lib/format";
+import { getOpenSession } from "@/lib/game-sessions";
 import { getCurrentUser } from "@/lib/session";
 import { activeWheel } from "@/lib/services";
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = { title: "Lucky Spin" };
 
 export default async function SpinPage() {
   const [user, db] = await Promise.all([getCurrentUser(), getDb()]);
+  const open = user ? await getOpenSession(db, user.id) : null;
   const welcomeLeft = user?.welcomeSpins ?? 0;
   const segments = await activeWheel(db, welcomeLeft > 0 ? "welcome" : "main");
   const recent = user ? await db.select().from(spins).where(eq(spins.userId, user.id)).orderBy(desc(spins.id)).limit(8) : [];
@@ -28,7 +30,7 @@ export default async function SpinPage() {
         segments={segments.map((s) => ({ id: s.id, label: wheelLabel(s, welcomeLeft > 0 ? "welcome" : "main"), icon: s.icon, credits: s.credits, color: s.color }))}
         defaultBet={SPIN_COST}
         maxMultiplier={Math.max(1, ...segments.map((s) => s.credits / SPIN_COST))}
-        balance={user?.balance ?? 0}
+        balance={(user?.balance ?? 0) + (open && !open.external ? open.balance : 0)}
         welcomeLeft={welcomeLeft}
         signedIn={!!user}
       />

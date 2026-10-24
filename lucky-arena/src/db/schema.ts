@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -41,12 +42,17 @@ export const games = pgTable("games", {
   category: text("category").notNull(),
   description: text("description").notNull().default(""),
   link: text("link").notNull().default(""),
+  adminLink: text("admin_link").notNull().default(""), // the game's own back-office page: shown to admins only
   image: text("image").notNull().default(""),
   hue: integer("hue").notNull().default(260),
   featured: boolean("featured").notNull().default(false),
   playable: boolean("playable").notNull().default(false),
   active: boolean("active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
+  // "session": credits move into the game while the player is in it and come back when they leave. "none": the game does not touch credits.
+  walletMode: text("wallet_mode").notNull().default("session"),
+  // Secret the game's own server uses to read a session and report the final balance (never shown to players).
+  apiKey: text("api_key").notNull().default(sql`md5(random()::text || clock_timestamp()::text)`),
 });
 
 export const promotions = pgTable("promotions", {
@@ -120,6 +126,34 @@ export const quickReplies = pgTable("quick_replies", {
   shortcut: text("shortcut").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
 });
+
+/** Credits a player has taken into a game. While a session is open the wallet shows less, and the game holds `balance`. */
+export const gameSessions = pgTable("game_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  gameId: integer("game_id").notNull(),
+  token: text("token").notNull().unique(),
+  stake: integer("stake").notNull(), // credits taken in
+  balance: integer("balance").notNull(), // credits the player has in the game right now
+  status: text("status").notNull().default("open"), // "open" | "closed"
+  openedAt: timestamp("opened_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  closedAt: timestamp("closed_at"),
+  returned: integer("returned"), // credits that went back to the wallet
+});
+
+/** The player's own login name inside a game that has its own accounts (saved here by the admin). */
+export const gameAccounts = pgTable(
+  "game_accounts",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull(),
+    gameId: integer("game_id").notNull(),
+    username: text("username").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique("game_accounts_user_game").on(t.userId, t.gameId)],
+);
 
 export type User = typeof users.$inferSelect;
 export type Game = typeof games.$inferSelect;

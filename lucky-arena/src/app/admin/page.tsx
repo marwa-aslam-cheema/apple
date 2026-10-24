@@ -3,6 +3,7 @@ import Link from "next/link";
 import { count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, quickReplies, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { AdminGameKeys } from "@/components/AdminGameKeys";
 import { AdminResource, type Field } from "@/components/AdminResource";
 import { AdminChat } from "@/components/AdminChat";
 import { AdminRequests } from "@/components/AdminRequests";
@@ -32,6 +33,7 @@ const GAME_FIELDS: Field[] = [
   { key: "category", label: "Category", type: "select", options: ["Wheel", "Cards", "Arcade", "Puzzle", "Trivia"] },
   { key: "description", label: "Description", type: "text" },
   { key: "link", label: "Game link (https://...)", type: "text" },
+  { key: "adminLink", label: "Admin link: the game's own back-office (only you see it; never share its password here)", type: "text" },
   { key: "image", label: "Picture link (https://... .png/.jpg)", type: "text" },
   { key: "hue", label: "Colour hue (0-360)", type: "number" },
   { key: "sortOrder", label: "Sort order", type: "number" },
@@ -117,7 +119,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     );
   } else if (tab === "games") {
     const rows = await db.select().from(games).orderBy(games.sortOrder, games.id);
-    body = <AdminResource resource="games" titleKey="title" fields={GAME_FIELDS} rows={rows} defaults={{ title: "", slug: "", category: "Arcade", description: "", link: "", image: "", hue: 260, sortOrder: 0, featured: false, playable: false, active: true }} />;
+    body = (<div className="space-y-6"><AdminGameKeys rows={rows.map((r) => ({ id: r.id, title: r.title, apiKey: r.apiKey, link: r.link }))} /><AdminResource resource="games" titleKey="title" fields={GAME_FIELDS} rows={rows} defaults={{ title: "", slug: "", category: "Arcade", description: "", link: "", adminLink: "", image: "", hue: 260, sortOrder: 0, featured: false, playable: false, active: true }} /></div>);
   } else if (tab === "promos") {
     const rows = (await db.select().from(promotions).orderBy(promotions.id)).map(({ createdAt: _c, ...r }) => r);
     body = <AdminResource resource="promos" titleKey="title" fields={PROMO_FIELDS} rows={rows} defaults={{ title: "", code: "", description: "", rewardCredits: 100, claimable: true, active: true }} />;

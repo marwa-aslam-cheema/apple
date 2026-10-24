@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fmt } from "@/lib/format";
 import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unlockAudio } from "@/lib/music";
 import { ChatWidget } from "./ChatWidget";
@@ -14,6 +14,8 @@ export interface ShellUser {
   username: string;
   balance: number;
   role: string;
+  /** Credits are inside a game: the wallet reads 0 until the player leaves it. */
+  inGame: { title: string; balance: number; external: boolean } | null;
 }
 
 const NAV = [
@@ -39,6 +41,36 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
   const signedIn = !!user;
 
   useEffect(() => setOpen(false), [pathname]);
+
+  // Credits inside a game on this site come back when the player leaves that page; a game on another address
+  // is left by tapping the banner (or on its own, when the game reports it is done or the session runs out).
+  const inGame = user?.inGame ?? null;
+  const lastPath = useRef(pathname);
+  async function leaveGame() {
+    await fetch("/api/game/exit", { method: "POST" }).catch(() => undefined);
+    router.refresh();
+  }
+  useEffect(() => {
+    const was = lastPath.current;
+    lastPath.current = pathname;
+    if (inGame && !inGame.external && was.startsWith("/spin") && !pathname.startsWith("/spin")) void leaveGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+  useEffect(() => {
+    if (!inGame) return;
+    const refresh = () => document.visibilityState === "visible" && router.refresh();
+    const beat = setInterval(() => void fetch("/api/game/heartbeat", { method: "POST" }), 5 * 60_000);
+    const bye = () => !inGame.external && navigator.sendBeacon("/api/game/exit");
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("la:wallet-refresh", refresh);
+    window.addEventListener("pagehide", bye);
+    return () => {
+      clearInterval(beat);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("la:wallet-refresh", refresh);
+      window.removeEventListener("pagehide", bye);
+    };
+  }, [inGame, router]);
 
   // Background music plays only while signed in. Browsers need a tap first, so a fresh page load starts it on the first touch.
   useEffect(() => {
@@ -158,6 +190,11 @@ export function Shell({ user, children }: { user: ShellUser | null; children: Re
                 <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>
               </Link>
+              {inGame && inGame.external && (
+                <button type="button" onClick={leaveGame} className="rounded-xl border border-teal/60 bg-surface px-2.5 py-2 text-xs font-bold text-teal" data-testid="in-game" title={`In ${inGame.title}. Tap to bring your credits back.`}>
+                  In {inGame.title}: back to wallet
+                </button>
+              )}
               <Link href="/wallet#request" aria-label="Add credits: open wallet" title="Add credits" className="-ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-gold/60 bg-gradient-to-b from-[#ffe58f] to-[#d38f08] text-xl font-extrabold leading-none text-[#2a1700] shadow-[0_0_14px_rgba(255,207,74,0.3)] sm:h-10 sm:w-10">+</Link>
               <button className="btn btn-ghost hidden sm:inline-flex" onClick={logout}>Sign out</button>
             </>

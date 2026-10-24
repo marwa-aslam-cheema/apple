@@ -21,11 +21,14 @@ export const gameSchema = z.object({
   description: z.string().trim().max(200).default(""),
   // Optional external link to a game you own. Only http(s) URLs are accepted (no javascript: or data: links).
   link: z.string().trim().max(300).refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Link must start with http:// or https://").default(""),
+  // Optional back-office page of the game (its own admin login). Only admins ever see or open it.
+  adminLink: z.string().trim().max(300).refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Admin link must start with http:// or https://").default(""),
   // Optional picture for the game card: a direct http(s) image address (png/jpg/webp/svg).
   image: z.string().trim().max(500).refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Image must be a link starting with http:// or https://").default(""),
   hue: z.coerce.number().int().min(0).max(360).default(260),
   featured: z.boolean().default(false),
   playable: z.boolean().default(false),
+  walletMode: z.enum(["session", "none"]).default("session"),
   active: z.boolean().default(true),
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
 });

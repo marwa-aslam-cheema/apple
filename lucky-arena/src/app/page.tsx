@@ -12,7 +12,7 @@ import { tierForXp } from "@/lib/vip";
 
 export default async function Home() {
   const [user, db] = await Promise.all([getCurrentUser(), getDb()]);
-  const featured = (await lobbyGames(db, { category: "Featured" })).slice(0, 6);
+  const featured = (await lobbyGames(db, { category: "Featured", admin: user?.role === "admin" })).slice(0, 6);
   const dailyReady = !!user && (!user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS);
   const tier = user ? tierForXp(user.xp) : null;
   const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;

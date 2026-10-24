@@ -42,8 +42,33 @@ export const DDL = [
   )`,
   // Added after the first release: keeps databases created earlier working.
   `ALTER TABLE games ADD COLUMN IF NOT EXISTS link TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE games ADD COLUMN IF NOT EXISTS admin_link TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE games ADD COLUMN IF NOT EXISTS image TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_spins INTEGER NOT NULL DEFAULT 2`,
+  `ALTER TABLE games ADD COLUMN IF NOT EXISTS wallet_mode TEXT NOT NULL DEFAULT 'session'`,
+  `ALTER TABLE games ADD COLUMN IF NOT EXISTS api_key TEXT NOT NULL DEFAULT md5(random()::text || clock_timestamp()::text)`,
+  `CREATE TABLE IF NOT EXISTS game_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    game_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    stake INTEGER NOT NULL,
+    balance INTEGER NOT NULL CHECK (balance >= 0),
+    status TEXT NOT NULL DEFAULT 'open',
+    opened_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMP NOT NULL,
+    closed_at TIMESTAMP,
+    returned INTEGER
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS one_open_session_per_user ON game_sessions (user_id) WHERE status = 'open'`,
+  `CREATE TABLE IF NOT EXISTS game_accounts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    game_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT game_accounts_user_game UNIQUE (user_id, game_id)
+  )`,
   `CREATE TABLE IF NOT EXISTS promotions (
     id SERIAL PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,

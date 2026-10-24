@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Games" };
 
 export default async function GamesPage({ searchParams }: { searchParams: Promise<{ q?: string; cat?: string }> }) {
   const { q = "", cat = "All" } = await searchParams;
-  const [list, user] = await Promise.all([lobbyGames(await getDb(), { q, category: cat }), getCurrentUser()]);
+  const user = await getCurrentUser();
+  const list = await lobbyGames(await getDb(), { q, category: cat, admin: user?.role === "admin" });
   const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;
   return (
     <div className="space-y-5">

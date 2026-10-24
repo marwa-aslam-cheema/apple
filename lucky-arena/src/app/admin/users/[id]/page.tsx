@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDb } from "@/db";
+import { AdminGameAccounts } from "@/components/AdminGameAccounts";
 import { AdminUserActions } from "@/components/AdminUsers";
+import { games as gamesTable } from "@/db/schema";
+import { listGameAccounts } from "@/lib/game-sessions";
+import { eq } from "drizzle-orm";
 import { fmt, fmtDate } from "@/lib/format";
 import { TX_LABELS } from "@/lib/labels";
 import { requireAdminPage } from "@/lib/session";
@@ -15,9 +19,12 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
   const admin = await requireAdminPage();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const h = await userHistory(await getDb(), id);
+  const db = await getDb();
+  const h = await userHistory(db, id);
   if (!h) notFound();
   const { user: u, totals } = h;
+  const accounts = await listGameAccounts(db, id);
+  const linkGames = (await db.select({ id: gamesTable.id, title: gamesTable.title, link: gamesTable.link }).from(gamesTable).where(eq(gamesTable.active, true))).filter((g) => g.link);
   const tier = tierForXp(u.xp).tier.name;
   const net = totals.won - totals.spent;
   const tiles: [string, string, string?][] = [
@@ -53,6 +60,11 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
         {tiles.map(([k, v, c]) => (
           <div key={k} className="card p-4"><p className="text-xs text-muted">{k}</p><p className={`text-2xl font-extrabold ${c ?? ""}`}>{v}</p></div>
         ))}
+      </section>
+
+      <section className="card p-5">
+        <h2 className="mb-3 text-lg font-bold">Game usernames</h2>
+        <AdminGameAccounts userId={u.id} games={linkGames.map((g) => ({ id: g.id, title: g.title }))} accounts={accounts} />
       </section>
 
       <section className="card p-5">

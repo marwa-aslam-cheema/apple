@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { PwaProvider } from "@/components/pwa";
 import { Shell } from "@/components/Shell";
+import { getDb } from "@/db";
+import { getOpenSession } from "@/lib/game-sessions";
 import { getCurrentUser } from "@/lib/session";
 import "./globals.css";
 
@@ -19,11 +21,12 @@ export const viewport: Viewport = { themeColor: "#0a0b1e", width: "device-width"
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const open = user ? await getOpenSession(await getDb(), user.id) : null;
   return (
     <html lang="en">
       <body>
         <PwaProvider>
-          <Shell user={user ? { username: user.username, balance: user.balance, role: user.role } : null}>{children}</Shell>
+          <Shell user={user ? { username: user.username, balance: user.balance, role: user.role, inGame: open ? { title: open.gameTitle, balance: open.balance, external: open.external } : null } : null}>{children}</Shell>
         </PwaProvider>
       </body>
     </html>

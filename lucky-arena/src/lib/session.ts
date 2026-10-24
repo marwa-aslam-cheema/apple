@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { users, type User } from "@/db/schema";
+import { closeExpiredSessions } from "./game-sessions";
 import { AppError } from "./services";
 
 const COOKIE = "la_session";
@@ -45,6 +46,7 @@ export async function getCurrentUser(): Promise<User | null> {
     const uid = Number(payload.uid);
     if (!Number.isInteger(uid)) return null;
     const db = await getDb();
+    await closeExpiredSessions(db, uid); // credits left in a game nobody is playing come back to the wallet
     const [user] = await db.select().from(users).where(eq(users.id, uid));
     return user && !user.banned ? user : null;
   } catch {
