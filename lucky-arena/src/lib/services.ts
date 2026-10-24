@@ -1,0 +1,204 @@
+import bcrypt from "bcryptjs";
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import type { Db } from "@/db";
+import { games, promoClaims, promotions, spins, transactions, users, wheelSegments } from "@/db/schema";
+import {
+  DAILY_BONUS_BASE,
+  DAILY_COOLDOWN_MS,
+  REFERRAL_BONUS,
+  REFERRAL_MAX_REWARDS,
+  SIGNUP_BONUS,
+  SPIN_COST,
+  SPIN_XP,
+} from "./config";
+import { tierForXp } from "./vip";
+import { pickSegment } from "./wheel";
+
+export class AppError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public status = 400,
+  ) {
+    super(message);
+  }
+}
+
+function isUniqueViolation(e: unknown): boolean {
+  const err = e as { code?: string; cause?: { code?: string } };
+  return err?.code === "23505" || err?.cause?.code === "23505";
+}
+
+function newReferralCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < 8; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
+}
+
+/** Adds (or removes, when negative) virtual credits and writes the ledger row. Never lets the balance go below 0. */
+export async function applyCredits(db: Db, userId: number, amount: number, type: string, note = "") {
+  const [row] = await db
+    .update(users)
+    .set({ balance: sql`${users.balance} + ${amount}` })
+    .where(and(eq(users.id, userId), sql`${users.balance} + ${amount} >= 0`))
+    .returning({ balance: users.balance });
+  if (!row) throw new AppError("insufficient_credits", "Not enough demo credits.", 402);
+  await db.insert(transactions).values({ userId, type, amount, balanceAfter: row.balance, note });
+  return row.balance;
+}
+
+export async function registerUser(
+  db: Db,
+  input: { email: string; username: string; password: string; ref?: string | null },
+) {
+  const email = input.email.trim().toLowerCase();
+  const username = input.username.trim();
+  const passwordHash = await bcrypt.hash(input.password, 10);
+  try {
+    return await db.transaction(async (tx) => {
+      const [byEmail] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email));
+      if (byEmail) throw new AppError("email_taken", "That email is already registered.", 409);
+      const [byName] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(sql`lower(${users.username}) = ${username.toLowerCase()}`);
+      if (byName) throw new AppError("username_taken", "That username is taken.", 409);
+
+      let referrer: { id: number } | undefined;
+      if (input.ref) {
+        [referrer] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.referralCode, input.ref.trim().toUpperCase()));
+      }
+
+      const [user] = await tx
+        .insert(users)
+        .values({ email, username, passwordHash, referralCode: newReferralCode(), referredBy: referrer?.id ?? null })
+        .returning();
+      await applyCredits(tx as unknown as Db, user.id, SIGNUP_BONUS, "signup_bonus", "Welcome bonus");
+
+      if (referrer) {
+        const [{ value: rewarded }] = await tx
+          .select({ value: count() })
+          .from(transactions)
+          .where(and(eq(transactions.userId, referrer.id), eq(transactions.type, "referral_bonus")));
+        if (rewarded < REFERRAL_MAX_REWARDS) {
+          await applyCredits(tx as unknown as Db, user.id, REFERRAL_BONUS, "referral_bonus", "Joined with a referral link");
+          await applyCredits(tx as unknown as Db, referrer.id, REFERRAL_BONUS, "referral_bonus", `Referral: ${username} joined`);
+        }
+      }
+      return user.id;
+    });
+  } catch (e) {
+    if (isUniqueViolation(e)) throw new AppError("duplicate", "Email or username is already registered.", 409);
+    throw e;
+  }
+}
+
+export async function verifyLogin(db: Db, identifier: string, password: string) {
+  const id = identifier.trim().toLowerCase();
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(sql`${users.email} = ${id} or lower(${users.username}) = ${id}`);
+  // Same work and same message whether the user exists or not.
+  const hash = user?.passwordHash ?? "$2b$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv";
+  const ok = await bcrypt.compare(password, hash);
+  if (!user || !ok) throw new AppError("bad_credentials", "Incorrect email/username or password.", 401);
+  if (user.banned) throw new AppError("banned", "This account is suspended.", 403);
+  return user;
+}
+
+export async function activeWheel(db: Db) {
+  return db.select().from(wheelSegments).where(eq(wheelSegments.active, true)).orderBy(wheelSegments.sortOrder, wheelSegments.id);
+}
+
+export async function spinWheel(db: Db, userId: number) {
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const segments = await activeWheel(t);
+    if (segments.length < 2) throw new AppError("wheel_unavailable", "The wheel is not configured right now.", 503);
+    await applyCredits(t, userId, -SPIN_COST, "spin_cost", "Lucky Spin");
+    const segment = pickSegment(segments);
+    let balance: number;
+    if (segment.credits > 0) {
+      balance = await applyCredits(t, userId, segment.credits, "spin_win", `Won ${segment.label}`);
+    } else {
+      const [u] = await t.select({ balance: users.balance }).from(users).where(eq(users.id, userId));
+      balance = u.balance;
+    }
+    const [u] = await t
+      .update(users)
+      .set({ xp: sql`${users.xp} + ${SPIN_XP}` })
+      .where(eq(users.id, userId))
+      .returning({ xp: users.xp });
+    await t.insert(spins).values({ userId, segmentId: segment.id, label: segment.label, cost: SPIN_COST, prize: segment.credits });
+    return { segmentId: segment.id, label: segment.label, prize: segment.credits, cost: SPIN_COST, balance, xp: u.xp };
+  });
+}
+
+export async function claimDaily(db: Db, userId: number, now = new Date()) {
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const [user] = await t.select().from(users).where(eq(users.id, userId)).for("update");
+    if (!user) throw new AppError("not_found", "User not found.", 404);
+    if (user.lastDailyAt && now.getTime() - user.lastDailyAt.getTime() < DAILY_COOLDOWN_MS) {
+      const waitMs = DAILY_COOLDOWN_MS - (now.getTime() - user.lastDailyAt.getTime());
+      throw new AppError("cooldown", `Daily bonus is ready in ${Math.ceil(waitMs / 3600000)}h.`, 429);
+    }
+    const reward = DAILY_BONUS_BASE + tierForXp(user.xp).tier.dailyBonus;
+    await t.update(users).set({ lastDailyAt: now }).where(eq(users.id, userId));
+    const balance = await applyCredits(t, userId, reward, "daily_bonus", "Daily bonus");
+    return { reward, balance };
+  });
+}
+
+export async function claimPromo(db: Db, userId: number, code: string) {
+  try {
+    return await db.transaction(async (tx) => {
+      const t = tx as unknown as Db;
+      const [promo] = await t.select().from(promotions).where(eq(promotions.code, code));
+      if (!promo || !promo.active) throw new AppError("not_found", "Promotion not found.", 404);
+      if (!promo.claimable || promo.rewardCredits <= 0) throw new AppError("not_claimable", "This promotion has no claimable reward.");
+      await t.insert(promoClaims).values({ userId, promoId: promo.id });
+      const balance = await applyCredits(t, userId, promo.rewardCredits, "promo", promo.title);
+      return { reward: promo.rewardCredits, balance };
+    });
+  } catch (e) {
+    if (isUniqueViolation(e)) throw new AppError("already_claimed", "You already claimed this promotion.", 409);
+    throw e;
+  }
+}
+
+export async function adminAdjust(db: Db, userId: number, amount: number, note: string) {
+  if (!Number.isInteger(amount) || amount === 0) throw new AppError("bad_amount", "Amount must be a non-zero whole number.");
+  const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+  if (!target) throw new AppError("not_found", "User not found.", 404);
+  return applyCredits(db, userId, amount, "admin_adjust", note || "Admin adjustment");
+}
+
+export function listTransactions(db: Db, userId: number, limit = 50) {
+  return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.id)).limit(limit);
+}
+
+export async function userStats(db: Db, userId: number) {
+  const [s] = await db
+    .select({ plays: count(), won: sql<number>`coalesce(sum(${spins.prize}), 0)::int`, spent: sql<number>`coalesce(sum(${spins.cost}), 0)::int` })
+    .from(spins)
+    .where(eq(spins.userId, userId));
+  const [r] = await db.select({ value: count() }).from(users).where(eq(users.referredBy, userId));
+  return { plays: s.plays, won: s.won, spent: s.spent, referrals: r.value };
+}
+
+export async function lobbyGames(db: Db, opts: { q?: string; category?: string } = {}) {
+  const rows = await db.select().from(games).where(eq(games.active, true)).orderBy(games.sortOrder, games.id);
+  const q = opts.q?.trim().toLowerCase();
+  return rows.filter((g) => {
+    if (opts.category && opts.category !== "All") {
+      if (opts.category === "Featured" ? !g.featured : g.category !== opts.category) return false;
+    }
+    return !q || g.title.toLowerCase().includes(q) || g.category.toLowerCase().includes(q);
+  });
+}
