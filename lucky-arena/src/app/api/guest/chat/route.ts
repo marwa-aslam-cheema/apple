@@ -3,14 +3,15 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { clientIp, rateLimit, route } from "@/lib/api";
 import { getGuestId, setGuestCookie } from "@/lib/session";
-import { createGuest, postChat, readChat } from "@/lib/services";
+import { chatMeta, createGuest, postChat, readChat } from "@/lib/services";
 
 // Support chat for visitors who are not signed in. Nothing is created until they actually write.
 export const GET = route(async (req: Request) => {
   const gid = await getGuestId();
-  if (!gid) return NextResponse.json({ messages: [] });
+  if (!gid) return NextResponse.json({ messages: [], meta: [] });
   const after = Number(new URL(req.url).searchParams.get("after") ?? 0) || 0;
-  return NextResponse.json({ messages: await readChat(await getDb(), gid, "user", after) });
+  const db = await getDb();
+  return NextResponse.json({ messages: await readChat(db, gid, "user", after), meta: await chatMeta(db, gid, "user") });
 });
 
 export const POST = route(async (req: Request) => {

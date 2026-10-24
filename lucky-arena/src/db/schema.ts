@@ -118,6 +118,7 @@ export const chatMessages = pgTable("chat_messages", {
   readByAdmin: boolean("read_by_admin").notNull().default(false),
   readByUser: boolean("read_by_user").notNull().default(false),
   imageId: integer("image_id"), // a picture attached to the message
+  deletedAt: timestamp("deleted_at"), // deleted messages stay as a grey "deleted" line
   kind: text("kind").notNull().default("chat"), // "broadcast" = sent to everyone at once
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -167,6 +168,18 @@ export const walletOptions = pgTable("wallet_options", {
   sortOrder: integer("sort_order").notNull().default(0),
   active: boolean("active").notNull().default(true),
 });
+
+/** One emoji reaction per side (the player, the admin) on a message. */
+export const chatReactions = pgTable(
+  "chat_reactions",
+  {
+    id: serial("id").primaryKey(),
+    messageId: integer("message_id").notNull(),
+    side: text("side").notNull(), // "user" or "admin"
+    emoji: text("emoji").notNull(),
+  },
+  (t) => [unique("chat_reactions_message_side").on(t.messageId, t.side)],
+);
 
 /** Small admin-editable texts (for example the names of the two wallet buttons). */
 export const settings = pgTable("settings", {

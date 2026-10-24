@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { route } from "@/lib/api";
 import { requireAdminApi } from "@/lib/session";
-import { postChat, readChat } from "@/lib/services";
+import { chatMeta, postChat, readChat } from "@/lib/services";
 
 type Ctx = { params: Promise<{ userId: string }> };
 
@@ -11,7 +11,8 @@ export const GET = route(async (req: Request, ctx: Ctx) => {
   await requireAdminApi();
   const userId = Number((await ctx.params).userId);
   const after = Number(new URL(req.url).searchParams.get("after") ?? 0) || 0;
-  return NextResponse.json({ messages: await readChat(await getDb(), userId, "admin", after) });
+  const db = await getDb();
+  return NextResponse.json({ messages: await readChat(db, userId, "admin", after), meta: await chatMeta(db, userId, "admin") });
 });
 
 export const POST = route(async (req: Request, ctx: Ctx) => {

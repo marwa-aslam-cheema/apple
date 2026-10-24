@@ -12,8 +12,13 @@ export interface ChatMsg {
   sender: string;
   body: string;
   imageId?: number | null;
+  deleted?: boolean;
+  reactions?: { emoji: string; count: number; mine: boolean }[];
   createdAt: string;
 }
+
+const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const EMOJIS = ["😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎", "🤩", "🥳", "😉", "🙂", "😅", "😇", "🤔", "😴", "😢", "😭", "😡", "🤯", "👍", "👎", "👏", "🙌", "🙏", "💪", "🤝", "👋", "🔥", "🎉", "🎁", "💎", "👑", "🍀", "⭐", "🎰", "🃏", "🎲", "❤️", "💯"];
 
 /** One conversation. `mine` is who is looking at it ("user" = the player, "admin" = staff). */
 export function ChatBox({ url, mine, onActivity, allowImages = true, className = "h-[28rem] max-h-[70vh]" }: { url: string; mine: "user" | "admin"; onActivity?: () => void; allowImages?: boolean; className?: string }) {
@@ -28,6 +33,9 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   const input = useRef<HTMLTextAreaElement>(null);
   const [image, setImage] = useState<{ id: number; preview: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [menu, setMenu] = useState<number | null>(null); // message whose options (react, copy, delete) are open
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
@@ -41,14 +49,22 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     try {
       const res = await fetch(`${url}?after=${lastId.current}`, { cache: "no-store" });
       if (!res.ok) return;
-      const { messages } = (await res.json()) as { messages: ChatMsg[] };
+      const { messages, meta } = (await res.json()) as { messages: ChatMsg[]; meta?: { id: number; deleted: boolean; reactions: NonNullable<ChatMsg["reactions"]> }[] };
+      // Reactions and deletions on messages that are already on screen.
+      if (meta?.length) {
+        setMsgs((cur) => cur.map((x) => {
+          const m = meta.find((y) => y.id === x.id);
+          if (!m) return x;
+          return m.deleted ? { ...x, deleted: true, body: "", imageId: null, reactions: [] } : { ...x, deleted: false, reactions: m.reactions };
+        }));
+      }
       if (messages.length) {
         if (!firstLoad.current && messages.some((m) => m.sender !== mine)) {
           sfxReceived();
           router.refresh(); // an admin message may have added credits: update the balance in the top bar
         }
         lastId.current = messages[messages.length - 1].id;
-        setMsgs((m) => [...m, ...messages.filter((x) => !m.some((y) => y.id === x.id))]);
+        setMsgs((m) => [...m, ...messages.filter((x) => !m.some((y) => y.id === x.id)).map((x) => ({ ...x, reactions: meta?.find((y) => y.id === x.id)?.reactions ?? [] }))]);
         onActivity?.();
       }
     } catch {
@@ -155,6 +171,62 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     box.current?.scrollTo({ top: box.current.scrollHeight });
   }, [msgs.length]);
 
+  // Close the options / emoji panels when tapping elsewhere.
+  useEffect(() => {
+    if (menu === null && !emojiOpen) return;
+    const close = (e: Event) => { if (!(e.target as HTMLElement).closest("[data-keep-open]")) { setMenu(null); setEmojiOpen(false); } };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menu, emojiOpen]);
+
+  async function act(m: ChatMsg, body: { action: "delete" } | { action: "react"; emoji: string | null }) {
+    setMenu(null);
+    setError("");
+    // Show the change straight away; the next poll confirms it.
+    setMsgs((cur) => cur.map((x) => {
+      if (x.id !== m.id) return x;
+      if (body.action === "delete") return { ...x, deleted: true, body: "", imageId: null, reactions: [] };
+      const had = x.reactions ?? [];
+      let next = had.map((r) => (r.mine ? { ...r, count: r.count - 1, mine: false } : r)).filter((r) => r.count > 0);
+      if (body.emoji) {
+        const hit = next.find((r) => r.emoji === body.emoji);
+        next = hit ? next.map((r) => (r.emoji === body.emoji ? { ...r, count: r.count + 1, mine: true } : r)) : [...next, { emoji: body.emoji, count: 1, mine: true }];
+      }
+      return { ...x, reactions: next };
+    }));
+    try {
+      const res = await fetch(`${url}/messages/${m.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Could not do that.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not do that.");
+    }
+    await load();
+  }
+
+  async function copyText(m: ChatMsg) {
+    try {
+      await navigator.clipboard.writeText(m.body);
+    } catch {
+      const t = document.createElement("textarea");
+      t.value = m.body;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand("copy");
+      t.remove();
+    }
+    setMenu(null);
+    setCopiedId(m.id);
+    setTimeout(() => setCopiedId((c) => (c === m.id ? null : c)), 1500);
+  }
+
+  function addEmoji(e: string) {
+    const el = input.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    setText(text.slice(0, start) + e + text.slice(end));
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(start + e.length, start + e.length); });
+  }
+
   async function pick(f: File | undefined) {
     if (!f) return;
     setError("");
@@ -203,20 +275,53 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     <div className={`flex flex-col ${className}`}>
       <div ref={box} className="flex-1 space-y-2 overflow-y-auto p-3" aria-live="polite">
         {msgs.length === 0 && <p className="py-8 text-center text-sm text-muted">No messages yet.</p>}
-        {msgs.map((m) => (
-          <div key={m.id} className={`flex ${m.sender === mine ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.sender === mine ? "bg-violet text-white" : "bg-surface-2"}`}>
-              {m.imageId && (
-                <a href={`/api/chat/image/${m.imageId}`} target="_blank" rel="noopener noreferrer" className="mb-1 block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/chat/image/${m.imageId}`} alt="Picture in the chat" loading="lazy" className="max-h-72 w-auto max-w-full rounded-lg" />
-                </a>
+        {msgs.map((m) => {
+          const own = m.sender === mine;
+          const canDelete = !m.deleted && (own || mine === "admin");
+          return (
+            <div key={m.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
+              <div className={`group flex max-w-[88%] items-end gap-1 ${own ? "flex-row-reverse" : ""}`}>
+                <div className={`min-w-0 rounded-2xl px-3 py-2 text-sm ${m.deleted ? "border border-line bg-transparent italic text-muted" : own ? "bg-violet text-white" : "bg-surface-2"}`}>
+                  {m.deleted ? (
+                    <p>This message was deleted</p>
+                  ) : (
+                    <>
+                      {m.imageId && (
+                        <a href={`/api/chat/image/${m.imageId}`} target="_blank" rel="noopener noreferrer" className="mb-1 block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={`/api/chat/image/${m.imageId}`} alt="Picture in the chat" loading="lazy" className="max-h-72 w-auto max-w-full rounded-lg" />
+                        </a>
+                      )}
+                      {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                    </>
+                  )}
+                  <p className="mt-1 text-[10px] opacity-60">{m.sender === "admin" && mine === "user" ? "Support · " : ""}{fmtDate(m.createdAt)}{copiedId === m.id ? " · Copied" : ""}</p>
+                </div>
+                {!m.deleted && (
+                  <button type="button" data-keep-open aria-label="Message options" aria-expanded={menu === m.id} onClick={() => setMenu(menu === m.id ? null : m.id)} className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted opacity-60 hover:bg-surface-2 hover:opacity-100 focus:opacity-100 group-hover:opacity-100">⋯</button>
+                )}
+              </div>
+              {menu === m.id && (
+                <div data-keep-open className="mt-1 flex flex-wrap items-center gap-1 rounded-xl border border-line bg-surface p-1.5 shadow-lg" role="menu" aria-label="Message options">
+                  {REACTIONS.map((e) => (
+                    <button key={e} type="button" role="menuitem" aria-label={`React ${e}`} className="h-8 w-8 rounded-lg text-lg hover:bg-surface-2" onClick={() => void act(m, { action: "react", emoji: m.reactions?.some((r) => r.mine && r.emoji === e) ? null : e })}>{e}</button>
+                  ))}
+                  {m.body && <button type="button" role="menuitem" className="chip !py-1 text-xs hover:border-gold" onClick={() => void copyText(m)}>Copy</button>}
+                  {canDelete && <button type="button" role="menuitem" className="chip !py-1 text-xs text-danger hover:border-danger" onClick={() => { if (confirm("Delete this message for everyone?")) void act(m, { action: "delete" }); }}>Delete</button>}
+                </div>
               )}
-              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-              <p className="mt-1 text-[10px] opacity-60">{m.sender === "admin" && mine === "user" ? "Support · " : ""}{fmtDate(m.createdAt)}</p>
+              {!!m.reactions?.length && !m.deleted && (
+                <div className="mt-0.5 flex flex-wrap gap-1">
+                  {m.reactions.map((r) => (
+                    <button key={r.emoji} type="button" aria-label={`${r.emoji} ${r.count}${r.mine ? ", yours, tap to remove" : ""}`} onClick={() => void act(m, { action: "react", emoji: r.mine ? null : r.emoji })} className={`rounded-full border px-2 py-0.5 text-xs ${r.mine ? "border-gold bg-gold/15" : "border-line bg-surface-2"}`}>
+                      {r.emoji} {r.count > 1 ? r.count : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {error && <p role="alert" className="px-3 text-sm font-semibold text-danger">{error}</p>}
       {mine === "admin" && (text.trim() || image) && (
@@ -250,6 +355,14 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
             <button type="button" className="btn btn-ghost !px-3" aria-label="Attach a picture" title="Attach a picture" disabled={busy || uploading} onClick={() => file.current?.click()}>{uploading ? "..." : "📎"}</button>
           </>
         )}
+        <div className="relative" data-keep-open>
+          <button type="button" className="btn btn-ghost !px-3" aria-label="Add an emoji" aria-expanded={emojiOpen} onClick={() => setEmojiOpen((o) => !o)}>😊</button>
+          {emojiOpen && (
+            <div role="dialog" aria-label="Emoji" className="absolute bottom-full left-0 z-10 mb-2 grid w-64 grid-cols-8 gap-0.5 rounded-xl border border-line bg-surface p-2 shadow-xl">
+              {EMOJIS.map((e) => <button key={e} type="button" className="h-8 w-8 rounded-lg text-lg hover:bg-surface-2" onClick={() => addEmoji(e)}>{e}</button>)}
+            </div>
+          )}
+        </div>
         <textarea
           ref={input}
           className="input min-h-11 flex-1 resize-none"

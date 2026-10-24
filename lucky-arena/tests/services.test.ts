@@ -5,7 +5,7 @@ import { gameSessions, games, spins, walletOptions, transactions, users, wheelSe
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
@@ -614,5 +614,30 @@ describe("wallet cards", () => {
     await requestWalletOption(db, u, rew.id);
     expect(await code(requestWalletOption(db, u, off.id))).toBe("not_found");
     expect((await readChat(db, u, "admin")).map((m) => m.body)).toEqual(["I need a top-up: 500 credits", "I want the reward: VIP badge"]);
+  });
+});
+
+describe("chat reactions and deleting", () => {
+  it("keeps one reaction per side and deletes for everyone", async () => {
+    const u = await registerUser(db, { email: "rx@x.test", username: "react_user", password: "password1" });
+    const mine = await postChat(db, u, "user", "hello there");
+    const theirs = await postChat(db, u, "admin", "hi!");
+    await reactChatMessage(db, u, mine.id, "admin", "👍");
+    await reactChatMessage(db, u, mine.id, "user", "👍");
+    await reactChatMessage(db, u, mine.id, "user", "❤️"); // changing replaces the old one
+    const asUser = (await chatMeta(db, u, "user")).find((m) => m.id === mine.id)!;
+    expect(asUser.reactions).toEqual(expect.arrayContaining([{ emoji: "👍", count: 1, mine: false }, { emoji: "❤️", count: 1, mine: true }]));
+    await reactChatMessage(db, u, mine.id, "user", null);
+    expect((await chatMeta(db, u, "user")).find((m) => m.id === mine.id)!.reactions).toEqual([{ emoji: "👍", count: 1, mine: false }]);
+    expect(await code(reactChatMessage(db, u, mine.id, "user", "🧨"))).toBe("invalid");
+
+    expect(await code(deleteChatMessage(db, u, theirs.id, "user"))).toBe("forbidden"); // a player cannot delete the admin's message
+    await deleteChatMessage(db, u, mine.id, "user");
+    const row = (await readChat(db, u, "admin")).find((m) => m.id === mine.id)!;
+    expect(row).toMatchObject({ deleted: true, body: "", imageId: null });
+    expect((await chatMeta(db, u, "admin")).find((m) => m.id === mine.id)).toMatchObject({ deleted: true, reactions: [] });
+    expect(await code(reactChatMessage(db, u, mine.id, "admin", "👍"))).toBe("not_found");
+    await deleteChatMessage(db, u, theirs.id, "admin"); // the admin may delete anything
+    expect((await chatConversations(db)).find((c) => c.userId === u)?.last).toBe("Message deleted");
   });
 });

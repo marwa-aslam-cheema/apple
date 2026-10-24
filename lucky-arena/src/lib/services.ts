@@ -1,9 +1,9 @@
 import { adminIds, notifyUsers } from "./push";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { chatImages, chatMessages, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
+import { chatImages, chatMessages, chatReactions, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
 import {
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
@@ -282,10 +282,51 @@ export async function readChatImage(db: Db, id: number, viewer: { id: number; ro
   const [img] = await db.select().from(chatImages).where(eq(chatImages.id, id));
   if (!img) throw new AppError("not_found", "Picture not found.", 404);
   if (viewer.role !== "admin") {
-    const [m] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.imageId, id), eq(chatMessages.userId, viewer.id))).limit(1);
+    const [m] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.imageId, id), eq(chatMessages.userId, viewer.id), isNull(chatMessages.deletedAt))).limit(1);
     if (!m) throw new AppError("not_found", "Picture not found.", 404);
   }
   return { mime: img.mime, bytes: Buffer.from(img.data, "base64") };
+}
+
+export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+/** Deleted flags and reactions for the newest messages of a thread, so open chats can refresh what they already show. */
+export async function chatMeta(db: Db, threadUserId: number, viewer: "user" | "admin") {
+  const msgs = await db.select({ id: chatMessages.id, deletedAt: chatMessages.deletedAt }).from(chatMessages).where(eq(chatMessages.userId, threadUserId)).orderBy(desc(chatMessages.id)).limit(200);
+  if (msgs.length === 0) return [];
+  const reacts = await db.select().from(chatReactions).where(inArray(chatReactions.messageId, msgs.map((m) => m.id)));
+  return msgs.map((m) => {
+    const mine = reacts.filter((r) => r.messageId === m.id);
+    const groups = new Map<string, { emoji: string; count: number; mine: boolean }>();
+    for (const r of mine) {
+      const g = groups.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false };
+      g.count++;
+      if (r.side === viewer) g.mine = true;
+      groups.set(r.emoji, g);
+    }
+    return { id: m.id, deleted: !!m.deletedAt, reactions: m.deletedAt ? [] : [...groups.values()] };
+  });
+}
+
+/** The sender can delete their own message; the admin can delete any message in any thread. */
+export async function deleteChatMessage(db: Db, threadUserId: number, id: number, side: "user" | "admin") {
+  const [m] = await db.select().from(chatMessages).where(and(eq(chatMessages.id, id), eq(chatMessages.userId, threadUserId)));
+  if (!m) throw new AppError("not_found", "Message not found.", 404);
+  if (side === "user" && m.sender !== "user") throw new AppError("forbidden", "You can only delete your own messages.", 403);
+  if (!m.deletedAt) await db.update(chatMessages).set({ deletedAt: new Date() }).where(eq(chatMessages.id, id));
+  await db.delete(chatReactions).where(eq(chatReactions.messageId, id));
+}
+
+/** One reaction per side on a message. null removes it. */
+export async function reactChatMessage(db: Db, threadUserId: number, id: number, side: "user" | "admin", emoji: string | null) {
+  const [m] = await db.select({ id: chatMessages.id, deletedAt: chatMessages.deletedAt }).from(chatMessages).where(and(eq(chatMessages.id, id), eq(chatMessages.userId, threadUserId)));
+  if (!m || m.deletedAt) throw new AppError("not_found", "Message not found.", 404);
+  if (emoji === null) {
+    await db.delete(chatReactions).where(and(eq(chatReactions.messageId, id), eq(chatReactions.side, side)));
+    return;
+  }
+  if (!REACTION_EMOJIS.includes(emoji)) throw new AppError("invalid", "Pick one of the reactions.");
+  await db.insert(chatReactions).values({ messageId: id, side, emoji }).onConflictDoUpdate({ target: [chatReactions.messageId, chatReactions.side], set: { emoji } });
 }
 
 export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string, imageId?: number | null) {
@@ -322,7 +363,8 @@ export async function readChat(db: Db, userId: number, viewer: "user" | "admin",
   } else {
     await db.update(chatMessages).set({ readByAdmin: true }).where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "user"), eq(chatMessages.readByAdmin, false)));
   }
-  return rows;
+  // A deleted message keeps its place but loses its content.
+  return rows.map((r) => (r.deletedAt ? { ...r, body: "", imageId: null, deleted: true } : { ...r, deleted: false }));
 }
 
 export async function userUnreadCount(db: Db, userId: number) {
@@ -389,7 +431,7 @@ export async function chatConversations(db: Db) {
   if (ids.length === 0) return [];
   const [people, lasts] = await Promise.all([
     db.select({ id: users.id, username: users.username, email: users.email, tag: users.tag, lastSeenAt: users.lastSeenAt }).from(users).where(inArray(users.id, ids)),
-    agg.length ? db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))) : [],
+    agg.length ? db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender, deletedAt: chatMessages.deletedAt, imageId: chatMessages.imageId }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))) : [],
   ]);
   const rows = ids.map((id) => {
     const a = agg.find((x) => x.userId === id);
@@ -402,7 +444,7 @@ export async function chatConversations(db: Db) {
       tag: u?.tag ?? "",
       online: !!u?.lastSeenAt && u.lastSeenAt > onlineSince,
       unread: a?.unread ?? 0,
-      last: m?.body.slice(0, 80) ?? "",
+      last: m?.deletedAt ? "Message deleted" : m?.body.slice(0, 80) || (m?.imageId ? "📷 Picture" : ""),
       lastSender: m?.sender ?? "admin",
       lastId: a?.lastId ?? 0,
     };

@@ -3,12 +3,13 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { rateLimit, route } from "@/lib/api";
 import { requireUserApi } from "@/lib/session";
-import { postChat, readChat } from "@/lib/services";
+import { chatMeta, postChat, readChat } from "@/lib/services";
 
 export const GET = route(async (req: Request) => {
   const user = await requireUserApi();
   const after = Number(new URL(req.url).searchParams.get("after") ?? 0) || 0;
-  return NextResponse.json({ messages: await readChat(await getDb(), user.id, "user", after) });
+  const db = await getDb();
+  return NextResponse.json({ messages: await readChat(db, user.id, "user", after), meta: await chatMeta(db, user.id, "user") });
 });
 
 export const POST = route(async (req: Request) => {

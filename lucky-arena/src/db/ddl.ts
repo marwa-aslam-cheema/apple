@@ -162,6 +162,14 @@ export const DDL = [
     active BOOLEAN NOT NULL DEFAULT TRUE
   )`,
   `ALTER TABLE wallet_options ADD COLUMN IF NOT EXISTS code TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`,
+  `CREATE TABLE IF NOT EXISTS chat_reactions (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER NOT NULL,
+    side TEXT NOT NULL,
+    emoji TEXT NOT NULL,
+    CONSTRAINT chat_reactions_message_side UNIQUE (message_id, side)
+  )`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS social_links (
     id SERIAL PRIMARY KEY,
