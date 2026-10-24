@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { and, asc, count, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import { chatMessages, games, promoClaims, promotions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import {
@@ -270,6 +270,31 @@ export async function userUnreadCount(db: Db, userId: number) {
   return r.n;
 }
 
+const BROADCAST_CHUNK = 500;
+
+/** Players who would receive a message sent to all: everyone except admins and banned accounts. */
+export async function broadcastRecipientCount(db: Db) {
+  const [r] = await db.select({ n: count() }).from(users).where(and(eq(users.role, "user"), eq(users.banned, false)));
+  return r.n;
+}
+
+/** One message into every player's chat at once (a promotion, an announcement). Returns how many players got it. */
+export async function broadcastChat(db: Db, body: string) {
+  const text = body.trim();
+  if (!text) throw new AppError("invalid", "Write the message first.");
+  if (text.length > 1000) throw new AppError("invalid", "Message is too long (max 1000 characters).");
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const people = await t.select({ id: users.id }).from(users).where(and(eq(users.role, "user"), eq(users.banned, false)));
+    for (let i = 0; i < people.length; i += BROADCAST_CHUNK) {
+      await t.insert(chatMessages).values(
+        people.slice(i, i + BROADCAST_CHUNK).map((p) => ({ userId: p.id, sender: "admin", body: text, kind: "broadcast", readByAdmin: true, readByUser: false })),
+      );
+    }
+    return people.length;
+  });
+}
+
 export async function adminUnreadCount(db: Db) {
   const [r] = await db.select({ n: count() }).from(chatMessages).where(and(eq(chatMessages.sender, "user"), eq(chatMessages.readByAdmin, false)));
   return r.n;
@@ -284,6 +309,7 @@ export async function chatConversations(db: Db) {
       unread: sql<number>`count(*) filter (where ${chatMessages.sender} = 'user' and not ${chatMessages.readByAdmin})::int`,
     })
     .from(chatMessages)
+    .where(ne(chatMessages.kind, "broadcast")) // a message sent to everyone should not put every player on top of the list
     .groupBy(chatMessages.userId)
     .orderBy(desc(sql`max(${chatMessages.id})`))
     .limit(100);

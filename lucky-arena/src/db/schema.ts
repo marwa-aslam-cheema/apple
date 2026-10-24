@@ -109,6 +109,7 @@ export const chatMessages = pgTable("chat_messages", {
   body: text("body").notNull(),
   readByAdmin: boolean("read_by_admin").notNull().default(false),
   readByUser: boolean("read_by_user").notNull().default(false),
+  kind: text("kind").notNull().default("chat"), // "broadcast" = sent to everyone at once
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

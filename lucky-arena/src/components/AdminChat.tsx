@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { BroadcastPanel } from "./BroadcastPanel";
 import { ChatBox } from "./ChatBox";
+import { Icon } from "./Icon";
 import { QuickReplies } from "./QuickReplies";
 
 /** Adds virtual credits to this player and sends them the "Added ..." message in one click. */
@@ -51,6 +53,7 @@ export function AdminChat({ compact = false }: { compact?: boolean }) {
   const [sel, setSel] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [thread, setThread] = useState(!compact); // compact: start on the list, open a thread on click
+  const [broadcast, setBroadcast] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -70,17 +73,23 @@ export function AdminChat({ compact = false }: { compact?: boolean }) {
     return () => clearInterval(t);
   }, [refresh]);
 
-  if (loaded && list.length === 0) return <p className="card p-6 text-center text-muted">No player has written yet.</p>;
   const current = list.find((c) => c.userId === sel);
 
+  const broadcastButton = (
+    <button className="btn btn-violet !min-h-10 w-full !py-1.5" onClick={() => { setBroadcast(true); setThread(true); }}>
+      <Icon name="megaphone" className="h-4 w-4" /> Send to all
+    </button>
+  );
+
   const listView = (
-    <ul className={compact ? "h-full overflow-y-auto" : "card max-h-[28rem] overflow-y-auto"} aria-label="Conversations">
+    <ul className={compact ? "overflow-y-auto" : "max-h-[24rem] overflow-y-auto"} aria-label="Conversations">
+      {loaded && list.length === 0 && <li className="p-4 text-center text-sm text-muted">No player has written yet.</li>}
       {list.map((c) => (
         <li key={c.userId}>
           <button
-            onClick={() => { setSel(c.userId); setThread(true); }}
-            aria-current={c.userId === sel ? "true" : undefined}
-            className={`block w-full border-b border-line px-3 py-3 text-left hover:bg-surface-2 ${c.userId === sel && !compact ? "bg-surface-2" : ""}`}
+            onClick={() => { setSel(c.userId); setThread(true); setBroadcast(false); }}
+            aria-current={c.userId === sel && !broadcast ? "true" : undefined}
+            className={`block w-full border-b border-line px-3 py-3 text-left hover:bg-surface-2 ${c.userId === sel && !compact && !broadcast ? "bg-surface-2" : ""}`}
           >
             <span className="flex items-center justify-between gap-2">
               <b className="truncate text-sm">{c.username}</b>
@@ -103,14 +112,23 @@ export function AdminChat({ compact = false }: { compact?: boolean }) {
       <QuickReplies />
       <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "min-h-0 flex-1" : "h-[24rem] max-h-[60vh]"} />
     </>
-  ) : null;
+  ) : (
+    <p className="p-6 text-center text-sm text-muted">Pick a conversation, or use Send to all.</p>
+  );
 
-  if (compact) return <div className="h-full">{thread && current ? <div className="flex h-full flex-col">{threadView}</div> : listView}</div>;
+  if (compact) {
+    if (broadcast) return <div className="h-full"><BroadcastPanel onClose={() => setBroadcast(false)} /></div>;
+    if (thread && current) return <div className="flex h-full flex-col">{threadView}</div>;
+    return <div className="flex h-full flex-col"><div className="border-b border-line p-2">{broadcastButton}</div><div className="min-h-0 flex-1 overflow-y-auto">{listView}</div></div>;
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-[16rem_1fr]">
-      {listView}
-      <section className="card overflow-hidden">{threadView}</section>
+      <div className="card flex flex-col">
+        <div className="border-b border-line p-2">{broadcastButton}</div>
+        {listView}
+      </div>
+      <section className="card overflow-hidden">{broadcast ? <div className="h-[34rem] max-h-[75vh]"><BroadcastPanel onClose={() => setBroadcast(false)} /></div> : threadView}</section>
     </div>
   );
 }

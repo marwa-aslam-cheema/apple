@@ -15,6 +15,7 @@ const paths: Record<string, string> = {
   music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
   mute: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 3l18 18",
   download: "M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16",
+  megaphone: "M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15 8a5 5 0 0 1 0 8M18 5a9 9 0 0 1 0 14",
   copy: "M9 9h11v11H9zM5 15V4h11",
 };
 

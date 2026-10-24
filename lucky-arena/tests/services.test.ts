@@ -5,7 +5,7 @@ import { transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
 
@@ -199,6 +199,34 @@ describe("credit requests", () => {
     for (const bad of [0, -5, 1.5, 100001]) expect(await code(grantCreditsAndNotify(db, id, bad))).toBe("bad_amount");
     expect(await code(grantCreditsAndNotify(db, 999999, 10))).toBe("not_found");
     expect(await readChat(db, id, "user")).toHaveLength(0);
+  });
+});
+
+describe("send to all", () => {
+  it("reaches every active player but not admins or banned accounts, and stays out of the conversation list", async () => {
+    const a = await registerUser(db, { email: "b1@x.test", username: "bcast1", password: "password1" });
+    const b = await registerUser(db, { email: "b2@x.test", username: "bcast2", password: "password1" });
+    const banned = await registerUser(db, { email: "b3@x.test", username: "bcast3", password: "password1" });
+    await db.update(users).set({ banned: true }).where(eq(users.id, banned));
+    const before = await broadcastRecipientCount(db);
+    const sent = await broadcastChat(db, "  Weekend promo: spin twice!  ");
+    expect(sent).toBe(before);
+    expect(await userUnreadCount(db, a)).toBe(1); // the player sees it as new
+    expect((await readChat(db, a, "user")).at(-1)).toMatchObject({ sender: "admin", body: "Weekend promo: spin twice!", kind: "broadcast" });
+    expect((await readChat(db, b, "user")).at(-1)?.body).toBe("Weekend promo: spin twice!");
+    expect((await readChat(db, banned, "user")).some((m) => m.body.startsWith("Weekend promo"))).toBe(false);
+    const adminRow = await db.select().from(users).where(eq(users.role, "admin"));
+    expect((await readChat(db, adminRow[0].id, "user")).some((m) => m.body.startsWith("Weekend promo"))).toBe(false);
+    // a broadcast alone does not put every player in the admin's list...
+    expect((await chatConversations(db)).some((c) => c.userId === b)).toBe(false);
+    // ...but a reply from the player does, and the thread still shows the broadcast
+    await postChat(db, b, "user", "thanks!");
+    expect((await chatConversations(db)).find((c) => c.userId === b)?.last).toBe("thanks!");
+    expect((await readChat(db, b, "admin")).map((m) => m.body)).toEqual(["Weekend promo: spin twice!", "thanks!"]);
+  });
+  it("rejects empty and oversized messages", async () => {
+    expect(await code(broadcastChat(db, "   "))).toBe("invalid");
+    expect(await code(broadcastChat(db, "x".repeat(1001)))).toBe("invalid");
   });
 });
 

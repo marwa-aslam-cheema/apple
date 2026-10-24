@@ -91,8 +91,10 @@ export const DDL = [
     body TEXT NOT NULL,
     read_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
     read_by_user BOOLEAN NOT NULL DEFAULT FALSE,
+    kind TEXT NOT NULL DEFAULT 'chat',
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
   )`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'chat'`,
   `CREATE INDEX IF NOT EXISTS chat_user_idx ON chat_messages (user_id, id)`,
   `CREATE TABLE IF NOT EXISTS quick_replies (
     id SERIAL PRIMARY KEY,
