@@ -251,7 +251,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
           )}
         </div>
       </header>
-      {!(pathname === "/" && !user) && <Ticker />} {/* the visitor home page shows the strip inside its own layout */}
+      {!(pathname === "/" && !user) && <Ticker editable={user?.role === "admin"} />} {/* the visitor home page shows the strip inside its own layout */}
 
       <LiveRefresh />
       <PromoPopup signedIn={!!user} role={user?.role ?? ""} />

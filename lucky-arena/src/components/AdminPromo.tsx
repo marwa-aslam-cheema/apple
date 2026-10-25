@@ -34,6 +34,7 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-muted">Two things on this page: the <b>welcome popup</b> and the <a href="#strip" className="text-gold underline">scrolling strip</a> under the top bar (just below). Press Save at the bottom for both.</p>
       <section className="card max-w-xl space-y-3 p-5">
         <h2 className="font-bold">Welcome popup</h2>
         <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5 accent-violet" checked={p.enabled} onChange={(e) => set("enabled", e.target.checked)} />Show the popup (once per visit)</label>
@@ -44,7 +45,7 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup
         <label className="block text-xs font-semibold text-muted">Countdown on the home page for visitors, in hours (0 = no countdown)<input type="number" min={0} max={720} className="input mt-1 w-32" value={p.timerHours} onChange={(e) => set("timerHours", Number(e.target.value))} /></label>
         <p className="text-xs text-muted">The countdown starts when a visitor first opens the site (on their own phone) and counts down honestly. When it ends the card says the offer has ended.</p>
       </section>
-      <section className="card max-w-xl space-y-3 p-5">
+      <section id="strip" className="card max-w-xl scroll-mt-24 space-y-3 p-5">
         <h2 className="font-bold">Scrolling strip under the top bar</h2>
         <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5 accent-violet" checked={te} onChange={(e) => setTe(e.target.checked)} />Show the strip</label>
         <label className="block text-xs font-semibold text-muted">Your lines (one per line, up to 30)

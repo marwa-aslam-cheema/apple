@@ -34,7 +34,7 @@ const TABS = [
   ["wheel", "Wheel"],
   ["wallet", "Wallet"],
   ["site", "Site"],
-  ["banner", "Banner"],
+  ["banner", "Popup & strip"],
   ["social", "Social"],
 ] as const;
 
@@ -212,7 +212,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-extrabold">Admin dashboard</h1>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="tablist">
+      <div className="flex flex-wrap gap-2" role="tablist">
         {TABS.map(([k, label]) => (
           <Link key={k} href={`/admin?tab=${k}`} className="chip" role="tab" aria-selected={tab === k} aria-current={tab === k ? "true" : undefined}>{label}{k === "requests" && open > 0 ? ` (${open})` : ""}{k === "chat" && unreadChat > 0 ? ` (${unreadChat})` : ""}</Link>
         ))}

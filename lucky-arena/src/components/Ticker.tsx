@@ -14,7 +14,7 @@ function shuffle<T>(a: T[]): T[] {
 }
 
 /** The thin strip under the top bar: the admin's own lines mixed with real recent wins, in random order (up to 20 items). */
-export function Ticker() {
+export function Ticker({ editable = false }: { editable?: boolean }) {
   const [items, setItems] = useState<string[]>([]);
 
   useEffect(() => {
@@ -35,11 +35,13 @@ export function Ticker() {
 
   if (items.length === 0) return null;
   const loop = [...items, ...items]; // the second copy lets the strip repeat without a gap
-  return (
+  const strip = (
     <div className="ticker" role="marquee" aria-label="Latest news" style={{ ["--ticker-time" as string]: `${Math.max(20, items.length * 5)}s` }}>
       <div className="ticker-track">
         {loop.map((t, i) => <span key={i} className="ticker-item" aria-hidden={i >= items.length}>{t}</span>)}
       </div>
     </div>
   );
+  // For the admin the strip itself is the way in to editing it.
+  return editable ? <a href="/admin?tab=banner#strip" title="Edit this strip" aria-label="Edit the scrolling strip" className="block">{strip}</a> : strip;
 }
