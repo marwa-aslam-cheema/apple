@@ -127,3 +127,13 @@ Without keys the button is hidden and nothing is sent.
 ## Pictures in chat
 
 Players and the admin can attach a picture (paperclip next to the message box). Photos are shrunk in the browser first, stored in the database, and only the admin and the player whose chat it was sent in can open them. Only real JPG/PNG/GIF/WebP files up to about 1.5 MB are accepted (checked by content). A quick reply can carry a picture: attach it, type the text, press "Save as quick reply". Signed-out support chat is text only.
+
+## Continue with Google (optional)
+
+Login and Sign up show a **Continue with Google** button once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set; without them the button is hidden.
+
+1. console.cloud.google.com: new project, "APIs and Services", "OAuth consent screen" (External, add your email), then "Credentials", "Create credentials", "OAuth client ID", type **Web application**.
+2. Under "Authorised redirect URIs" add `<SITE_URL>/api/auth/google/callback` (for local testing also `http://localhost:3000/api/auth/google/callback`).
+3. Put the Client ID and Client secret in the environment (Vercel: Settings, Environment Variables) and redeploy.
+
+A player who signs in with Google gets an account made from their verified email (welcome spins and referral bonus work as usual). If that email already has an account, they simply sign in to it. These accounts have no password; the admin can set one from the chat if it is ever needed.

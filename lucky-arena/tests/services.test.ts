@@ -8,6 +8,7 @@ import {
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
+import { baseUsername, googleLoginOrCreate, uniqueUsername } from "@/lib/google";
 import { fillCaption } from "@/lib/site";
 import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
@@ -685,5 +686,20 @@ describe("admin settles a player's game by hand", () => {
     expect((await db.select().from(users).where(eq(users.id, u)))[0].balance).toBe(730);
     expect(await getOpenSession(db, u)).toBeNull();
     expect(await code(adminSettle(db, u, 10))).toBe("no_session"); // nothing open any more: it can not be paid twice
+  });
+});
+
+describe("Continue with Google accounts", () => {
+  it("makes usernames from the email and never double-creates", async () => {
+    expect(baseUsername("ali.khan+x@gmail.com")).toBe("alikhanx");
+    expect(baseUsername("a@gmail.com")).toBe("playera");
+    const id = await googleLoginOrCreate(db, { email: "g.user@gmail.com" });
+    const [u] = await db.select().from(users).where(eq(users.id, id));
+    expect(u).toMatchObject({ email: "g.user@gmail.com", username: "guser", welcomeSpins: expect.any(Number) });
+    expect(await googleLoginOrCreate(db, { email: "g.user@gmail.com" })).toBe(id); // same email: same account
+    expect((await uniqueUsername(db, "guser@other.com")).startsWith("guser")).toBe(true);
+    expect(await uniqueUsername(db, "guser@other.com")).not.toBe("guser"); // taken, so a suffix is added
+    await db.update(users).set({ banned: true }).where(eq(users.id, id));
+    expect(await code(googleLoginOrCreate(db, { email: "g.user@gmail.com" }))).toBe("banned");
   });
 });

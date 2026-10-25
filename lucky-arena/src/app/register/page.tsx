@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/AuthForm";
+import { googleEnabled } from "@/lib/google";
 import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/session";
 
@@ -19,5 +20,5 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   const { ref, next: rawNext } = await searchParams;
   const next = safeNext(rawNext);
   if (await getCurrentUser()) redirect(next ?? "/");
-  return <AuthForm mode="register" refCode={ref?.slice(0, 20).toUpperCase()} next={next} />;
+  return <AuthForm mode="register" refCode={ref?.slice(0, 20).toUpperCase()} next={next} google={googleEnabled()} />;
 }

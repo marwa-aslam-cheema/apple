@@ -58,6 +58,18 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+/** Short-lived signed values (for example the "Continue with Google" state). */
+export async function signShortToken(payload: Record<string, unknown>, expires = "10m"): Promise<string> {
+  return new SignJWT(payload).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime(expires).sign(secret());
+}
+export async function readShortToken(token: string): Promise<Record<string, unknown> | null> {
+  try {
+    return (await jwtVerify(token, secret())).payload as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 const GUEST_COOKIE = "la_guest";
 
 /** The visitor's support-chat identity (a guest account), or null when they have none yet. */
