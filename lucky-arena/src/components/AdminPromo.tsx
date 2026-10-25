@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SAMPLE_LINES } from "@/lib/promo-samples";
 
 interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 
@@ -52,8 +53,10 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines, showWins: sw, wi
         <h2 className="font-bold">Scrolling strip under the top bar</h2>
         <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5 accent-violet" checked={te} onChange={(e) => setTe(e.target.checked)} />Show the strip</label>
         <label className="block text-xs font-semibold text-muted">Your lines (one per line, up to 30)
-          <textarea className="input mt-1 min-h-32" value={lines} onChange={(e) => setLines(e.target.value)} />
+          <textarea className="input mt-1 min-h-48" value={lines} onChange={(e) => setLines(e.target.value)} />
         </label>
+        <button type="button" className="chip hover:border-gold" onClick={() => setLines(SAMPLE_LINES.join("\n"))}>Fill with {SAMPLE_LINES.length} sample lines</button>
+        <p className="text-xs text-muted">{lines.split("\n").filter((l) => l.trim()).length} lines now. They run in a random order, up to 20 at a time.</p>
         <div className="space-y-3 rounded-xl border border-line p-3">
           <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5 accent-violet" checked={showWins} onChange={(e) => setShowWins(e.target.checked)} />Also show real wins from the Lucky Wheel</label>
           <label className="block text-xs font-semibold text-muted">How a win is written

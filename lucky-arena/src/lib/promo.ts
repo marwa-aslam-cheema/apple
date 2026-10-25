@@ -1,6 +1,7 @@
 import { desc, eq, gte, inArray, and } from "drizzle-orm";
 import type { Db } from "@/db";
 import { settings, spins, users } from "@/db/schema";
+import { SAMPLE_LINES } from "./promo-samples";
 
 export interface PromoPopup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 export interface PromoTicker { enabled: boolean; lines: string[]; showWins: boolean; winTemplate: string; minPrize: number }
@@ -18,7 +19,7 @@ export const DEFAULT_TICKER: PromoTicker = {
   showWins: false,
   winTemplate: "🎰 {who} won {prize} credits",
   minPrize: 100,
-  lines: ["🎰 Spin the Lucky Wheel for a shot at the jackpot", "🎁 Invite a friend and you both get bonus credits", "👑 Climb the VIP ladder with every spin", "🍀 New players get free welcome spins"],
+  lines: SAMPLE_LINES,
 };
 
 const POPUP_KEY = "promo_popup";
