@@ -188,6 +188,22 @@ export async function apiSettle(db: Db, token: string, apiKey: string, balance: 
   });
 }
 
+/**
+ * The admin closes a player's open game by hand, typing the balance the player really has in the game (read from the
+ * game's own back office). Used when the game has no API to report it. The credits go to the wallet.
+ */
+export async function adminSettle(db: Db, userId: number, balance: unknown): Promise<{ returned: number; game: string }> {
+  const b = checkBalance(balance);
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    await t.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
+    const [s] = await t.select().from(gameSessions).where(and(eq(gameSessions.userId, userId), eq(gameSessions.status, "open")));
+    if (!s) throw new AppError("no_session", "This player is not in a game right now.", 409);
+    const [g] = await t.select({ title: games.title }).from(games).where(eq(games.id, s.gameId));
+    return { returned: await closeRow(t, s, b), game: g?.title ?? "the game" };
+  });
+}
+
 export async function regenerateApiKey(db: Db, gameId: number) {
   const key = randomBytes(24).toString("hex");
   const done = await db.update(games).set({ apiKey: key }).where(eq(games.id, gameId)).returning({ id: games.id });

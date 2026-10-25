@@ -5,7 +5,8 @@ import { getDb } from "@/db";
 import { AdminGameAccounts } from "@/components/AdminGameAccounts";
 import { AdminUserActions } from "@/components/AdminUsers";
 import { games as gamesTable } from "@/db/schema";
-import { listGameAccounts } from "@/lib/game-sessions";
+import { AdminSettle } from "@/components/AdminSettle";
+import { getOpenSession, listGameAccounts } from "@/lib/game-sessions";
 import { eq } from "drizzle-orm";
 import { tagList } from "@/lib/tags";
 import { fmt, fmtDate } from "@/lib/format";
@@ -25,6 +26,7 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
   if (!h) notFound();
   const { user: u, totals } = h;
   const accounts = await listGameAccounts(db, id);
+  const inGame = await getOpenSession(db, id);
   const linkGames = (await db.select({ id: gamesTable.id, title: gamesTable.title, link: gamesTable.link }).from(gamesTable).where(eq(gamesTable.active, true))).filter((g) => g.link);
   const tier = tierForXp(u.xp).tier.name;
   const net = totals.won - totals.spent;
@@ -62,6 +64,13 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
           <div key={k} className="card p-4"><p className="text-xs text-muted">{k}</p><p className={`text-2xl font-extrabold ${c ?? ""}`}>{v}</p></div>
         ))}
       </section>
+
+      {inGame && (
+        <section className="card border-gold/60 p-5">
+          <h2 className="mb-3 text-lg font-bold">In a game</h2>
+          <AdminSettle userId={u.id} game={inGame.gameTitle} stake={inGame.stake} />
+        </section>
+      )}
 
       <section className="card p-5">
         <h2 className="mb-3 text-lg font-bold">Game usernames</h2>

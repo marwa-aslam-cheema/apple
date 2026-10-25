@@ -13,7 +13,7 @@ import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
 import { socialSchema } from "@/lib/validation";
 import { expectedReturn } from "@/lib/wheel";
-import { absorbWallet, apiReport, apiSession, apiSettle, buildLaunchUrl, closeExpiredSessions, enterGame, exitGame, getOpenSession, listGameAccounts, regenerateApiKey, removeGameAccount, setGameAccount } from "@/lib/game-sessions";
+import { adminSettle, absorbWallet, apiReport, apiSession, apiSettle, buildLaunchUrl, closeExpiredSessions, enterGame, exitGame, getOpenSession, listGameAccounts, regenerateApiKey, removeGameAccount, setGameAccount } from "@/lib/game-sessions";
 
 let db: Db;
 beforeAll(async () => {
@@ -669,5 +669,21 @@ describe("the scrolling strip", () => {
     expect(wins[0]).toEqual({ who: "ti...", prize: 431 });
     expect(wins.some((w) => w.prize === 17 || w.prize === 977)).toBe(false);
     expect(maskName("abcdef")).toBe("ab...");
+  });
+});
+
+describe("admin settles a player's game by hand", () => {
+  it("returns the typed balance and closes the session", async () => {
+    const u = await registerUser(db, { email: "as@x.test", username: "admin_settle", password: "password1" });
+    const [g] = await db.insert(games).values({ slug: "manual-ludo", title: "Manual Ludo", category: "Arcade", link: "https://example.com/m" }).returning();
+    await adminAdjust(db, u, 500, "start");
+    expect(await getOpenSession(db, u)).toBeNull();
+    await enterGame(db, u, g.id);
+    expect((await db.select().from(users).where(eq(users.id, u)))[0].balance).toBe(0);
+    expect(await code(adminSettle(db, u, -5))).toBe("bad_balance");
+    expect(await adminSettle(db, u, 730)).toEqual({ returned: 730, game: "Manual Ludo" });
+    expect((await db.select().from(users).where(eq(users.id, u)))[0].balance).toBe(730);
+    expect(await getOpenSession(db, u)).toBeNull();
+    expect(await code(adminSettle(db, u, 10))).toBe("no_session"); // nothing open any more: it can not be paid twice
   });
 });
