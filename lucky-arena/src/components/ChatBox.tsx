@@ -352,7 +352,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
         {allowImages && (
           <>
             <input ref={file} type="file" accept="image/*" className="hidden" aria-label="Choose a picture" onChange={(e) => void pick(e.target.files?.[0])} />
-            <button type="button" className="btn btn-ghost !px-3" aria-label="Attach a picture" title="Attach a picture" disabled={busy || uploading} onClick={() => file.current?.click()}>{uploading ? "..." : "📎"}</button>
+            <button type="button" className="btn btn-ghost !px-3" aria-label="Attach a picture" title="Attach a picture" disabled={busy || uploading} onClick={() => file.current?.click()}>{uploading ? "..." : "🖼️"}</button>
           </>
         )}
         <div className="relative" data-keep-open>
