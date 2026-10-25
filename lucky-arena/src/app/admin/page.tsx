@@ -3,6 +3,8 @@ import Link from "next/link";
 import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { games, promotions, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { AdminPromo } from "@/components/AdminPromo";
+import { getPromo } from "@/lib/promo";
 import { AdminSite } from "@/components/AdminSite";
 import { DEFAULT_SHARE_CAPTION, getShare, getSite } from "@/lib/site";
 import { AdminInvitePost } from "@/components/AdminInvitePost";
@@ -32,6 +34,7 @@ const TABS = [
   ["wheel", "Wheel"],
   ["wallet", "Wallet"],
   ["site", "Site"],
+  ["banner", "Banner"],
   ["social", "Social"],
 ] as const;
 
@@ -105,6 +108,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const target = Number(userParam);
     const [who] = Number.isInteger(target) && target > 0 ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, target)) : [];
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
+  } else if (tab === "banner") {
+    const promo = await getPromo(db);
+    body = <AdminPromo popup={promo.popup} tickerEnabled={promo.ticker.enabled} tickerLines={promo.ticker.lines} />;
   } else if (tab === "site") {
     const site = await getSite(db);
     const share = await getShare(db);

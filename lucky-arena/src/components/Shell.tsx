@@ -8,6 +8,8 @@ import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unloc
 import { ChatWidget } from "./ChatWidget";
 import { InstallBanner, useInstall } from "./pwa";
 import { LiveRefresh } from "./LiveRefresh";
+import { PromoPopup } from "./PromoPopup";
+import { Ticker } from "./Ticker";
 import { PushToggle } from "./PushToggle";
 import { SocialBar } from "./SocialBar";
 import { Icon } from "./Icon";
@@ -34,7 +36,6 @@ const NAV = [
   { href: "/chat", label: "Support Chat", icon: "chat" },
   { href: "/profile", label: "Profile", icon: "user" },
 ];
-const TABS = ["/", "/games", "/spin", "/wallet", "/profile"];
 
 export function Shell({ user, site, children }: { user: ShellUser | null; site: { name: string; logo: string }; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,6 +45,12 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
   const [musicOn, setMusicOn] = useState(false);
   const [trackName, setTrackName] = useState("");
   const signedIn = !!user;
+  const [chatUnread, setChatUnread] = useState(0);
+  useEffect(() => {
+    const on = (e: Event) => setChatUnread((e as CustomEvent<number>).detail);
+    window.addEventListener("la:chat-unread", on);
+    return () => window.removeEventListener("la:chat-unread", on);
+  }, []);
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -239,8 +246,10 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
           )}
         </div>
       </header>
+      <Ticker />
 
       <LiveRefresh />
+      <PromoPopup signedIn={!!user} role={user?.role ?? ""} />
       <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 lg:pb-12">{children}</main>
 
       <footer className="mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10">
@@ -252,19 +261,31 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       {user?.role !== "admin" && <InstallBanner />} {/* the admin has the sidebar entry and works at a desk: no nag over the forms */}
       {!pathname.startsWith("/chat") && <ChatWidget role={user ? user.role : "guest"} />}
 
-      {/* Mobile bottom tabs */}
-      <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        {NAV.filter((n) => TABS.includes(n.href)).map((i) => (
-          <Link
-            key={i.href}
-            href={i.href}
-            aria-current={active(i.href) ? "page" : undefined}
-            className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${active(i.href) ? "text-gold" : "text-muted"}`}
-          >
-            <Icon name={i.icon} className="h-5 w-5" />
-            {i.label === "Lucky Spin" ? "Spin" : i.label}
-          </Link>
-        ))}
+      {/* Mobile bottom tabs: Home, Games, Wallet, Chat */}
+      <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gold/30 bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(0,0,0,.45)] backdrop-blur lg:hidden">
+        {[
+          { href: "/", label: "Home", emoji: "🏠" },
+          { href: "/games", label: "Games", emoji: "🎮" },
+          { href: "/wallet", label: "Wallet", emoji: "💰" },
+          { href: "#chat", label: "Chat", emoji: "💬" },
+        ].map((t) => {
+          const isChat = t.href === "#chat";
+          const on = !isChat && active(t.href);
+          const cls = `relative flex min-h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors ${on ? "text-gold" : "text-muted"}`;
+          const inner = (
+            <>
+              <span className={`text-2xl leading-none transition-transform ${on ? "-translate-y-0.5 scale-125 drop-shadow-[0_0_8px_rgba(255,207,74,.8)]" : ""}`} aria-hidden="true">{t.emoji}</span>
+              {t.label}
+              {isChat && chatUnread > 0 && <span className="absolute right-[26%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-extrabold text-black" data-testid="chat-tab-badge">{chatUnread > 9 ? "9+" : chatUnread}</span>}
+              {on && <span className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-gold" aria-hidden="true" />}
+            </>
+          );
+          return isChat ? (
+            <button key={t.label} type="button" className={cls} onClick={() => window.dispatchEvent(new Event("la:open-chat"))}>{inner}</button>
+          ) : (
+            <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={cls}>{inner}</Link>
+          );
+        })}
       </nav>
     </div>
   );

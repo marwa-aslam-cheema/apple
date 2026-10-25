@@ -7,6 +7,7 @@ import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
+import { maskName, recentWins } from "@/lib/promo";
 import { fillCaption } from "@/lib/site";
 import { joinTags, tagList } from "@/lib/tags";
 import { safeNext } from "@/lib/safe-next";
@@ -653,5 +654,20 @@ describe("invite post text", () => {
   it("fills in the placeholders for each player", () => {
     expect(fillCaption("Join {site}! Code {code}, free chips: {bonus}", { site: "Royal Club", code: "AB12CD", bonus: "FREE500" })).toBe("Join Royal Club! Code AB12CD, free chips: FREE500");
     expect(fillCaption("{code} {code}", { site: "x", code: "Z9", bonus: "" })).toBe("Z9 Z9");
+  });
+});
+
+describe("the scrolling strip", () => {
+  it("only shows real wins, with half-hidden names", async () => {
+    const u = await registerUser(db, { email: "tk@x.test", username: "ticker_user", password: "password1" });
+    await db.insert(spins).values([
+      { userId: u, segmentId: 1, label: "big", cost: 50, prize: 431 },
+      { userId: u, segmentId: 1, label: "small", cost: 50, prize: 17 }, // too small to show
+      { userId: u, segmentId: 1, label: "free", cost: 0, prize: 977 }, // a free welcome spin is not shown
+    ]);
+    const wins = await recentWins(db);
+    expect(wins[0]).toEqual({ who: "ti...", prize: 431 });
+    expect(wins.some((w) => w.prize === 17 || w.prize === 977)).toBe(false);
+    expect(maskName("abcdef")).toBe("ab...");
   });
 });
