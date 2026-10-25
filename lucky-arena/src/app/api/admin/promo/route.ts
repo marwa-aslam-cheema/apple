@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { route } from "@/lib/api";
-import { getPromo, savePromo } from "@/lib/promo";
+import { DEFAULT_TICKER, getPromo, savePromo } from "@/lib/promo";
 import { requireAdminApi } from "@/lib/session";
 import { bumpSiteVersion } from "@/lib/site-version";
 
@@ -19,16 +19,16 @@ const body = z.object({
     enabled: z.boolean(),
     lines: z.array(z.string().trim().min(1).max(100)).max(30),
     showWins: z.boolean(),
-    winTemplate: z.string().trim().min(1).max(100).refine((v) => v.includes("{prize}"), "Keep {prize} in the sentence so the real amount shows."),
+    winTemplate: z.string().trim().max(100).default(""),
     minPrize: z.coerce.number().int().min(1).max(100000),
-  }),
+  }).refine((t) => !t.showWins || (t.winTemplate.length > 0 && t.winTemplate.includes("{prize}")), { message: "Real wins are on: keep {prize} in the sentence so the amount shows.", path: ["winTemplate"] }),
 });
 
 export const PUT = route(async (req: Request) => {
   await requireAdminApi();
   const b = body.parse(await req.json());
   const db = await getDb();
-  await savePromo(db, b.popup, b.ticker);
+  await savePromo(db, b.popup, { ...b.ticker, winTemplate: b.ticker.winTemplate || DEFAULT_TICKER.winTemplate });
   await bumpSiteVersion(db);
   return NextResponse.json(await getPromo(db));
 });
