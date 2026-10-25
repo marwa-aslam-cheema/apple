@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-interface Data { enabled: boolean; lines: string[]; wins: { who: string; prize: number }[] }
+interface Data { enabled: boolean; lines: string[]; winTemplate?: string; wins: { who: string; prize: number }[] }
 
 function shuffle<T>(a: T[]): T[] {
   const r = [...a];
@@ -24,7 +24,8 @@ export function Ticker({ editable = false }: { editable?: boolean }) {
         .then((d: { ticker: Data }) => {
           const t = d.ticker;
           if (!t.enabled) return setItems([]);
-          const wins = t.wins.map((w) => `🎰 ${w.who} won ${w.prize.toLocaleString("en-US")} credits`);
+          const tpl = t.winTemplate || "🎰 {who} won {prize} credits";
+          const wins = t.wins.map((w) => tpl.replaceAll("{who}", w.who).replaceAll("{prize}", w.prize.toLocaleString("en-US")));
           setItems(shuffle([...t.lines, ...wins]).slice(0, 20));
         })
         .catch(() => undefined);

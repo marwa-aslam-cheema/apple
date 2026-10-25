@@ -110,7 +110,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
   } else if (tab === "banner") {
     const promo = await getPromo(db);
-    body = <AdminPromo popup={promo.popup} tickerEnabled={promo.ticker.enabled} tickerLines={promo.ticker.lines} />;
+    body = <AdminPromo popup={promo.popup} tickerEnabled={promo.ticker.enabled} tickerLines={promo.ticker.lines} showWins={promo.ticker.showWins} winTemplate={promo.ticker.winTemplate} minPrize={promo.ticker.minPrize} />;
   } else if (tab === "site") {
     const site = await getSite(db);
     const share = await getShare(db);

@@ -6,10 +6,13 @@ import { useState } from "react";
 interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 
 /** The welcome popup and the scrolling strip under the top bar. */
-export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup; tickerEnabled: boolean; tickerLines: string[] }) {
+export function AdminPromo({ popup, tickerEnabled, tickerLines, showWins: sw, winTemplate: wt, minPrize: mp }: { popup: Popup; tickerEnabled: boolean; tickerLines: string[]; showWins: boolean; winTemplate: string; minPrize: number }) {
   const router = useRouter();
   const [p, setP] = useState(popup);
   const [te, setTe] = useState(tickerEnabled);
+  const [showWins, setShowWins] = useState(sw);
+  const [winTemplate, setWinTemplate] = useState(wt);
+  const [minPrize, setMinPrize] = useState(mp);
   const [lines, setLines] = useState(tickerLines.join("\n"));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -20,7 +23,7 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup
     setMsg(null);
     try {
       const list = lines.split("\n").map((l) => l.trim()).filter(Boolean);
-      const res = await fetch("/api/admin/promo", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ popup: p, ticker: { enabled: te, lines: list } }) });
+      const res = await fetch("/api/admin/promo", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ popup: p, ticker: { enabled: te, lines: list, showWins, winTemplate, minPrize: Number(minPrize) } }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
       setMsg({ ok: true, text: "Saved." });
@@ -51,7 +54,17 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup
         <label className="block text-xs font-semibold text-muted">Your lines (one per line, up to 30)
           <textarea className="input mt-1 min-h-32" value={lines} onChange={(e) => setLines(e.target.value)} />
         </label>
-        <p className="text-xs text-muted">The strip mixes your lines with the real recent wins on the Lucky Wheel (for example "al... won 150 credits", names half hidden). Up to 20 items run in a random order each time the page opens. Only real wins are shown, nothing is made up.</p>
+        <div className="space-y-3 rounded-xl border border-line p-3">
+          <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5 accent-violet" checked={showWins} onChange={(e) => setShowWins(e.target.checked)} />Also show real wins from the Lucky Wheel</label>
+          <label className="block text-xs font-semibold text-muted">How a win is written
+            <input className="input mt-1" value={winTemplate} maxLength={100} onChange={(e) => setWinTemplate(e.target.value)} />
+            <span className="mt-1 block font-normal">Use <b>{"{who}"}</b> for the player (half hidden, like "al...") and <b>{"{prize}"}</b> for the amount. Example: 🏆 {"{who}"} just won {"{prize}"} credits!</span>
+          </label>
+          <label className="block text-xs font-semibold text-muted">Only show wins of at least (credits)
+            <input type="number" min={1} className="input mt-1 w-32" value={minPrize} onChange={(e) => setMinPrize(Number(e.target.value))} />
+          </label>
+        </div>
+        <p className="text-xs text-muted">The strip mixes your lines with the real wins that happened on the site. Up to 20 items run in a random order each time the page opens. The wins are taken from the real spins, so you change how they read and how big they must be, not who won.</p>
       </section>
       <div className="flex items-center gap-3">
         <button className="btn btn-gold" disabled={busy} onClick={save}>Save</button>

@@ -18,6 +18,9 @@ const body = z.object({
   ticker: z.object({
     enabled: z.boolean(),
     lines: z.array(z.string().trim().min(1).max(100)).max(30),
+    showWins: z.boolean(),
+    winTemplate: z.string().trim().min(1).max(100).refine((v) => v.includes("{prize}"), "Keep {prize} in the sentence so the real amount shows."),
+    minPrize: z.coerce.number().int().min(1).max(100000),
   }),
 });
 

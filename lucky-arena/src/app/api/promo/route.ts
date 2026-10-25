@@ -7,5 +7,5 @@ import { getPromo, recentWins } from "@/lib/promo";
 export const GET = route(async () => {
   const db = await getDb();
   const { popup, ticker } = await getPromo(db);
-  return NextResponse.json({ popup, ticker: { enabled: ticker.enabled, lines: ticker.lines, wins: ticker.enabled ? await recentWins(db) : [] } }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ popup, ticker: { enabled: ticker.enabled, lines: ticker.lines, winTemplate: ticker.winTemplate, wins: ticker.enabled && ticker.showWins ? await recentWins(db, 10, Math.max(1, ticker.minPrize)) : [] } }, { headers: { "Cache-Control": "no-store" } });
 });
