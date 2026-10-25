@@ -63,7 +63,7 @@ function askForAccount(gameId: number, href: string) {
     .catch(() => tab?.close());
 }
 
-export function GameCard({ game, needsCredits = false, needsAccount = false }: { game: Game; needsCredits?: boolean; needsAccount?: boolean }) {
+export function GameCard({ game, needsCredits = false, needsAccount = false, visitor = false }: { game: Game; needsCredits?: boolean; needsAccount?: boolean; visitor?: boolean }) {
   const onOpen = needsCredits ? () => askForCredits(game.id) : undefined;
   const inner = (
     <>
@@ -85,6 +85,12 @@ export function GameCard({ game, needsCredits = false, needsAccount = false }: {
       </div>
     </>
   );
+  // A visitor without an account: any game goes to Create account first, then straight on to that game
+  // (a linked game then asks the admin for the player's username and password by itself).
+  if (visitor) {
+    const next = game.link ? `/play/${game.slug}` : game.playable ? "/spin" : "/games";
+    return <Link href={`/register?next=${encodeURIComponent(next)}`} className={`card block p-2 transition-transform hover:-translate-y-0.5 ${game.featured ? "hot-card" : ""}`} title="Create an account to play">{inner}</Link>;
+  }
   const cls = `card block p-2 transition-transform hover:-translate-y-0.5 ${game.featured ? "hot-card" : ""}`;
   // Admins who set a back-office link land there (the game's own login); players only ever get the player link.
   const href = game.adminLink || (game.link ? `/play/${game.slug}` : "");

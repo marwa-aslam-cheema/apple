@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/db";
 import { GameCard } from "@/components/GameCard";
+import { VisitorTop } from "@/components/VisitorTop";
 import { CasinoBackdrop } from "@/components/CasinoBackdrop";
 import { ChipIcon } from "@/components/Logo";
 import { ClaimButton } from "@/components/ClaimButton";
@@ -18,6 +19,23 @@ export default async function Home() {
   const dailyReady = !!user && (!user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS);
   const tier = user ? tierForXp(user.xp) : null;
   const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;
+
+  // Someone without an account: sign in / create account, the signup bonus with its countdown, the strip, then every game.
+  if (!user) {
+    const all = await lobbyGames(db, {});
+    return (
+      <div className="relative isolate space-y-8">
+        <CasinoBackdrop />
+        <VisitorTop />
+        <section>
+          <h2 className="gold-text mb-3 text-2xl font-extrabold uppercase">Explore games</h2>
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="game-grid">
+            {all.map((g) => <GameCard key={g.id} game={g} visitor />)}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="relative isolate space-y-10">

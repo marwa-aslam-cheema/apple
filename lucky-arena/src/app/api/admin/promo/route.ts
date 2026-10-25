@@ -13,6 +13,7 @@ const body = z.object({
     text: z.string().trim().max(160),
     button: z.string().trim().min(1, "The popup button needs a name.").max(30),
     buttonMember: z.string().trim().min(1, "The button for existing players needs a name.").max(30),
+    timerHours: z.coerce.number().int().min(0).max(720),
   }),
   ticker: z.object({
     enabled: z.boolean(),

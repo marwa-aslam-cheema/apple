@@ -58,6 +58,11 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
   // is left by tapping the banner (or on its own, when the game reports it is done or the session runs out).
   const inGame = user?.inGame ?? null;
   const lastPath = useRef(pathname);
+  // Opening the wallet with nothing in it quietly tells the admin "I need a top-up" (the server does not repeat it while it is unanswered).
+  function walletTap() {
+    if (!user || user.role === "admin" || user.balance > 0 || inGame) return;
+    void fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", keepalive: true }).catch(() => undefined);
+  }
   async function leaveGame() {
     await fetch("/api/game/exit", { method: "POST" }).catch(() => undefined);
     router.refresh();
@@ -208,7 +213,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
                   <span aria-hidden="true">{(user.nickname || user.username)[0]?.toUpperCase()}</span>
                 )}
               </Link>
-              <Link href="/wallet" className="flex items-center gap-1.5 rounded-xl border border-gold/60 bg-surface px-2.5 py-2 text-sm font-extrabold sm:gap-2 sm:px-3 text-gold shadow-[0_0_14px_rgba(255,207,74,0.18)]" aria-label="Wallet balance">
+              <Link href="/wallet" onClick={walletTap} className="flex items-center gap-1.5 rounded-xl border border-gold/60 bg-surface px-2.5 py-2 text-sm font-extrabold sm:gap-2 sm:px-3 text-gold shadow-[0_0_14px_rgba(255,207,74,0.18)]" aria-label="Wallet balance">
                 <ChipIcon size={20} />
                 <span data-testid="balance">{fmt(user.balance)}</span>
               </Link>
@@ -246,7 +251,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
           )}
         </div>
       </header>
-      <Ticker />
+      {!(pathname === "/" && !user) && <Ticker />} {/* the visitor home page shows the strip inside its own layout */}
 
       <LiveRefresh />
       <PromoPopup signedIn={!!user} role={user?.role ?? ""} />
@@ -283,7 +288,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
           return isChat ? (
             <button key={t.label} type="button" className={cls} onClick={() => window.dispatchEvent(new Event("la:open-chat"))}>{inner}</button>
           ) : (
-            <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={cls}>{inner}</Link>
+            <Link key={t.href} href={t.href} onClick={t.href === "/wallet" ? walletTap : undefined} aria-current={on ? "page" : undefined} className={cls}>{inner}</Link>
           );
         })}
       </nav>

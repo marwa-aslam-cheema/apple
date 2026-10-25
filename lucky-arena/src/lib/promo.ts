@@ -2,7 +2,7 @@ import { desc, eq, gte, inArray, and } from "drizzle-orm";
 import type { Db } from "@/db";
 import { settings, spins, users } from "@/db/schema";
 
-export interface PromoPopup { enabled: boolean; title: string; text: string; button: string; buttonMember: string }
+export interface PromoPopup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 export interface PromoTicker { enabled: boolean; lines: string[] }
 
 export const DEFAULT_POPUP: PromoPopup = {
@@ -11,6 +11,7 @@ export const DEFAULT_POPUP: PromoPopup = {
   text: "Get 10 credits on your first top-up",
   button: "Claim signup bonus",
   buttonMember: "I want a top-up",
+  timerHours: 24,
 };
 export const DEFAULT_TICKER: PromoTicker = {
   enabled: true,

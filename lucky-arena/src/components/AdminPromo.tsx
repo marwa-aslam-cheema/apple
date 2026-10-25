@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string }
+interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 
 /** The welcome popup and the scrolling strip under the top bar. */
 export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup; tickerEnabled: boolean; tickerLines: string[] }) {
@@ -13,7 +13,7 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup
   const [lines, setLines] = useState(tickerLines.join("\n"));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const set = (k: keyof Popup, v: string | boolean) => setP({ ...p, [k]: v });
+  const set = (k: keyof Popup, v: string | boolean | number) => setP({ ...p, [k]: v });
 
   async function save() {
     setBusy(true);
@@ -41,6 +41,8 @@ export function AdminPromo({ popup, tickerEnabled, tickerLines }: { popup: Popup
         <label className="block text-xs font-semibold text-muted">Text<input className="input mt-1" value={p.text} maxLength={160} onChange={(e) => set("text", e.target.value)} /></label>
         <label className="block text-xs font-semibold text-muted">Button for visitors without an account (opens Sign up)<input className="input mt-1" value={p.button} maxLength={30} onChange={(e) => set("button", e.target.value)} /></label>
         <label className="block text-xs font-semibold text-muted">Button for players who already have an account (sends "I need a top-up" to your chat)<input className="input mt-1" value={p.buttonMember} maxLength={30} onChange={(e) => set("buttonMember", e.target.value)} /></label>
+        <label className="block text-xs font-semibold text-muted">Countdown on the home page for visitors, in hours (0 = no countdown)<input type="number" min={0} max={720} className="input mt-1 w-32" value={p.timerHours} onChange={(e) => set("timerHours", Number(e.target.value))} /></label>
+        <p className="text-xs text-muted">The countdown starts when a visitor first opens the site (on their own phone) and counts down honestly. When it ends the card says the offer has ended.</p>
       </section>
       <section className="card max-w-xl space-y-3 p-5">
         <h2 className="font-bold">Scrolling strip under the top bar</h2>

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChipIcon } from "./Logo";
 
-interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string }
+interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 
 const SEEN = "la_promo_popup_seen";
 
@@ -18,7 +18,8 @@ export function PromoPopup({ signedIn, role }: { signedIn: boolean; role: string
   const [popup, setPopup] = useState<Popup | null>(null);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
-  const quiet = role === "admin" || ["/login", "/register", "/forgot", "/admin"].some((p) => pathname.startsWith(p));
+  // Visitors on the home page already have the same offer written on the page.
+  const quiet = role === "admin" || ["/login", "/register", "/forgot", "/admin"].some((p) => pathname.startsWith(p)) || (!signedIn && pathname === "/");
 
   useEffect(() => {
     if (quiet) return;
