@@ -117,7 +117,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = (
       <div className="space-y-6">
         <AdminSite name={site.name} logo={site.logo} />
-        <AdminInvitePost caption={share.caption} image={share.image} bonus={share.bonus} defaultCaption={DEFAULT_SHARE_CAPTION} />
+        <AdminInvitePost caption={share.caption} image={share.image} bonus={share.bonus} defaultCaption={DEFAULT_SHARE_CAPTION} title={share.title} intro={share.intro} codeLabel={share.codeLabel} linkBase={share.linkBase} />
       </div>
     );
   } else if (tab === "wallet") {

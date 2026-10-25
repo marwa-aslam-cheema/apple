@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 
-export function CopyLink({ code }: { code: string }) {
+export function CopyLink({ code, base = "" }: { code: string; base?: string }) {
   const [url, setUrl] = useState(`/register?ref=${code}`);
   const [copied, setCopied] = useState(false);
-  useEffect(() => setUrl(`${window.location.origin}/register?ref=${code}`), [code]);
+  useEffect(() => setUrl(`${base || window.location.origin}/register?ref=${code}`), [code, base]);
 
   async function copy() {
     try {

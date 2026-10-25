@@ -24,17 +24,18 @@ export default async function ReferralPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-extrabold">Invite friends</h1>
-        <p className="mt-1 text-muted">You and each friend who joins with your link both receive {fmt(REFERRAL_BONUS)} credits.</p>
+        <h1 className="text-2xl font-extrabold">{share.title}</h1>
+        <p className="mt-1 text-muted">{share.intro.replaceAll("{credits}", fmt(REFERRAL_BONUS))}</p>
+        {user.role === "admin" && <a href="/admin?tab=site#invite" className="chip mt-2 hover:border-gold">Edit this page and the post</a>}
       </header>
       <section className="card space-y-3 p-5">
-        <p className="text-sm text-muted">Your code</p>
+        <p className="text-sm text-muted">{share.codeLabel}</p>
         <p className="text-3xl font-extrabold tracking-widest text-gold" data-testid="ref-code">{user.referralCode}</p>
-        <CopyLink code={user.referralCode} />
+        <CopyLink code={user.referralCode} base={share.linkBase} />
       </section>
       <section className="card space-y-3 p-5">
         <h2 className="gold-text text-2xl font-extrabold uppercase">Share your invite</h2>
-        <ShareKit code={user.referralCode} caption={fillCaption(share.caption, { site: site.name, code: user.referralCode, bonus: share.bonus })} image={share.image} bonus={share.bonus} siteName={site.name} />
+        <ShareKit code={user.referralCode} caption={fillCaption(share.caption, { site: site.name, code: user.referralCode, bonus: share.bonus })} image={share.image} bonus={share.bonus} siteName={site.name} linkBase={share.linkBase} />
       </section>
       <section className="grid grid-cols-2 gap-3">
         <div className="card p-4"><p className="text-xs text-muted">Friends joined</p><p className="text-2xl font-extrabold">{friends.length}</p></div>

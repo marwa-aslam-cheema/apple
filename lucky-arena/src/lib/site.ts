@@ -20,19 +20,48 @@ export async function saveSite(db: Db, site: { name: string; logo: string }) {
 }
 
 export const DEFAULT_SHARE_CAPTION = "Join me on {site} and get FREE SPINS! 🎰✨ Spin the welcome wheel and play with friends. Use my code {code}:";
-const SHARE_KEYS = { caption: "share_caption", image: "share_image", bonus: "share_bonus_code" } as const;
+const SHARE_KEYS = {
+  caption: "share_caption", image: "share_image", bonus: "share_bonus_code",
+  title: "share_title", intro: "share_intro", codeLabel: "share_code_label", linkBase: "share_link_base",
+} as const;
 
-/** The invite post players share: its words ({site}, {code} = the player's own code, {bonus} = the free-chips code), its picture and a bonus code. */
-export async function getShare(db: Db): Promise<{ caption: string; image: string; bonus: string }> {
+export const DEFAULT_SHARE_PAGE = {
+  title: "Invite friends",
+  intro: "You and each friend who joins with your link both receive {credits} credits.",
+  codeLabel: "Your code",
+};
+
+export interface Share { caption: string; image: string; bonus: string; title: string; intro: string; codeLabel: string; linkBase: string }
+
+/**
+ * The invite page players use: the post (words {site}, {code} = the player's own code, {bonus} = the free-chips code, a picture, a bonus code),
+ * the page's own wording, and the address the invite link starts with (empty = this site).
+ */
+export async function getShare(db: Db): Promise<Share> {
   const rows = await db.select().from(settings).where(inArray(settings.key, Object.values(SHARE_KEYS)));
   const get = (k: string) => rows.find((r) => r.key === k)?.value ?? "";
-  return { caption: get(SHARE_KEYS.caption) || DEFAULT_SHARE_CAPTION, image: get(SHARE_KEYS.image), bonus: get(SHARE_KEYS.bonus) };
+  return {
+    caption: get(SHARE_KEYS.caption) || DEFAULT_SHARE_CAPTION,
+    image: get(SHARE_KEYS.image),
+    bonus: get(SHARE_KEYS.bonus),
+    title: get(SHARE_KEYS.title) || DEFAULT_SHARE_PAGE.title,
+    intro: get(SHARE_KEYS.intro) || DEFAULT_SHARE_PAGE.intro,
+    codeLabel: get(SHARE_KEYS.codeLabel) || DEFAULT_SHARE_PAGE.codeLabel,
+    linkBase: get(SHARE_KEYS.linkBase),
+  };
 }
 
-export async function saveShare(db: Db, s: { caption: string; image: string; bonus: string }) {
-  for (const [key, value] of [[SHARE_KEYS.caption, s.caption.trim() || DEFAULT_SHARE_CAPTION], [SHARE_KEYS.image, s.image], [SHARE_KEYS.bonus, s.bonus.trim()]] as const) {
-    await db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
-  }
+export async function saveShare(db: Db, s: Share) {
+  const pairs: [string, string][] = [
+    [SHARE_KEYS.caption, s.caption.trim() || DEFAULT_SHARE_CAPTION],
+    [SHARE_KEYS.image, s.image],
+    [SHARE_KEYS.bonus, s.bonus.trim()],
+    [SHARE_KEYS.title, s.title.trim() || DEFAULT_SHARE_PAGE.title],
+    [SHARE_KEYS.intro, s.intro.trim() || DEFAULT_SHARE_PAGE.intro],
+    [SHARE_KEYS.codeLabel, s.codeLabel.trim() || DEFAULT_SHARE_PAGE.codeLabel],
+    [SHARE_KEYS.linkBase, s.linkBase.trim().replace(/\/+$/, "")],
+  ];
+  for (const [key, value] of pairs) await db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
 }
 
 /** Fills in the placeholders for one player. */

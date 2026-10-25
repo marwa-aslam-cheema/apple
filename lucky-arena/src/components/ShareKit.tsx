@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 
 /** Ready-made invite post: picture, caption, and share buttons. */
-export function ShareKit({ code, caption: initialCaption, image: customImage, bonus, siteName }: { code: string; caption: string; image: string; bonus: string; siteName: string }) {
+export function ShareKit({ code, caption: initialCaption, image: customImage, bonus, siteName, linkBase = "" }: { code: string; caption: string; image: string; bonus: string; siteName: string; linkBase?: string }) {
   const [origin, setOrigin] = useState("");
   const [caption, setCaption] = useState(initialCaption);
   const [bonusCopied, setBonusCopied] = useState(false);
@@ -15,7 +15,7 @@ export function ShareKit({ code, caption: initialCaption, image: customImage, bo
     setCanShare(typeof navigator.share === "function");
   }, []);
 
-  const link = `${origin}/register?ref=${code}`;
+  const link = `${linkBase || origin}/register?ref=${code}`;
   const image = customImage || `/invite/image?code=${code}`;
   const downloadHref = customImage || `${image}&download=1`;
   const enc = encodeURIComponent;
