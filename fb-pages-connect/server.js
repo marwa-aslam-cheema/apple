@@ -27,7 +27,7 @@ function checkNotPromotional(text) {
   const m = PROMO.exec(text);
   if (m) throw httpError(400, `Blocked: the message contains "${m[0]}", which looks promotional. Message Tags may only be used for order, booking or account updates.`);
 }
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'store.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
