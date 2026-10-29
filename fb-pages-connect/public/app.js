@@ -61,8 +61,14 @@ async function pages() {
   $('#view').innerHTML = `<h1>Pages</h1>${connectBox()}
   <div class="card"><div class="row">${state.configured ? `<a class="btn" href="/auth/facebook">${state.user ? 'Dobara connect / refresh' : 'Facebook se connect karein'}</a>` : ''}${state.user ? '<a class="btn alt" href="/auth/logout">Disconnect</a>' : ''}</div>
   <p class="muted">Popup mein sab Pages select karein, warna wo list mein nahi aayenge.</p></div>
+  <div class="card"><h3>Permissions</h3><p id="perm" class="muted">Check ho raha hai...</p></div>
   <div class="card"><h3>Total pages: ${state.pages.length}</h3>${state.pages.length ? `<table><tr><th>Page</th><th>Category</th><th>Token</th><th>Source</th><th></th></tr>${state.pages.map((p) => `<tr><td>${p.picture && p.picture.data ? `<img class="avatar" src="${esc(p.picture.data.url)}" alt="">` : ''}<b>${esc(p.name)}</b><div class="muted">ID: ${esc(p.id)}</div></td><td>${esc(p.category)}</td><td>${p.hasToken ? '<span class="ok">Mil gaya</span>' : '<span class="bad">Nahi</span>'}</td><td class="muted">${esc(p.source)}</td><td><button class="alt" data-sync="${esc(p.id)}" ${p.hasToken ? '' : 'disabled'}>Leads sync</button></td></tr>`).join('')}</table>` : '<p class="muted">Koi page nahi.</p>'}</div>`;
-  document.querySelectorAll('[data-sync]').forEach((b) => { b.onclick = guard(async () => { b.disabled = true; b.textContent = 'Sync ho raha hai...'; const r = await api(`/api/pages/${b.dataset.sync}/sync`, 'POST'); toast(`${r.total} conversations mile, ${r.added} naye leads`); b.disabled = false; b.textContent = 'Leads sync'; }); });
+  api('/api/permissions').then((r) => {
+    const need = ['pages_show_list', 'pages_messaging', 'pages_manage_metadata'];
+    const miss = need.filter((n) => !r.granted.includes(n));
+    $('#perm').innerHTML = `Mili hui: ${r.granted.map(esc).join(', ') || 'koi nahi'}${miss.length ? `<br><span class="bad">Missing: ${miss.map(esc).join(', ')}</span>. Facebook Login for Business > Configurations mein ye permissions add karein, phir "Dobara connect" dabayein.` : '<br><span class="ok">Zaroori permissions mil gayi hain.</span>'}`;
+  }).catch((e) => { $('#perm').textContent = e.message; });
+  document.querySelectorAll('[data-sync]').forEach((b) => { b.onclick = guard(async () => { b.disabled = true; b.textContent = 'Sync ho raha hai...'; const r = await api(`/api/pages/${b.dataset.sync}/sync`, 'POST'); toast(r.total ? `${r.total} conversations mile, ${r.added} naye leads` : '0 conversations mile. Development mode mein sirf un logon ki conversations dikhti hain jinka app par role ho (admin/tester). Asal customers ke liye Advanced Access chahiye.'); b.disabled = false; b.textContent = 'Leads sync'; }); });
 }
 
 // ---------- Leads ----------

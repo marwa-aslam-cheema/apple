@@ -188,6 +188,12 @@ async function api(req, url, body) {
     };
   }
 
+  if (m === 'GET' && p === '/api/permissions') {
+    if (!store.userToken) return { granted: [], declined: [] };
+    const d = (await graph('/me/permissions', store.userToken)).data || [];
+    return { granted: d.filter((x) => x.status === 'granted').map((x) => x.permission), declined: d.filter((x) => x.status !== 'granted').map((x) => x.permission) };
+  }
+
   if (m === 'POST' && (r = p.match(/^\/api\/pages\/(\d+)\/sync$/))) return syncLeads(requirePage(r[1]));
 
   if (m === 'GET' && p === '/api/leads') {
