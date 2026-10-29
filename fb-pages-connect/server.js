@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const { FB_APP_ID, FB_APP_SECRET, FB_REDIRECT_URI, PORT = 3000 } = process.env;
+const { FB_APP_ID, FB_APP_SECRET, FB_REDIRECT_URI, FB_CONFIG_ID, PORT = 3000 } = process.env;
 const GRAPH = 'https://graph.facebook.com/v21.0';
 const SCOPES = ['pages_show_list', 'pages_messaging', 'pages_manage_metadata', 'business_management'];
 const DATA_FILE = path.join(__dirname, 'data', 'pages.json');
@@ -96,7 +96,7 @@ function homePage(s) {
   }
   if (!s.user) {
     return layout(`<div class="card"><a class="btn" href="/auth/facebook">Facebook se connect karein</a>
-<p class="muted">Permissions: ${SCOPES.map(esc).join(', ')}</p></div>`);
+<p class="muted">${FB_CONFIG_ID ? 'Login configuration use ho rahi hai' : 'Permissions: ' + SCOPES.map(esc).join(', ')}</p></div>`);
   }
   const rows = (s.pages || []).map((p) => `<tr>
 <td>${p.picture && p.picture.data ? `<img src="${esc(p.picture.data.url)}" alt="">` : ''}<b>${esc(p.name)}</b><div class="muted">ID: ${esc(p.id)}</div></td>
@@ -122,7 +122,16 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/auth/facebook') {
       s.state = crypto.randomBytes(16).toString('hex');
-      const q = new URLSearchParams({ client_id: FB_APP_ID, redirect_uri: FB_REDIRECT_URI, state: s.state, scope: SCOPES.join(','), auth_type: 'rerequest' });
+      const q = new URLSearchParams({ client_id: FB_APP_ID, redirect_uri: FB_REDIRECT_URI, state: s.state });
+      if (FB_CONFIG_ID) {
+        // Facebook Login for Business: permissions configuration se aati hain, scope se nahi
+        q.set('config_id', FB_CONFIG_ID);
+        q.set('response_type', 'code');
+        q.set('override_default_response_type', 'true');
+      } else {
+        q.set('scope', SCOPES.join(','));
+        q.set('auth_type', 'rerequest');
+      }
       return redirect(`https://www.facebook.com/v21.0/dialog/oauth?${q}`);
     }
 
