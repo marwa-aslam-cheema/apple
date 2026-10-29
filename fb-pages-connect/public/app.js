@@ -29,13 +29,14 @@ const NAMES = { dashboard: 'Dashboard', pages: 'Pages', leads: 'Leads', labels: 
 
 async function route() {
   clearInterval(pollTimer);
-  const name = VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'dashboard';
+  const [h, arg] = location.hash.slice(1).split('/');
+  const name = VIEWS[h] ? h : 'dashboard';
   $('#nav').innerHTML = Object.entries(NAMES).map(([k, v]) => `<a href="#${k}" class="${k === name ? 'on' : ''}">${v}</a>`).join('');
   try {
     state = await api('/api/state');
     $('#who').textContent = state.user ? `${state.user.name} connected` : 'Facebook connect nahi hai';
     $('#sent').textContent = `${state.stats.sentThisMonth} msgs is mahine`;
-    await VIEWS[name]();
+    await VIEWS[name](arg);
   } catch (e) { $('#view').innerHTML = `<div class="card bad">${esc(e.message)}</div>`; }
 }
 window.addEventListener('hashchange', route);
@@ -58,17 +59,18 @@ async function dashboard() {
 
 // ---------- Pages ----------
 async function pages() {
+  const counts = {}; (await api('/api/leads')).forEach((l) => { counts[l.pageId] = (counts[l.pageId] || 0) + 1; });
   $('#view').innerHTML = `<h1>Pages</h1>${connectBox()}
   <div class="card"><div class="row">${state.configured ? `<a class="btn" href="/auth/facebook">${state.user ? 'Dobara connect / refresh' : 'Facebook se connect karein'}</a>` : ''}${state.user ? '<a class="btn alt" href="/auth/logout">Disconnect</a>' : ''}</div>
   <p class="muted">Popup mein sab Pages select karein, warna wo list mein nahi aayenge.</p></div>
   <div class="card"><h3>Permissions</h3><p id="perm" class="muted">Check ho raha hai...</p></div>
-  <div class="card"><h3>Total pages: ${state.pages.length}</h3>${state.pages.length ? `<table><tr><th>Page</th><th>Category</th><th>Token</th><th>Source</th><th></th></tr>${state.pages.map((p) => `<tr><td>${p.picture && p.picture.data ? `<img class="avatar" src="${esc(p.picture.data.url)}" alt="">` : ''}<b>${esc(p.name)}</b><div class="muted">ID: ${esc(p.id)}</div></td><td>${esc(p.category)}</td><td>${p.hasToken ? '<span class="ok">Mil gaya</span>' : '<span class="bad">Nahi</span>'}</td><td class="muted">${esc(p.source)}</td><td><button class="alt" data-sync="${esc(p.id)}" ${p.hasToken ? '' : 'disabled'}>Leads sync</button></td></tr>`).join('')}</table>` : '<p class="muted">Koi page nahi.</p>'}</div>`;
+  <div class="card"><h3>Total pages: ${state.pages.length}</h3>${state.pages.length ? `<table><tr><th>Page</th><th>Category</th><th>Leads</th><th>Token</th><th>Source</th><th></th></tr>${state.pages.map((p) => `<tr><td>${p.picture && p.picture.data ? `<img class="avatar" src="${esc(p.picture.data.url)}" alt="">` : ''}<b>${esc(p.name)}</b><div class="muted">ID: ${esc(p.id)}</div></td><td>${esc(p.category)}</td><td><b>${counts[p.id] || 0}</b></td><td>${p.hasToken ? '<span class="ok">Mil gaya</span>' : '<span class="bad">Nahi</span>'}</td><td class="muted">${esc(p.source)}</td><td style="white-space:nowrap"><button class="alt" data-sync="${esc(p.id)}" ${p.hasToken ? '' : 'disabled'}>Leads sync</button> <a class="btn" href="#inbox/${esc(p.id)}" ${p.hasToken ? '' : 'style="pointer-events:none;opacity:.5"'}>Messages</a></td></tr>`).join('')}</table>` : '<p class="muted">Koi page nahi.</p>'}</div>`;
   api('/api/permissions').then((r) => {
     const need = ['pages_show_list', 'pages_messaging', 'pages_manage_metadata'];
     const miss = need.filter((n) => !r.granted.includes(n));
     $('#perm').innerHTML = `Mili hui: ${r.granted.map(esc).join(', ') || 'koi nahi'}${miss.length ? `<br><span class="bad">Missing: ${miss.map(esc).join(', ')}</span>. Facebook Login for Business > Configurations mein ye permissions add karein, phir "Dobara connect" dabayein.` : '<br><span class="ok">Zaroori permissions mil gayi hain.</span>'}`;
   }).catch((e) => { $('#perm').textContent = e.message; });
-  document.querySelectorAll('[data-sync]').forEach((b) => { b.onclick = guard(async () => { b.disabled = true; b.textContent = 'Sync ho raha hai...'; const r = await api(`/api/pages/${b.dataset.sync}/sync`, 'POST'); toast(r.total ? `${r.total} conversations mile, ${r.added} naye leads` : '0 conversations mile. Development mode mein sirf un logon ki conversations dikhti hain jinka app par role ho (admin/tester). Asal customers ke liye Advanced Access chahiye.'); b.disabled = false; b.textContent = 'Leads sync'; }); });
+  document.querySelectorAll('[data-sync]').forEach((b) => { b.onclick = guard(async () => { b.disabled = true; b.textContent = 'Sync ho raha hai...'; let r; try { r = await api(`/api/pages/${b.dataset.sync}/sync`, 'POST'); } catch (e) { b.disabled = false; b.textContent = 'Leads sync'; throw e; } toast(r.total ? `${r.total} conversations mile, ${r.added} naye leads` : '0 conversations mile. Development mode mein sirf un logon ki conversations dikhti hain jinka app par role ho (admin/tester). Asal customers ke liye Advanced Access chahiye.'); pages(); }); });
 }
 
 // ---------- Leads ----------
@@ -100,7 +102,7 @@ async function labels() {
 }
 
 // ---------- Inbox ----------
-async function inbox() {
+async function inbox(arg) {
   const v = $('#view');
   v.innerHTML = `<h1>Inbox</h1>${connectBox()}<div class="card"><div class="row"><select id="ip">${state.pages.filter((p) => p.hasToken).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select><button id="il">Load conversations</button></div></div>
   <div class="inbox"><div class="card" style="margin:0;padding:0;max-height:480px;overflow:auto" id="ic"><p class="muted" style="padding:12px">Page chun kar Load dabayein.</p></div>
@@ -109,6 +111,7 @@ async function inbox() {
   <div class="row" style="margin-top:8px"><textarea id="ix" style="min-height:60px;flex:1" placeholder="Jawab likhein..."></textarea><button id="is" disabled>Send</button></div>
   <p class="muted">24 ghante ke baad jawab dene ke liye "Human agent" tag chunein (sirf support jawab, promotion nahi).</p></div></div>`;
   let current = null, pageId = null;
+  if (arg && state.pages.some((p) => p.id === arg)) { $('#ip').value = arg; setTimeout(() => $('#il').click(), 0); }
   $('#il').onclick = guard(async () => {
     pageId = $('#ip').value; if (!pageId) throw new Error('Pehle koi page connect karein');
     $('#ic').innerHTML = '<p class="muted" style="padding:12px">Load ho raha hai...</p>';
@@ -177,7 +180,7 @@ async function campaigns() {
     toast('Campaign shuru ho gaya'); campaigns();
   });
   const draw = (rows) => {
-    $('#ct2').innerHTML = `<tr><th>Naam</th><th>Page</th><th>Status</th><th>Progress</th><th>Sent / Failed</th><th></th></tr>` + (rows.map((c) => `<tr><td>${esc(c.name)}<div class="muted">${esc(ago(c.createdAt))}</div></td><td>${esc(c.pageName)}</td><td>${esc(c.status)}</td><td><div class="bar"><i style="width:${c.total ? Math.round(((c.sent + c.failed) / c.total) * 100) : 0}%"></i></div></td><td><span class="ok">${c.sent}</span> / <span class="bad">${c.failed}</span> of ${c.total}</td><td>${c.status === 'running' ? `<button class="danger" data-cx="${c.id}">Rokein</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Abhi koi campaign nahi.</td></tr>');
+    $('#ct2').innerHTML = `<tr><th>Naam</th><th>Page</th><th>Status</th><th>Progress</th><th>Sent / Failed</th><th></th></tr>` + (rows.map((c) => `<tr><td>${esc(c.name)}<div class="muted">${esc(ago(c.createdAt))}</div></td><td>${esc(c.pageName)}</td><td>${esc(c.status)}${c.lastError ? `<div class="bad" style="font-size:12px;max-width:260px">${esc(c.lastError)}</div>` : ''}</td><td><div class="bar"><i style="width:${c.total ? Math.round(((c.sent + c.failed) / c.total) * 100) : 0}%"></i></div></td><td><span class="ok">${c.sent}</span> / <span class="bad">${c.failed}</span> of ${c.total}</td><td>${c.status === 'running' ? `<button class="danger" data-cx="${c.id}">Rokein</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Abhi koi campaign nahi.</td></tr>');
     document.querySelectorAll('[data-cx]').forEach((b) => { b.onclick = guard(async () => { await api(`/api/campaigns/${b.dataset.cx}/cancel`, 'POST'); toast('Rok rahe hain...'); }); });
   };
   draw(list);

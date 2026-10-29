@@ -153,6 +153,7 @@ async function runCampaign(c) {
       addLog({ kind: 'campaign', campaignId: c.id, pageId: page.id, pageName: page.name, leadName: lead.name, status: 'sent' });
     } catch (e) {
       c.failed++;
+      c.lastError = e.message;
       addLog({ kind: 'campaign', campaignId: c.id, pageId: page.id, pageName: page.name, leadName: lead.name, status: 'failed', error: e.message });
     }
     save();
