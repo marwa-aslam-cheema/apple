@@ -1,0 +1,32 @@
+# Render Blueprint (free plan, no persistent disk): for testing the deployment without a card.
+# Data is lost whenever the instance restarts or spins down. Use render.yaml for App Review.
+services:
+  - type: web
+    name: page-direct
+    runtime: node
+    plan: free
+    rootDir: fb-pages-connect
+    buildCommand: echo "no build step"
+    startCommand: node server.js
+    healthCheckPath: /privacy
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      - key: BUSINESS_NAME
+        value: Leghari Tech
+      - key: CONTACT_EMAIL
+        value: nomileghari0318@gmail.com
+      - key: PUBLIC_URL
+        sync: false
+      - key: FB_REDIRECT_URI
+        sync: false
+      - key: FB_APP_ID
+        sync: false
+      - key: FB_APP_SECRET
+        sync: false
+      - key: FB_CONFIG_ID
+        sync: false
+      - key: APP_PASSWORD
+        sync: false

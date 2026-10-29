@@ -1,0 +1,37 @@
+# Render Blueprint: deploys the fb-pages-connect app (Render > New > Blueprint).
+services:
+  - type: web
+    name: page-direct
+    runtime: node
+    plan: starter            # a persistent disk needs a paid plan
+    rootDir: fb-pages-connect
+    buildCommand: echo "no build step"
+    startCommand: node server.js
+    healthCheckPath: /privacy
+    disk:
+      name: page-direct-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATA_DIR
+        value: /var/data
+      - key: BUSINESS_NAME
+        value: Leghari Tech
+      - key: CONTACT_EMAIL
+        value: nomileghari0318@gmail.com
+      - key: PUBLIC_URL          # e.g. https://app.your-domain.com
+        sync: false
+      - key: FB_REDIRECT_URI     # PUBLIC_URL + /auth/callback
+        sync: false
+      - key: FB_APP_ID
+        sync: false
+      - key: FB_APP_SECRET
+        sync: false
+      - key: FB_CONFIG_ID
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
