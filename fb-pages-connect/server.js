@@ -101,10 +101,22 @@ async function sendMessage(page, psid, text, tag) {
   return graph(`/${page.id}/messages`, page.access_token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 }
 
+// %name% / {fullname} = poora Facebook naam, {name} = pehla naam, {page} = page ka naam
 const render = (text, lead, page) => text
-  .replace(/\{name\}/gi, (lead.name || '').split(' ')[0] || 'dost')
-  .replace(/\{fullname\}/gi, lead.name || '')
-  .replace(/\{page\}/gi, page.name);
+  .replace(/%name%|\{fullname\}/gi, () => lead.name || 'dost')
+  .replace(/\{name\}/gi, () => (lead.name || '').split(' ')[0] || 'dost')
+  .replace(/\{page\}|%page%/gi, () => page.name);
+
+// Tayyar starter messages: har tag ke allowed use ke hisaab se. Aap inhe edit kar sakte hain.
+const STARTERS = [
+  { id: 's1', name: 'Order shipped', tag: 'POST_PURCHASE_UPDATE', text: 'Hi %name%, your order has been shipped and is on its way. Tracking details: [add tracking info]' },
+  { id: 's2', name: 'Order delivered', tag: 'POST_PURCHASE_UPDATE', text: 'Hi %name%, your order has been delivered. If anything is wrong, just reply to this message and we will fix it.' },
+  { id: 's3', name: 'Payment received', tag: 'POST_PURCHASE_UPDATE', text: 'Hi %name%, we have received your payment of [amount]. Thank you!' },
+  { id: 's4', name: 'Booking reminder', tag: 'CONFIRMED_EVENT_UPDATE', text: 'Hi %name%, a reminder about your booking on [date] at [time]. See you then!' },
+  { id: 's5', name: 'Event time changed', tag: 'CONFIRMED_EVENT_UPDATE', text: 'Hi %name%, the time of your booking has changed to [new date and time]. Please reply to confirm.' },
+  { id: 's6', name: 'Application / request status', tag: 'ACCOUNT_UPDATE', text: 'Hi %name%, the status of your request has been updated: [status].' },
+  { id: 's7', name: 'Support answer', tag: 'HUMAN_AGENT', text: 'Hi %name%, thanks for waiting. Here is the answer to your question: [answer]' },
+];
 
 function addLog(entry) {
   store.logs.push({ id: uid(), time: new Date().toISOString(), ...entry });
@@ -203,6 +215,7 @@ async function api(req, url, body) {
     return { ok: true };
   }
 
+  if (m === 'GET' && p === '/api/starters') return STARTERS;
   if (m === 'GET' && p === '/api/templates') return store.templates;
   if (m === 'POST' && p === '/api/templates') {
     if (!body.name || !body.text || !String(body.text).trim()) throw httpError(400, 'Template ka naam aur text dono chahiye');
@@ -248,14 +261,16 @@ async function api(req, url, body) {
     const ids = [...new Set(Array.isArray(body.pageIds) ? body.pageIds : [])];
     if (!ids.length) throw httpError(400, 'Kam az kam ek page chunein');
     const pages = ids.map(requirePage);
-    const tpl = store.templates.find((t) => t.id === body.templateId);
-    if (!tpl) throw httpError(400, 'Template chunein');
+    const tpl = store.templates.find((t) => t.id === body.templateId) || STARTERS.find((t) => t.id === body.templateId) || null;
+    const text = String(body.text ?? (tpl && tpl.text) ?? '').trim();
+    if (!text) throw httpError(400, 'Message likhein ya template chunein');
+    if (text.length > 2000) throw httpError(400, 'Text 2000 characters se chota rakhein');
     if (!TAGS.includes(body.tag)) throw httpError(400, 'Tag chunein');
     if (store.campaigns.some((c) => c.status === 'running')) throw httpError(409, 'Pehle se ek campaign chal raha hai');
     let leads = Object.values(store.leads).filter((l) => ids.includes(l.pageId));
     if (body.labelId) leads = leads.filter((l) => l.labels.includes(body.labelId));
     if (!leads.length) throw httpError(400, 'Is audience mein koi lead nahi. Pehle Pages mein "Leads sync" karein.');
-    const c = { id: uid(), name: String(body.name || tpl.name).slice(0, 80), pageIds: ids, pageName: pages.map((x) => x.name).join(', '), templateName: tpl.name, text: tpl.text, tag: body.tag, labelId: body.labelId || null, createdAt: new Date().toISOString(), status: 'queued', sent: 0, failed: 0, cancelled: false, targets: leads.map((l) => l.id) };
+    const c = { id: uid(), name: String(body.name || (tpl && tpl.name) || 'Campaign').slice(0, 80), pageIds: ids, pageName: pages.map((x) => x.name).join(', '), templateName: tpl ? tpl.name : '-', text, tag: body.tag, labelId: body.labelId || null, createdAt: new Date().toISOString(), status: 'queued', sent: 0, failed: 0, cancelled: false, targets: leads.map((l) => l.id) };
     store.campaigns.push(c); save();
     runCampaign(c).catch((e) => { c.status = 'failed'; c.error = e.message; save(); });
     return publicCampaign(c);

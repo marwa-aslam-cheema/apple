@@ -21,6 +21,7 @@ async function api(path, method = 'GET', body) {
   return data;
 }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => { t.style.display = 'none'; }, 4000); }
+function insertAtCursor(el, text) { const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a; el.value = el.value.slice(0, a) + text + el.value.slice(b); el.focus(); el.selectionStart = el.selectionEnd = a + text.length; el.dispatchEvent(new Event('input')); }
 const guard = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message); } };
 
 const VIEWS = { dashboard: dashboard, pages: pages, leads: leads, labels: labels, inbox: inbox, library: library, campaigns: campaigns, logs: logs };
@@ -124,26 +125,32 @@ async function inbox() {
 
 // ---------- Library ----------
 async function library() {
-  const list = await api('/api/templates');
-  $('#view').innerHTML = `<h1>Library</h1><p class="muted">Message templates. <code>{name}</code> (pehla naam), <code>{fullname}</code>, <code>{page}</code> use kar sakte hain.</p>
-  <div class="card"><label>Template ka naam</label><input id="tn" style="width:300px"><label>Message</label><textarea id="tx" placeholder="Salam {name}, aap ka order dispatch ho gaya hai."></textarea>
+  const [list, starters] = await Promise.all([api('/api/templates'), api('/api/starters')]);
+  $('#view').innerHTML = `<h1>Library</h1><p class="muted"><code>%name%</code> = har banda ka poora Facebook naam, <code>{name}</code> = sirf pehla naam, <code>{page}</code> = page ka naam.</p>
+  <div class="card"><label>Tayyar template se shuru karein (phir edit kar sakte hain)</label><select id="st"><option value="">-- chunein --</option>${starters.map((x) => `<option value="${x.id}">${esc(x.name)} (${esc(TAG_NAMES[x.tag])})</option>`).join('')}</select>
+  <label>Template ka naam</label><input id="tn" style="width:300px"><label>Message</label><textarea id="tx" placeholder="Hi %name%, your order has been dispatched."></textarea><button class="alt" id="tn2" type="button" style="margin-top:6px">Insert name (%name%)</button>
   <label>Tag</label><select id="tt">${tagOptions('POST_PURCHASE_UPDATE', true)}</select><div class="warn" style="margin-top:10px">Message Tags mein promotion, offer ya sale ka message allowed nahi. Sirf order, booking ya account se juday updates.</div>
   <div style="margin-top:10px"><button id="ts">Save template</button></div></div>
   ${list.map((t) => `<div class="card"><div class="row" style="justify-content:space-between"><b>${esc(t.name)}</b><span class="pill">${esc(TAG_NAMES[t.tag] || t.tag)}</span></div><p style="white-space:pre-wrap">${esc(t.text)}</p><button class="danger" data-del="${t.id}">Delete</button></div>`).join('')}`;
+  $('#st').onchange = () => { const x = starters.find((z) => z.id === $('#st').value); if (!x) return; $('#tn').value = x.name; $('#tx').value = x.text; $('#tt').value = x.tag; };
+  $('#tn2').onclick = () => insertAtCursor($('#tx'), '%name%');
   $('#ts').onclick = guard(async () => { await api('/api/templates', 'POST', { name: $('#tn').value, text: $('#tx').value, tag: $('#tt').value }); library(); });
   document.querySelectorAll('[data-del]').forEach((b) => { b.onclick = guard(async () => { await api(`/api/templates/${b.dataset.del}`, 'DELETE'); library(); }); });
 }
 
 // ---------- Campaigns ----------
 async function campaigns() {
-  const [tpls, lbls, list, ls] = await Promise.all([api('/api/templates'), api('/api/labels'), api('/api/campaigns'), api('/api/leads')]);
+  const [tpls, starters, lbls, list, ls] = await Promise.all([api('/api/templates'), api('/api/starters'), api('/api/labels'), api('/api/campaigns'), api('/api/leads')]);
   const v = $('#view');
   v.innerHTML = `<h1>Bulk Campaigns</h1>${connectBox()}
   <div class="card"><div class="warn">Sirf unhi logon ko bhejein jinhon ne aap ke page se baat ki ho, aur Tag ke hisaab se kaam ka message. Promotion bhejne par Facebook page ya app band kar sakta hai. Development mode mein messages sirf app ke admin/tester ko pahunchte hain.</div>
   <label>Campaign ka naam</label><input id="cn" style="width:300px">
   <label>Pages chunein <a href="#" id="call" class="muted">(sab select/clear)</a></label><div id="cp" class="card" style="margin:0;max-height:180px;overflow:auto">${state.pages.filter((p) => p.hasToken).map((p) => `<label style="display:flex;gap:8px;align-items:center;margin:4px 0;color:var(--text)"><input type="checkbox" value="${esc(p.id)}"> ${esc(p.name)}</label>`).join('') || '<span class="muted">Pehle Pages mein connect karein.</span>'}</div>
-  <label>Template</label><select id="ct">${tpls.map((t) => `<option value="${t.id}" data-tag="${t.tag}">${esc(t.name)}</option>`).join('') || '<option value="">Pehle Library mein template banayein</option>'}</select>
-  <label>Tag</label><select id="cg">${tagOptions(tpls[0] && tpls[0].tag)}</select>
+  <label>Template (apne ya tayyar)</label><select id="ct"><option value="">-- khud likhein --</option>${tpls.length ? `<optgroup label="Meri templates">${tpls.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Tayyar templates">${starters.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</optgroup></select>
+  <label>Tag</label><select id="cg">${tagOptions('POST_PURCHASE_UPDATE', true)}</select>
+  <label>Message (yahin edit kar sakte hain)</label><textarea id="cx" placeholder="Hi %name%, ..."></textarea>
+  <div class="row" style="margin-top:6px"><button class="alt" id="cnm" type="button">Insert name (%name%)</button><span class="muted">Har banda ko uska Facebook naam lag kar jayega.</span></div>
+  <p class="muted" id="cpv"></p>
   <label>Audience</label><select id="cl"><option value="">Is page ke saare leads</option>${lbls.map((l) => `<option value="${l.id}">Label: ${esc(l.name)}</option>`).join('')}</select>
   <p class="muted" id="cc"></p><button id="cs">Campaign shuru karein</button></div>
   <div class="card"><h3>Campaigns</h3><table id="ct2"></table></div>`;
@@ -151,11 +158,16 @@ async function campaigns() {
   const count = () => { const p = picked(), l = $('#cl').value; $('#cc').textContent = `${ls.filter((x) => p.includes(x.pageId) && (!l || x.labels.includes(l))).length} leads ko jayega (${p.length} pages)`; };
   $('#cp').onchange = count; $('#cl').onchange = count; count();
   $('#call').onclick = (e) => { e.preventDefault(); const boxes = document.querySelectorAll('#cp input'); const all = [...boxes].every((b) => b.checked); boxes.forEach((b) => { b.checked = !all; }); count(); };
-  $('#ct').onchange = () => { const o = $('#ct').selectedOptions[0]; if (o && o.dataset.tag) $('#cg').value = o.dataset.tag; };
+  const sample = () => (ls.find((x) => picked().includes(x.pageId)) || { name: 'Ali Khan' }).name;
+  const preview = () => { $('#cpv').textContent = $('#cx').value ? `Preview: ${$('#cx').value.replace(/%name%|\{fullname\}/gi, sample()).replace(/\{name\}/gi, sample().split(' ')[0]).replace(/\{page\}|%page%/gi, '(page ka naam)')}` : ''; };
+  $('#ct').onchange = () => { const x = [...tpls, ...starters].find((t) => t.id === $('#ct').value); if (!x) return; $('#cx').value = x.text; $('#cg').value = x.tag; preview(); };
+  $('#cx').oninput = preview; $('#cnm').onclick = () => insertAtCursor($('#cx'), '%name%'); $('#cp').addEventListener('change', preview);
   $('#cs').onclick = guard(async () => {
     const n = $('#cc').textContent.split(' ')[0];
+    if (!$('#cx').value.trim()) throw new Error('Message likhein');
+    if (/\[[^\]]*\]/.test($('#cx').value) && !confirm('Message mein [ ] wali jagah abhi bhari nahi gayi. Phir bhi bhejna hai?')) return;
     if (!confirm(`${n} logon ko "${$('#cg').selectedOptions[0].text}" tag ke saath message jayega. Pakka bhejna hai?`)) return;
-    await api('/api/campaigns', 'POST', { name: $('#cn').value, pageIds: picked(), templateId: $('#ct').value, tag: $('#cg').value, labelId: $('#cl').value || null });
+    await api('/api/campaigns', 'POST', { name: $('#cn').value, pageIds: picked(), templateId: $('#ct').value || null, text: $('#cx').value, tag: $('#cg').value, labelId: $('#cl').value || null });
     toast('Campaign shuru ho gaya'); campaigns();
   });
   const draw = (rows) => {
