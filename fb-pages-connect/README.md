@@ -1,34 +1,33 @@
 # Page Direct
 
-Apne Facebook Pages ka personal dashboard: connect, leads, inbox, templates aur bulk campaigns (Message Tags ke saath).
-Sirf aap ke computer par chalta hai (`127.0.0.1`), koi npm package nahi chahiye, Node 20.6+.
+A personal dashboard for your own Facebook Pages: connect Pages, see customers, reply in an inbox, and send order, booking and account updates with Message Tags.
+Runs on your own computer (`127.0.0.1`). No npm packages needed, Node 20.6+.
 
-## Meta app setup (ek baar)
-1. developers.facebook.com par app banayein. Use cases: Facebook Login, Engage with customers on Messenger.
-2. **Facebook Login for Business > Configurations** mein configuration banayein (General, User access token) aur permissions chunein: `pages_show_list`, `pages_messaging`, `pages_manage_metadata`, `business_management`. Configuration ID copy karein.
-3. Login settings ke **Valid OAuth Redirect URIs** mein `http://localhost:3100/auth/callback` daalein.
-4. **App settings > Basic** se App ID aur App Secret lein.
+## Meta app setup (once)
+1. Create an app at developers.facebook.com. Use cases: Facebook Login, Engage with customers on Messenger.
+2. Under **Facebook Login for Business > Configurations**, create a configuration (General, User access token) with the permissions `pages_show_list`, `pages_messaging`, `pages_manage_metadata`, `business_management`. Copy the Configuration ID.
+3. Add `http://localhost:3100/auth/callback` to **Valid OAuth Redirect URIs**.
+4. Copy the App ID and App Secret from **App settings > Basic**.
 
-## Chalane ka tareeqa
+## Run
 ```
 cd fb-pages-connect
-cp .env.example .env     # .env mein App ID, Secret, Configuration ID bharein
+cp .env.example .env     # fill in App ID, Secret, Configuration ID, business name, contact email
 npm start
 ```
-Phir http://localhost:3100 kholein.
+Open http://localhost:3100.
 
 ## Screens
-- **Dashboard**: messages sent, leads, pages, templates
-- **Pages**: Facebook connect/refresh, har page ka "Leads sync"
-- **Leads**: wo log jinhon ne page se baat ki, labels lagayein
-- **Labels**: leads ke groups
-- **Inbox**: conversations dekhein aur jawab dein
-- **Library**: message templates (`{name}`, `{fullname}`, `{page}`)
-- **Bulk Campaigns**: ek ya kai pages tick karein, template aur tag chunein, audience (saare leads ya label) chunein
-- **Logs**: har message ka sent/failed record
+- **Dashboard**, **Pages** (connect, sync customers, open a Page's inbox), **Leads** (order/booking reference, opt-out, labels), **Labels**, **Inbox**, **Library** (templates), **Order & Booking Updates**, **Logs**.
+- Public pages for Meta App Review: `/privacy`, `/terms`, `/data-deletion`. Facebook's data deletion callback: `POST /data-deletion`.
 
-## Zaroori baatein
-- Message Tags sirf kaam ke messages ke liye hain (order, booking, account update). Promotion/offer bhejna allowed nahi.
-- Development mode mein messages sirf app ke admin/tester ko pahunchte hain. Asal customers ke liye `pages_messaging` ki Advanced Access (App Review) chahiye.
-- Campaign shuru karne se pehle confirm poochta hai. Messages 0.3 second ke gap se bheje jate hain.
-- Page tokens aur data `data/store.json` mein hain (git mein nahi jata). Ye password jaisa samjhein.
+## Built-in policy safeguards
+- Updates require a Message Tag (order, booking, account or human-agent) and an order/booking reference for each recipient.
+- Promotional wording (sale, discount, offer, free, percentages, etc.) is blocked.
+- Every update ends with "Reply STOP to stop receiving updates". People who reply STOP are excluded.
+- Sending stops automatically after 5 failures in a row.
+- Messages go out slowly (0.3 s apart) and the sender asks for confirmation first.
+
+## Notes
+- In Development mode, messages only reach people with a role on the app. Real customers need Advanced Access to `pages_messaging` (App Review). See `REVIEW-NOTES.md`.
+- Tokens and customer data are stored in `data/store.json` (not committed to git). Treat it like a password.
