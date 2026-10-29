@@ -35,7 +35,7 @@ async function route() {
   const [h, arg] = location.hash.slice(1).split('/');
   const name = VIEWS[h] ? h : 'dashboard';
   $('#nav').innerHTML = Object.entries(NAMES).map(([k, v]) => `<a href="#${k}" class="${k === name ? 'on' : ''}">${v}</a>`).join('')
-    + '<hr><a href="/privacy" target="_blank">Privacy Policy</a><a href="/terms" target="_blank">Terms</a><a href="/data-deletion" target="_blank">Data deletion</a>';
+    + '<hr><a href="/privacy" target="_blank">Privacy Policy</a><a href="/terms" target="_blank">Terms</a><a href="/data-deletion" target="_blank">Data deletion</a>' + (state && state.authEnabled ? '<a href="/logout">Log out</a>' : '');
   try {
     state = await api('/api/state');
     $('#who').textContent = state.user ? `Connected as ${state.user.name}` : 'Facebook not connected';

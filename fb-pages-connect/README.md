@@ -28,6 +28,9 @@ Open http://localhost:3100.
 - Sending stops automatically after 5 failures in a row.
 - Messages go out slowly (0.3 s apart) and the sender asks for confirmation first.
 
+## Deploying publicly (needed for App Review)
+Set `APP_PASSWORD`, `HOST=0.0.0.0`, `PUBLIC_URL=https://your-domain`, `FB_REDIRECT_URI=https://your-domain/auth/callback`, and add that redirect URI in Meta. Keep `data/` on a persistent disk. Only `/privacy`, `/terms` and `/data-deletion` are public; everything else needs the password. Give the password to the Meta reviewer in the review notes.
+
 ## Notes
 - In Development mode, messages only reach people with a role on the app. Real customers need Advanced Access to `pages_messaging` (App Review). See `REVIEW-NOTES.md`.
 - Tokens and customer data are stored in `data/store.json` (not committed to git). Treat it like a password.

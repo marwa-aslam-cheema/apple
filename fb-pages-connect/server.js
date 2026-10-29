@@ -10,6 +10,12 @@ const GRAPH = process.env.FB_GRAPH_BASE || 'https://graph.facebook.com/v21.0';
 const BUSINESS_NAME = process.env.BUSINESS_NAME || 'the Page owner';
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'contact-email-not-set';
 const PUBLIC_URL = process.env.PUBLIC_URL || '';
+const APP_PASSWORD = process.env.APP_PASSWORD || '';
+const HOST = process.env.HOST || '127.0.0.1';
+if (HOST !== '127.0.0.1' && HOST !== 'localhost' && !APP_PASSWORD) {
+  console.error('Refusing to start: set APP_PASSWORD in .env before exposing the app beyond this computer.');
+  process.exit(1);
+}
 const SEND_DELAY_MS = Number(process.env.SEND_DELAY_MS || 300);
 const SCOPES = ['pages_show_list', 'pages_messaging', 'pages_manage_metadata', 'business_management'];
 const TAGS = ['RESPONSE', 'POST_PURCHASE_UPDATE', 'CONFIRMED_EVENT_UPDATE', 'ACCOUNT_UPDATE', 'HUMAN_AGENT'];
@@ -201,6 +207,7 @@ async function api(req, url, body) {
       },
       campaigns: store.campaigns.slice(-5).reverse().map(publicCampaign),
       tags: TAGS,
+      authEnabled: !!APP_PASSWORD,
     };
   }
 
@@ -339,6 +346,16 @@ function wipeUserData() {
 }
 const LEGAL = { '/privacy': 'privacy.html', '/terms': 'terms.html', '/data-deletion': 'data-deletion.html' };
 
+// ---------- login (only when APP_PASSWORD is set) ----------
+const authTokens = new Set();
+const PUBLIC_PATHS = new Set(['/privacy', '/terms', '/data-deletion', '/deauthorize', '/login']);
+const sha = (x) => crypto.createHash('sha256').update(String(x)).digest();
+const cookieOf = (req, name) => { const m = new RegExp(`(?:^|;\\s*)${name}=([a-f0-9]+)`).exec(req.headers.cookie || ''); return m && m[1]; };
+const isAuthed = (req) => !APP_PASSWORD || authTokens.has(cookieOf(req, 'pd_sid'));
+const isHttps = (req) => (req.headers['x-forwarded-proto'] || '').split(',')[0] === 'https' || PUBLIC_URL.startsWith('https');
+let failures = []; // timestamps of recent wrong passwords
+const loginPage = (err) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in</title><style>body{font-family:system-ui,sans-serif;background:#f6f5f2;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}form{background:#fff;padding:28px;border-radius:12px;box-shadow:0 1px 4px #0002;width:300px}input,button{font:inherit;width:100%;padding:10px;margin-top:10px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box}button{background:#4f5bd5;color:#fff;border:0;cursor:pointer}.e{color:#b3261e;font-size:14px}a{font-size:13px;color:#6b7280}</style></head><body><form method="post" action="/login"><h2 style="margin:0">Page Direct</h2><input type="password" name="password" placeholder="Password" autofocus required>${err ? '<div class="e">Wrong password.</div>' : ''}<button>Sign in</button><p><a href="/privacy">Privacy Policy</a> &middot; <a href="/terms">Terms</a> &middot; <a href="/data-deletion">Data deletion</a></p></form></body></html>`;
+
 // ---------- server ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 let oauthState = null;
@@ -357,6 +374,26 @@ const server = http.createServer(async (req, res) => {
   const redirect = (to) => { res.writeHead(302, { Location: to }); res.end(); };
 
   try {
+    if (url.pathname === '/login' && req.method === 'POST') {
+      let raw = ''; for await (const ch of req) { raw += ch; if (raw.length > 1e4) break; }
+      const now = Date.now(); failures = failures.filter((t) => now - t < 60000);
+      if (failures.length >= 5) throw httpError(429, 'Too many attempts. Wait a minute and try again.');
+      const given = new URLSearchParams(raw).get('password') || '';
+      if (APP_PASSWORD && crypto.timingSafeEqual(sha(given), sha(APP_PASSWORD))) {
+        const t = crypto.randomBytes(24).toString('hex'); authTokens.add(t);
+        res.writeHead(302, { Location: '/', 'Set-Cookie': `pd_sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${isHttps(req) ? '; Secure' : ''}` });
+        return res.end();
+      }
+      failures.push(now);
+      res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(loginPage(true));
+    }
+    if (url.pathname === '/login') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(loginPage(false)); }
+    if (url.pathname === '/logout') { authTokens.delete(cookieOf(req, 'pd_sid')); res.writeHead(302, { Location: '/login', 'Set-Cookie': 'pd_sid=; Max-Age=0; Path=/' }); return res.end(); }
+    if (!isAuthed(req) && !PUBLIC_PATHS.has(url.pathname)) {
+      if (url.pathname.startsWith('/api/')) return json(401, { error: 'Not signed in' });
+      return redirect('/login');
+    }
     if (url.pathname.startsWith('/api/')) {
       let body = {};
       if (req.method !== 'GET') {
@@ -424,4 +461,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => console.log(`Running at http://localhost:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`Running at http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT}${APP_PASSWORD ? ' (password protected)' : ''}`));
