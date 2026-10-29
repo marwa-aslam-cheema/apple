@@ -358,7 +358,15 @@ const loginPage = (err) => `<!doctype html><html lang="en"><head><meta charset="
 
 // ---------- server ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
-let oauthState = null;
+const stateSig = (n) => crypto.createHmac('sha256', FB_APP_SECRET || 'dev').update(n).digest('hex').slice(0, 32);
+// state = nonce.signature, and the same nonce is kept in a cookie so it works across restarts and double clicks
+const makeState = () => { const n = `${Date.now().toString(36)}${crypto.randomBytes(8).toString('hex')}`; return { nonce: n, state: `${n}.${stateSig(n)}` }; };
+function checkState(req, state) {
+  const [n, sig] = String(state || '').split('.');
+  const cookie = (/(?:^|;\s*)pd_oauth=([a-z0-9]+)/.exec(req.headers.cookie || '') || [])[1];
+  const age = Date.now() - parseInt(String(n || '').slice(0, 8), 36);
+  return !!(n && sig && sig === stateSig(n) && cookie === n && age >= 0 && age < 30 * 60 * 1000);
+}
 
 const readBody = (req) => new Promise((resolve, reject) => {
   let data = '';
@@ -406,8 +414,9 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/auth/facebook') {
       if (!FB_APP_ID || !FB_APP_SECRET || !FB_REDIRECT_URI) throw httpError(500, '.env is incomplete (FB_APP_ID, FB_APP_SECRET, FB_REDIRECT_URI)');
-      oauthState = crypto.randomBytes(16).toString('hex');
-      const q = new URLSearchParams({ client_id: FB_APP_ID, redirect_uri: FB_REDIRECT_URI, state: oauthState });
+      const { nonce, state } = makeState();
+      res.setHeader('Set-Cookie', `pd_oauth=${nonce}; HttpOnly; SameSite=Lax; Path=/; Max-Age=1800${isHttps(req) ? '; Secure' : ''}`);
+      const q = new URLSearchParams({ client_id: FB_APP_ID, redirect_uri: FB_REDIRECT_URI, state });
       if (FB_CONFIG_ID) { q.set('config_id', FB_CONFIG_ID); q.set('response_type', 'code'); q.set('override_default_response_type', 'true'); }
       else { q.set('scope', SCOPES.join(',')); q.set('auth_type', 'rerequest'); }
       return redirect(`https://www.facebook.com/v21.0/dialog/oauth?${q}`);
@@ -415,8 +424,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/auth/callback') {
       if (url.searchParams.get('error')) throw httpError(400, `Login cancelled or failed: ${url.searchParams.get('error_description') || url.searchParams.get('error')}`);
-      if (!oauthState || url.searchParams.get('state') !== oauthState) throw httpError(400, 'State mismatch. Please try again.');
-      oauthState = null;
+      if (!checkState(req, url.searchParams.get('state'))) throw httpError(400, 'Login session expired or was opened twice. Go back to the dashboard and click Connect once.');
       const short = await graph(`/oauth/access_token?${new URLSearchParams({ client_id: FB_APP_ID, client_secret: FB_APP_SECRET, redirect_uri: FB_REDIRECT_URI, code: url.searchParams.get('code') })}`, '');
       const long = await graph(`/oauth/access_token?${new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: FB_APP_ID, client_secret: FB_APP_SECRET, fb_exchange_token: short.access_token })}`, '');
       const log = [];
