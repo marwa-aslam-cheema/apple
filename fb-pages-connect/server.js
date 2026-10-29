@@ -200,7 +200,7 @@ async function api(req, url, body) {
       user: store.user,
       pages: store.pages.map(publicPage),
       stats: {
-        sentThisMonth: store.logs.filter((l) => l.status === 'sent' && l.time.startsWith(month)).length,
+        sentThisMonth: store.logs.filter((l) => l.status === 'sent' && l.kind !== 'connect' && l.time.startsWith(month)).length,
         leads: Object.keys(store.leads).length,
         pages: store.pages.length,
         templates: store.templates.length,
@@ -431,7 +431,7 @@ const server = http.createServer(async (req, res) => {
       store.userToken = long.access_token;
       store.user = await graph('/me?fields=id,name', store.userToken);
       store.pages = await loadPages(store.userToken, log);
-      addLog({ kind: 'connect', status: 'sent', pageName: '-', leadName: store.user.name, error: log.join(' | ') });
+      addLog({ kind: 'connect', status: 'info', pageName: '-', leadName: store.user.name, error: log.join(' | ') });
       save();
       return redirect('/#pages');
     }

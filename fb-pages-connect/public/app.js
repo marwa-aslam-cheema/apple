@@ -202,7 +202,7 @@ async function campaigns() {
 // ---------- Logs ----------
 async function logs() {
   const list = await api('/api/logs');
-  $('#view').innerHTML = `<h1>Logs</h1><div class="card" style="overflow-x:auto"><table><tr><th>Time</th><th>Type</th><th>Page</th><th>Customer</th><th>Status</th><th>Detail</th></tr>${list.map((l) => `<tr><td class="muted">${esc(when(l.time))}</td><td>${esc(l.kind)}</td><td>${esc(l.pageName)}</td><td>${esc(l.leadName)}</td><td class="${l.status === 'sent' ? 'ok' : 'bad'}">${esc(l.status)}</td><td class="muted">${esc(l.error || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No activity yet.</td></tr>'}</table></div>`;
+  $('#view').innerHTML = `<h1>Logs</h1><div class="card" style="overflow-x:auto"><table><tr><th>Time</th><th>Type</th><th>Page</th><th>Customer</th><th>Status</th><th>Detail</th></tr>${list.map((l) => `<tr><td class="muted">${esc(when(l.time))}</td><td>${esc(l.kind)}</td><td>${esc(l.pageName)}</td><td>${esc(l.leadName)}</td><td class="${l.status === 'sent' ? 'ok' : l.status === 'failed' ? 'bad' : 'muted'}">${esc(l.status)}</td><td class="muted">${esc(l.error || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No activity yet.</td></tr>'}</table></div>`;
 }
 
 route();
