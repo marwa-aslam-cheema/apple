@@ -1,24 +1,34 @@
-# FB Pages Connect
+# Page Direct
 
-Facebook se login karke apne saare Pages ki list dekhne ka chhota tool. Abhi sirf connect aur list hai, messaging baad mein judegi.
+Apne Facebook Pages ka personal dashboard: connect, leads, inbox, templates aur bulk campaigns (Message Tags ke saath).
+Sirf aap ke computer par chalta hai (`127.0.0.1`), koi npm package nahi chahiye, Node 20.6+.
 
 ## Meta app setup (ek baar)
-1. https://developers.facebook.com/apps par **Create App** (type: Business).
-2. **Facebook Login for Business** ya **Facebook Login** product add karein.
-3. Login settings mein **Valid OAuth Redirect URIs** mein `http://localhost:3000/auth/callback` daalein.
-4. **App settings > Basic** se App ID aur App Secret copy karein.
-5. App Development mode mein rehne dein. Aap khud app ke admin hain, isliye review ke baghair login chalega.
+1. developers.facebook.com par app banayein. Use cases: Facebook Login, Engage with customers on Messenger.
+2. **Facebook Login for Business > Configurations** mein configuration banayein (General, User access token) aur permissions chunein: `pages_show_list`, `pages_messaging`, `pages_manage_metadata`, `business_management`. Configuration ID copy karein.
+3. Login settings ke **Valid OAuth Redirect URIs** mein `http://localhost:3100/auth/callback` daalein.
+4. **App settings > Basic** se App ID aur App Secret lein.
 
 ## Chalane ka tareeqa
 ```
 cd fb-pages-connect
-cp .env.example .env     # phir .env mein App ID aur Secret bharein
-npm start                # Node 20.6 ya naya chahiye
+cp .env.example .env     # .env mein App ID, Secret, Configuration ID bharein
+npm start
 ```
-Browser mein http://localhost:3000 kholein aur **Facebook se connect karein** dabayein.
+Phir http://localhost:3100 kholein.
 
-Facebook ki popup mein **sab Pages select karna** zaroori hai, warna wo list mein nahi aayenge.
+## Screens
+- **Dashboard**: messages sent, leads, pages, templates
+- **Pages**: Facebook connect/refresh, har page ka "Leads sync"
+- **Leads**: wo log jinhon ne page se baat ki, labels lagayein
+- **Labels**: leads ke groups
+- **Inbox**: conversations dekhein aur jawab dein
+- **Library**: message templates (`{name}`, `{fullname}`, `{page}`)
+- **Bulk Campaigns**: ek ya kai pages tick karein, template aur tag chunein, audience (saare leads ya label) chunein
+- **Logs**: har message ka sent/failed record
 
-## Note
-- Pages `/me/accounts` se aur Business Manager (`owned_pages`, `client_pages`) se dono jagah se uthaye jate hain.
-- Page tokens `data/pages.json` mein save hote hain (git mein nahi jaata). Ye password jaisa samjhein.
+## Zaroori baatein
+- Message Tags sirf kaam ke messages ke liye hain (order, booking, account update). Promotion/offer bhejna allowed nahi.
+- Development mode mein messages sirf app ke admin/tester ko pahunchte hain. Asal customers ke liye `pages_messaging` ki Advanced Access (App Review) chahiye.
+- Campaign shuru karne se pehle confirm poochta hai. Messages 0.3 second ke gap se bheje jate hain.
+- Page tokens aur data `data/store.json` mein hain (git mein nahi jata). Ye password jaisa samjhein.

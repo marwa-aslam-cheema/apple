@@ -1,33 +1,51 @@
-// Facebook Pages connect tool: login -> saare pages ki list.
-// Koi npm package nahi chahiye, sirf Node 20.6+.
+// Page Direct: Facebook Pages ka dashboard (login, inbox, leads, templates, bulk campaigns).
+// Koi npm package nahi chahiye, sirf Node 20.6+. Sirf apne computer par (127.0.0.1) chalta hai.
 const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const { FB_APP_ID, FB_APP_SECRET, FB_REDIRECT_URI, FB_CONFIG_ID, PORT = 3000 } = process.env;
-const GRAPH = 'https://graph.facebook.com/v21.0';
+const GRAPH = process.env.FB_GRAPH_BASE || 'https://graph.facebook.com/v21.0';
+const SEND_DELAY_MS = Number(process.env.SEND_DELAY_MS || 300);
 const SCOPES = ['pages_show_list', 'pages_messaging', 'pages_manage_metadata', 'business_management'];
-const DATA_FILE = path.join(__dirname, 'data', 'pages.json');
+const TAGS = ['RESPONSE', 'POST_PURCHASE_UPDATE', 'CONFIRMED_EVENT_UPDATE', 'ACCOUNT_UPDATE', 'HUMAN_AGENT'];
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'store.json');
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
-const sessions = new Map(); // sid -> { state, user, pages, log }
+// ---------- storage (ek JSON file) ----------
+let store = { user: null, userToken: null, pages: [], leads: {}, labels: [], templates: [], campaigns: [], logs: [] };
+try { store = { ...store, ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; } catch { /* pehli dafa */ }
+store.campaigns.forEach((c) => { if (c.status === 'running') c.status = 'interrupted'; });
 
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const tmp = DATA_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(store), { mode: 0o600 });
+    fs.renameSync(tmp, DATA_FILE);
+  }, 100);
+}
+const uid = () => crypto.randomBytes(6).toString('hex');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function graph(pathAndQuery, token) {
+// ---------- Graph API ----------
+async function graph(pathAndQuery, token, opts = {}) {
   const sep = pathAndQuery.includes('?') ? '&' : '?';
-  const url = pathAndQuery.startsWith('http') ? pathAndQuery : `${GRAPH}${pathAndQuery}${sep}access_token=${encodeURIComponent(token)}`;
-  const res = await fetch(url);
-  const body = await res.json();
+  const url = pathAndQuery.startsWith('http') ? pathAndQuery : `${GRAPH}${pathAndQuery}${token ? `${sep}access_token=${encodeURIComponent(token)}` : ''}`;
+  const res = await fetch(url, opts);
+  const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) throw new Error(body.error ? `${body.error.message} (code ${body.error.code})` : `HTTP ${res.status}`);
   return body;
 }
 
-// Graph API ke "paging.next" ko follow karke saare items le aata hai.
-async function fetchAll(firstPath, token) {
+async function fetchAll(firstPath, token, maxItems = 5000) {
   const items = [];
   let next = firstPath;
-  while (next) {
+  while (next && items.length < maxItems) {
     const page = await graph(next, token);
     items.push(...(page.data || []));
     next = page.paging && page.paging.next;
@@ -38,15 +56,12 @@ async function fetchAll(firstPath, token) {
 async function loadPages(userToken, log) {
   const pages = new Map();
   const fields = 'id,name,category,tasks,access_token,picture{url}';
-
-  // 1) Jo pages seedha is user ke account se juray hain
   try {
     const direct = await fetchAll(`/me/accounts?fields=${fields}&limit=100`, userToken);
     direct.forEach((p) => pages.set(p.id, { ...p, source: 'Direct (me/accounts)' }));
     log.push(`me/accounts se ${direct.length} pages mile`);
   } catch (e) { log.push(`me/accounts fail: ${e.message}`); }
 
-  // 2) Jo pages Business Manager (Meta Business Suite) ke andar hain
   try {
     const businesses = await fetchAll('/me/businesses?fields=id,name&limit=100', userToken);
     log.push(`${businesses.length} Business Manager mile`);
@@ -61,104 +76,271 @@ async function loadPages(userToken, log) {
     }
   } catch (e) { log.push(`me/businesses fail: ${e.message}`); }
 
+  // Business wale pages ka token alag se mangna parta hai
+  for (const p of pages.values()) {
+    if (p.access_token) continue;
+    try { p.access_token = (await graph(`/${p.id}?fields=access_token`, userToken)).access_token; }
+    catch (e) { log.push(`${p.name}: page token nahi mila (${e.message})`); }
+  }
   return [...pages.values()];
 }
 
-function getSession(req, res) {
-  const m = /(?:^|;\s*)sid=([a-f0-9]+)/.exec(req.headers.cookie || '');
-  let sid = m && m[1];
-  if (!sid || !sessions.has(sid)) {
-    sid = crypto.randomBytes(16).toString('hex');
-    sessions.set(sid, {});
-    res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/`);
-  }
-  return sessions.get(sid);
+const findPage = (id) => store.pages.find((p) => p.id === id);
+function requirePage(id) {
+  const p = findPage(id);
+  if (!p) throw httpError(404, 'Page nahi mila. Pehle Pages mein connect karein.');
+  if (!p.access_token) throw httpError(400, `${p.name} ka page token nahi hai. Dobara connect karke is page ko select karein.`);
+  return p;
+}
+function httpError(status, message) { const e = new Error(message); e.status = status; return e; }
+
+async function sendMessage(page, psid, text, tag) {
+  const body = { recipient: { id: psid }, message: { text } };
+  if (!tag || tag === 'RESPONSE') body.messaging_type = 'RESPONSE';
+  else { body.messaging_type = 'MESSAGE_TAG'; body.tag = tag; }
+  return graph(`/${page.id}/messages`, page.access_token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 }
 
-function layout(body) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FB Pages Connect</title>
-<style>
-body{font-family:system-ui,sans-serif;max-width:860px;margin:32px auto;padding:0 16px;color:#1c1e21;background:#f0f2f5}
-h1{margin-bottom:4px}.card{background:#fff;border-radius:10px;padding:20px;margin:16px 0;box-shadow:0 1px 3px #0002}
-.btn{display:inline-block;background:#1877f2;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600}
-.btn.alt{background:#e4e6eb;color:#1c1e21}table{width:100%;border-collapse:collapse}
-td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #e4e6eb;vertical-align:middle}
-img{width:40px;height:40px;border-radius:50%;vertical-align:middle;margin-right:8px}
-.muted{color:#65676b;font-size:13px}.ok{color:#0a7d33;font-weight:600}.no{color:#b3261e;font-weight:600}
-pre{background:#f0f2f5;padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap}
-</style></head><body><h1>FB Pages Connect</h1><p class="muted">Facebook se login karke dekhein ke aap ke saare Pages aate hain ya nahi.</p>${body}</body></html>`;
+const render = (text, lead, page) => text
+  .replace(/\{name\}/gi, (lead.name || '').split(' ')[0] || 'dost')
+  .replace(/\{fullname\}/gi, lead.name || '')
+  .replace(/\{page\}/gi, page.name);
+
+function addLog(entry) {
+  store.logs.push({ id: uid(), time: new Date().toISOString(), ...entry });
+  if (store.logs.length > 5000) store.logs.splice(0, store.logs.length - 5000);
+  save();
 }
 
-function homePage(s) {
-  if (!FB_APP_ID || !FB_APP_SECRET || !FB_REDIRECT_URI) {
-    return layout(`<div class="card"><b class="no">.env file adhoori hai.</b><p><code>.env.example</code> ko <code>.env</code> naam se copy karein aur FB_APP_ID, FB_APP_SECRET bharein. Detail README.md mein hai.</p></div>`);
+// ---------- leads ----------
+async function syncLeads(page) {
+  const convs = await fetchAll(`/${page.id}/conversations?fields=id,updated_time,snippet,participants&platform=messenger&limit=50`, page.access_token, 2000);
+  let added = 0;
+  for (const c of convs) {
+    const user = ((c.participants && c.participants.data) || []).find((p) => p.id !== page.id);
+    if (!user) continue;
+    const key = `${page.id}:${user.id}`;
+    if (!store.leads[key]) { store.leads[key] = { id: key, pageId: page.id, psid: user.id, name: user.name || 'Unknown', labels: [] }; added++; }
+    Object.assign(store.leads[key], { name: user.name || store.leads[key].name, conversationId: c.id, lastMessageAt: c.updated_time, snippet: c.snippet });
   }
-  if (!s.user) {
-    return layout(`<div class="card"><a class="btn" href="/auth/facebook">Facebook se connect karein</a>
-<p class="muted">${FB_CONFIG_ID ? 'Login configuration use ho rahi hai' : 'Permissions: ' + SCOPES.map(esc).join(', ')}</p></div>`);
-  }
-  const rows = (s.pages || []).map((p) => `<tr>
-<td>${p.picture && p.picture.data ? `<img src="${esc(p.picture.data.url)}" alt="">` : ''}<b>${esc(p.name)}</b><div class="muted">ID: ${esc(p.id)}</div></td>
-<td>${esc(p.category)}</td>
-<td>${p.access_token ? '<span class="ok">Token mil gaya</span>' : '<span class="no">Token nahi</span>'}</td>
-<td class="muted">${esc(p.source)}</td></tr>`).join('');
-  return layout(`<div class="card"><b>${esc(s.user.name)}</b> ke naam se connected
-<p><a class="btn" href="/auth/facebook">Dobara connect / refresh</a> <a class="btn alt" href="/logout">Disconnect</a></p></div>
-<div class="card"><h3>Total pages: ${(s.pages || []).length}</h3>
-${rows ? `<table><tr><th>Page</th><th>Category</th><th>Page token</th><th>Kahan se mila</th></tr>${rows}</table>` : '<p>Koi page nahi mila. Neeche "Log" dekhein.</p>'}</div>
-<div class="card"><h3>Log</h3><pre>${esc((s.log || []).join('\n'))}</pre>
-<p class="muted">Agar koi page missing hai to Facebook ki popup mein sab pages select kiye the? Na kiye hon to "Dobara connect" dabayein aur sab pages tick karein.</p></div>`);
+  save();
+  return { total: convs.length, added };
 }
+
+// ---------- campaigns ----------
+async function runCampaign(c) {
+  c.status = 'running'; save();
+  for (const t of c.targets) {
+    if (c.cancelled) break;
+    const lead = store.leads[t];
+    const page = lead && findPage(lead.pageId);
+    if (!lead || !page || !page.access_token) { c.failed++; continue; }
+    try {
+      await sendMessage(page, lead.psid, render(c.text, lead, page), c.tag);
+      c.sent++;
+      addLog({ kind: 'campaign', campaignId: c.id, pageId: page.id, pageName: page.name, leadName: lead.name, status: 'sent' });
+    } catch (e) {
+      c.failed++;
+      addLog({ kind: 'campaign', campaignId: c.id, pageId: page.id, pageName: page.name, leadName: lead.name, status: 'failed', error: e.message });
+    }
+    save();
+    await sleep(SEND_DELAY_MS);
+  }
+  c.status = c.cancelled ? 'cancelled' : 'done';
+  save();
+}
+
+const publicPage = ({ access_token, ...p }) => ({ ...p, hasToken: !!access_token });
+const publicCampaign = ({ targets, ...c }) => ({ ...c, total: targets.length });
+
+// ---------- API ----------
+async function api(req, url, body) {
+  const m = req.method;
+  const p = url.pathname;
+  let r;
+
+  if (m === 'GET' && p === '/api/state') {
+    const month = new Date().toISOString().slice(0, 7);
+    return {
+      configured: !!(FB_APP_ID && FB_APP_SECRET && FB_REDIRECT_URI),
+      user: store.user,
+      pages: store.pages.map(publicPage),
+      stats: {
+        sentThisMonth: store.logs.filter((l) => l.status === 'sent' && l.time.startsWith(month)).length,
+        leads: Object.keys(store.leads).length,
+        pages: store.pages.length,
+        templates: store.templates.length,
+      },
+      campaigns: store.campaigns.slice(-5).reverse().map(publicCampaign),
+      tags: TAGS,
+    };
+  }
+
+  if (m === 'POST' && (r = p.match(/^\/api\/pages\/(\d+)\/sync$/))) return syncLeads(requirePage(r[1]));
+
+  if (m === 'GET' && p === '/api/leads') {
+    return Object.values(store.leads).sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''));
+  }
+  if (m === 'POST' && (r = p.match(/^\/api\/leads\/([\d:]+)\/labels$/))) {
+    const lead = store.leads[r[1]];
+    if (!lead) throw httpError(404, 'Lead nahi mila');
+    lead.labels = (body.labels || []).filter((id) => store.labels.some((l) => l.id === id));
+    save();
+    return lead;
+  }
+
+  if (m === 'GET' && p === '/api/labels') return store.labels;
+  if (m === 'POST' && p === '/api/labels') {
+    if (!body.name || !String(body.name).trim()) throw httpError(400, 'Label ka naam likhein');
+    const label = { id: uid(), name: String(body.name).trim().slice(0, 40), color: /^#[0-9a-f]{6}$/i.test(body.color) ? body.color : '#1877f2' };
+    store.labels.push(label); save();
+    return label;
+  }
+  if (m === 'DELETE' && (r = p.match(/^\/api\/labels\/(\w+)$/))) {
+    store.labels = store.labels.filter((l) => l.id !== r[1]);
+    Object.values(store.leads).forEach((l) => { l.labels = l.labels.filter((id) => id !== r[1]); });
+    save();
+    return { ok: true };
+  }
+
+  if (m === 'GET' && p === '/api/templates') return store.templates;
+  if (m === 'POST' && p === '/api/templates') {
+    if (!body.name || !body.text || !String(body.text).trim()) throw httpError(400, 'Template ka naam aur text dono chahiye');
+    if (String(body.text).length > 2000) throw httpError(400, 'Text 2000 characters se chota rakhein');
+    const t = { id: uid(), name: String(body.name).trim().slice(0, 60), text: String(body.text), tag: TAGS.includes(body.tag) ? body.tag : 'POST_PURCHASE_UPDATE' };
+    store.templates.push(t); save();
+    return t;
+  }
+  if (m === 'DELETE' && (r = p.match(/^\/api\/templates\/(\w+)$/))) {
+    store.templates = store.templates.filter((t) => t.id !== r[1]); save();
+    return { ok: true };
+  }
+
+  if (m === 'GET' && (r = p.match(/^\/api\/pages\/(\d+)\/conversations$/))) {
+    const page = requirePage(r[1]);
+    await syncLeads(page);
+    return Object.values(store.leads).filter((l) => l.pageId === page.id && l.conversationId)
+      .sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''));
+  }
+  if (m === 'GET' && (r = p.match(/^\/api\/pages\/(\d+)\/conversations\/([\w:]+)\/messages$/))) {
+    const page = requirePage(r[1]);
+    const msgs = await graph(`/${r[2]}/messages?fields=message,from,created_time&limit=50`, page.access_token);
+    return (msgs.data || []).reverse().map((x) => ({ id: x.id, text: x.message, mine: x.from && x.from.id === page.id, time: x.created_time }));
+  }
+  if (m === 'POST' && p === '/api/inbox/send') {
+    const page = requirePage(body.pageId);
+    const lead = store.leads[`${body.pageId}:${body.psid}`];
+    if (!lead) throw httpError(404, 'Lead nahi mila');
+    if (!body.text || !String(body.text).trim()) throw httpError(400, 'Message khali hai');
+    if (body.tag && !TAGS.includes(body.tag)) throw httpError(400, 'Tag galat hai');
+    try {
+      await sendMessage(page, lead.psid, String(body.text), body.tag);
+      addLog({ kind: 'inbox', pageId: page.id, pageName: page.name, leadName: lead.name, status: 'sent' });
+    } catch (e) {
+      addLog({ kind: 'inbox', pageId: page.id, pageName: page.name, leadName: lead.name, status: 'failed', error: e.message });
+      throw httpError(400, e.message);
+    }
+    return { ok: true };
+  }
+
+  if (m === 'GET' && p === '/api/campaigns') return store.campaigns.slice().reverse().map(publicCampaign);
+  if (m === 'POST' && p === '/api/campaigns') {
+    const ids = [...new Set(Array.isArray(body.pageIds) ? body.pageIds : [])];
+    if (!ids.length) throw httpError(400, 'Kam az kam ek page chunein');
+    const pages = ids.map(requirePage);
+    const tpl = store.templates.find((t) => t.id === body.templateId);
+    if (!tpl) throw httpError(400, 'Template chunein');
+    if (!TAGS.includes(body.tag)) throw httpError(400, 'Tag chunein');
+    if (store.campaigns.some((c) => c.status === 'running')) throw httpError(409, 'Pehle se ek campaign chal raha hai');
+    let leads = Object.values(store.leads).filter((l) => ids.includes(l.pageId));
+    if (body.labelId) leads = leads.filter((l) => l.labels.includes(body.labelId));
+    if (!leads.length) throw httpError(400, 'Is audience mein koi lead nahi. Pehle Pages mein "Leads sync" karein.');
+    const c = { id: uid(), name: String(body.name || tpl.name).slice(0, 80), pageIds: ids, pageName: pages.map((x) => x.name).join(', '), templateName: tpl.name, text: tpl.text, tag: body.tag, labelId: body.labelId || null, createdAt: new Date().toISOString(), status: 'queued', sent: 0, failed: 0, cancelled: false, targets: leads.map((l) => l.id) };
+    store.campaigns.push(c); save();
+    runCampaign(c).catch((e) => { c.status = 'failed'; c.error = e.message; save(); });
+    return publicCampaign(c);
+  }
+  if (m === 'POST' && (r = p.match(/^\/api\/campaigns\/(\w+)\/cancel$/))) {
+    const c = store.campaigns.find((x) => x.id === r[1]);
+    if (!c) throw httpError(404, 'Campaign nahi mila');
+    c.cancelled = true; save();
+    return publicCampaign(c);
+  }
+
+  if (m === 'GET' && p === '/api/logs') return store.logs.slice(-300).reverse();
+
+  throw httpError(404, 'API nahi mili');
+}
+
+// ---------- server ----------
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+let oauthState = null;
+
+const readBody = (req) => new Promise((resolve, reject) => {
+  let data = '';
+  req.on('data', (c) => { data += c; if (data.length > 1e6) reject(httpError(413, 'Body bohat bari hai')); });
+  req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch { reject(httpError(400, 'JSON galat hai')); } });
+});
+
+const errorPage = (msg) => `<!doctype html><meta charset="utf-8"><body style="font-family:system-ui;max-width:600px;margin:40px auto"><h3>${String(msg).replace(/[&<>]/g, '')}</h3><a href="/">Wapas</a>`;
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const s = getSession(req, res);
-  const send = (code, html) => { res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(html); };
+  const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
   const redirect = (to) => { res.writeHead(302, { Location: to }); res.end(); };
 
   try {
-    if (url.pathname === '/') return send(200, homePage(s));
+    if (url.pathname.startsWith('/api/')) {
+      let body = {};
+      if (req.method !== 'GET') {
+        // Dusri websites se forged requests rokne ke liye
+        if (!(req.headers['content-type'] || '').includes('application/json')) throw httpError(415, 'JSON chahiye');
+        body = await readBody(req);
+      }
+      return json(200, await api(req, url, body));
+    }
 
     if (url.pathname === '/auth/facebook') {
-      s.state = crypto.randomBytes(16).toString('hex');
-      const q = new URLSearchParams({ client_id: FB_APP_ID, redirect_uri: FB_REDIRECT_URI, state: s.state });
-      if (FB_CONFIG_ID) {
-        // Facebook Login for Business: permissions configuration se aati hain, scope se nahi
-        q.set('config_id', FB_CONFIG_ID);
-        q.set('response_type', 'code');
-        q.set('override_default_response_type', 'true');
-      } else {
-        q.set('scope', SCOPES.join(','));
-        q.set('auth_type', 'rerequest');
-      }
+      if (!FB_APP_ID || !FB_APP_SECRET || !FB_REDIRECT_URI) throw httpError(500, '.env file adhoori hai (FB_APP_ID, FB_APP_SECRET, FB_REDIRECT_URI)');
+      oauthState = crypto.randomBytes(16).toString('hex');
+      const q = new URLSearchParams({ client_id: FB_APP_ID, redirect_uri: FB_REDIRECT_URI, state: oauthState });
+      if (FB_CONFIG_ID) { q.set('config_id', FB_CONFIG_ID); q.set('response_type', 'code'); q.set('override_default_response_type', 'true'); }
+      else { q.set('scope', SCOPES.join(',')); q.set('auth_type', 'rerequest'); }
       return redirect(`https://www.facebook.com/v21.0/dialog/oauth?${q}`);
     }
 
     if (url.pathname === '/auth/callback') {
-      if (url.searchParams.get('error')) return send(400, layout(`<div class="card no">Login cancel/fail: ${esc(url.searchParams.get('error_description') || url.searchParams.get('error'))}<p><a href="/">Wapas</a></p></div>`));
-      if (!s.state || url.searchParams.get('state') !== s.state) return send(400, layout('<div class="card no">State match nahi hua. Dobara try karein.</div>'));
-      s.state = null;
-
+      if (url.searchParams.get('error')) throw httpError(400, `Login cancel/fail: ${url.searchParams.get('error_description') || url.searchParams.get('error')}`);
+      if (!oauthState || url.searchParams.get('state') !== oauthState) throw httpError(400, 'State match nahi hua. Dobara try karein.');
+      oauthState = null;
       const short = await graph(`/oauth/access_token?${new URLSearchParams({ client_id: FB_APP_ID, client_secret: FB_APP_SECRET, redirect_uri: FB_REDIRECT_URI, code: url.searchParams.get('code') })}`, '');
       const long = await graph(`/oauth/access_token?${new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: FB_APP_ID, client_secret: FB_APP_SECRET, fb_exchange_token: short.access_token })}`, '');
-      const token = long.access_token;
+      const log = [];
+      store.userToken = long.access_token;
+      store.user = await graph('/me?fields=id,name', store.userToken);
+      store.pages = await loadPages(store.userToken, log);
+      addLog({ kind: 'connect', status: 'sent', pageName: '-', leadName: store.user.name, error: log.join(' | ') });
+      save();
+      return redirect('/#pages');
+    }
 
-      s.log = [];
-      s.user = await graph('/me?fields=id,name', token);
-      s.pages = await loadPages(token, s.log);
-      s.log.push(`Kul unique pages: ${s.pages.length}`);
-
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-      fs.writeFileSync(DATA_FILE, JSON.stringify({ user: s.user, pages: s.pages }, null, 2), { mode: 0o600 });
+    if (url.pathname === '/auth/logout') {
+      store.user = null; store.userToken = null; store.pages = []; save();
       return redirect('/');
     }
 
-    if (url.pathname === '/logout') { Object.keys(s).forEach((k) => delete s[k]); return redirect('/'); }
-    send(404, layout('<div class="card">Page nahi mila.</div>'));
+    // static files
+    const rel = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
+    const file = path.join(PUBLIC_DIR, rel);
+    if (!file.startsWith(PUBLIC_DIR + path.sep) || !MIME[path.extname(file)] || !fs.existsSync(file)) throw httpError(404, 'Page nahi mila');
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] });
+    fs.createReadStream(file).pipe(res);
   } catch (e) {
-    send(500, layout(`<div class="card no">Error: ${esc(e.message)}<p><a href="/">Wapas</a></p></div>`));
+    const status = e.status || 500;
+    if (url.pathname.startsWith('/api/')) return json(status, { error: e.message });
+    res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(errorPage(e.message));
   }
 });
 
-server.listen(PORT, () => console.log(`Chal raha hai: http://localhost:${PORT}`));
+server.listen(PORT, '127.0.0.1', () => console.log(`Chal raha hai: http://localhost:${PORT}`));
