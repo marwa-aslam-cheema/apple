@@ -71,10 +71,18 @@ async function pages() {
     $('#perm').innerHTML = `Granted: ${r.granted.map(esc).join(', ') || 'none'}${miss.length ? `<br><span class="bad">Missing: ${miss.map(esc).join(', ')}</span>. Add them to your login configuration in Meta, then reconnect.` : '<br><span class="ok">All required permissions granted.</span>'}`;
   }).catch((e) => { $('#perm').textContent = e.message; });
   document.querySelectorAll('[data-sync]').forEach((b) => { b.onclick = guard(async () => {
-    b.disabled = true; b.textContent = 'Syncing...';
-    let r; try { r = await api(`/api/pages/${b.dataset.sync}/sync`, 'POST'); } catch (e) { b.disabled = false; b.textContent = 'Sync customers'; throw e; }
-    toast(r.total ? `${r.total} conversations found, ${r.added} new customers.` : 'No conversations found. While the app is in Development mode, Meta only returns conversations with people who have a role on the app (admin, developer, tester). Real customers need Advanced Access to pages_messaging.');
-    pages();
+    b.disabled = true; b.textContent = 'Starting...';
+    try {
+      let job = await api(`/api/pages/${b.dataset.sync}/sync`, 'POST');
+      while (job.status === 'running') {
+        b.textContent = `Syncing... ${job.fetched}`;
+        await new Promise((r) => setTimeout(r, 2000));
+        job = await api(`/api/pages/${b.dataset.sync}/sync`);
+      }
+      if (job.status === 'error') throw new Error(job.error);
+      toast(job.fetched ? `${job.fetched} conversations found, ${job.added} new customers.` : 'No conversations found. While the app is in Development mode, Meta only returns conversations with people who have a role on the app (admin, developer, tester). Real customers need Advanced Access to pages_messaging.');
+      pages();
+    } catch (e) { b.disabled = false; b.textContent = 'Sync customers'; throw e; }
   }); });
 }
 

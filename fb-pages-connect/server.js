@@ -143,19 +143,37 @@ function addLog(entry) {
 }
 
 // ---------- leads ----------
-async function syncLeads(page) {
-  const convs = await fetchAll(`/${page.id}/conversations?fields=id,updated_time,snippet,participants&platform=messenger&limit=50`, page.access_token, 2000);
-  let added = 0;
-  for (const c of convs) {
-    const user = ((c.participants && c.participants.data) || []).find((p) => p.id !== page.id);
-    if (!user) continue;
-    const key = `${page.id}:${user.id}`;
-    if (!store.leads[key]) { store.leads[key] = { id: key, pageId: page.id, psid: user.id, name: user.name || 'Unknown', labels: [] }; added++; }
-    Object.assign(store.leads[key], { name: user.name || store.leads[key].name, conversationId: c.id, lastMessageAt: c.updated_time, snippet: c.snippet });
-    if (OPT_OUT.test(c.snippet || '')) store.leads[key].optOut = true;
+const syncJobs = new Map(); // pageId -> { status, fetched, added, error }
+
+// Pulls conversations page by page, saving leads as it goes. `job` (optional) reports progress.
+async function syncLeads(page, { max = 3000, job } = {}) {
+  let next = `/${page.id}/conversations?fields=id,updated_time,snippet,participants&platform=messenger&limit=50`;
+  let fetched = 0, added = 0;
+  while (next && fetched < max) {
+    const res = await graph(next, page.access_token);
+    for (const c of res.data || []) {
+      fetched++;
+      const user = ((c.participants && c.participants.data) || []).find((p) => p.id !== page.id);
+      if (!user) continue;
+      const key = `${page.id}:${user.id}`;
+      if (!store.leads[key]) { store.leads[key] = { id: key, pageId: page.id, psid: user.id, name: user.name || 'Unknown', labels: [] }; added++; }
+      Object.assign(store.leads[key], { name: user.name || store.leads[key].name, conversationId: c.id, lastMessageAt: c.updated_time, snippet: c.snippet });
+      if (OPT_OUT.test(c.snippet || '')) store.leads[key].optOut = true;
+    }
+    if (job) { job.fetched = fetched; job.added = added; }
+    save();
+    next = res.paging && res.paging.next;
   }
-  save();
-  return { total: convs.length, added };
+  return { total: fetched, added };
+}
+
+function startSync(page) {
+  const old = syncJobs.get(page.id);
+  if (old && old.status === 'running') return old;
+  const job = { status: 'running', fetched: 0, added: 0, error: null, startedAt: Date.now() };
+  syncJobs.set(page.id, job);
+  syncLeads(page, { job }).then(() => { job.status = 'done'; }).catch((e) => { job.status = 'error'; job.error = e.message; });
+  return job;
 }
 
 // ---------- campaigns ----------
@@ -217,7 +235,8 @@ async function api(req, url, body) {
     return { granted: d.filter((x) => x.status === 'granted').map((x) => x.permission), declined: d.filter((x) => x.status !== 'granted').map((x) => x.permission) };
   }
 
-  if (m === 'POST' && (r = p.match(/^\/api\/pages\/(\d+)\/sync$/))) return syncLeads(requirePage(r[1]));
+  if (m === 'POST' && (r = p.match(/^\/api\/pages\/(\d+)\/sync$/))) return startSync(requirePage(r[1]));
+  if (m === 'GET' && (r = p.match(/^\/api\/pages\/(\d+)\/sync$/))) return syncJobs.get(r[1]) || { status: 'idle', fetched: 0, added: 0 };
 
   if (m === 'GET' && p === '/api/leads') {
     return Object.values(store.leads).sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''));
@@ -269,7 +288,7 @@ async function api(req, url, body) {
 
   if (m === 'GET' && (r = p.match(/^\/api\/pages\/(\d+)\/conversations$/))) {
     const page = requirePage(r[1]);
-    await syncLeads(page);
+    await syncLeads(page, { max: 100 });
     return Object.values(store.leads).filter((l) => l.pageId === page.id && l.conversationId)
       .sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''));
   }
