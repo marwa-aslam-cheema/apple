@@ -142,17 +142,19 @@ async function syncLeads(page) {
 // ---------- campaigns ----------
 async function runCampaign(c) {
   c.status = 'running'; save();
+  let streak = 0; // lagatar fail: 5 ke baad rok dete hain taake Facebook spam na samjhe
   for (const t of c.targets) {
     if (c.cancelled) break;
+    if (streak >= 5) { c.status = 'stopped'; save(); return; }
     const lead = store.leads[t];
     const page = lead && findPage(lead.pageId);
     if (!lead || !page || !page.access_token) { c.failed++; continue; }
     try {
       await sendMessage(page, lead.psid, render(c.text, lead, page), c.tag);
-      c.sent++;
+      c.sent++; streak = 0;
       addLog({ kind: 'campaign', campaignId: c.id, pageId: page.id, pageName: page.name, leadName: lead.name, status: 'sent' });
     } catch (e) {
-      c.failed++;
+      c.failed++; streak++;
       c.lastError = e.message;
       addLog({ kind: 'campaign', campaignId: c.id, pageId: page.id, pageName: page.name, leadName: lead.name, status: 'failed', error: e.message });
     }
