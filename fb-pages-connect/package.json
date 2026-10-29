@@ -1,0 +1,10 @@
+{
+  "name": "fb-pages-connect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Facebook login karke apne saare Pages ki list dekhne ka chhota tool",
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
+  "engines": { "node": ">=20.6" }
+}
