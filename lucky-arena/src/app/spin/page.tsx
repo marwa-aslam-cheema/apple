@@ -5,6 +5,7 @@ import { spins } from "@/db/schema";
 import { SpinWheel } from "@/components/SpinWheel";
 import { SPIN_COST } from "@/lib/config";
 import { fmt, fmtDate } from "@/lib/format";
+import { getTexts } from "@/lib/texts";
 import { getOpenSession } from "@/lib/game-sessions";
 import { getCurrentUser } from "@/lib/session";
 import { activeWheel } from "@/lib/services";
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Lucky Spin" };
 export default async function SpinPage() {
   const [user, db] = await Promise.all([getCurrentUser(), getDb()]);
   const open = user ? await getOpenSession(db, user.id) : null;
+  const texts = await getTexts(db);
   const welcomeLeft = user?.welcomeSpins ?? 0;
   const segments = await activeWheel(db, welcomeLeft > 0 ? "welcome" : "main");
   const recent = user ? await db.select().from(spins).where(eq(spins.userId, user.id)).orderBy(desc(spins.id)).limit(8) : [];
@@ -22,7 +24,7 @@ export default async function SpinPage() {
       <div className="text-center">
         <h1 className="gold-text text-4xl font-extrabold uppercase">{welcomeLeft > 0 ? "Welcome Wheel" : "Lucky Spin Wheel"}</h1>
         <p className="mt-1 text-muted">
-          {welcomeLeft > 0 ? `${welcomeLeft} free spin${welcomeLeft > 1 ? "s" : ""} left. Small prizes to get you started.` : "Pick your bet, from 1 to 1,000 credits. Prizes grow with your bet. Good luck!"}
+          {welcomeLeft > 0 ? `${welcomeLeft} free spin${welcomeLeft > 1 ? "s" : ""} left. Small prizes to get you started.` : `Pick your bet, from 1 to 1,000 ${texts.currency}. Prizes grow with your bet. Good luck!`}
         </p>
       </div>
       <SpinWheel

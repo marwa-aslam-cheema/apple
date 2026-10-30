@@ -5,6 +5,7 @@ import { WalletActions } from "@/components/WalletActions";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS } from "@/lib/config";
 import { fmt, fmtDate } from "@/lib/format";
 import { TX_LABELS } from "@/lib/labels";
+import { dailyReward, getTexts, unit } from "@/lib/texts";
 import { requireUserPage } from "@/lib/session";
 import { listTransactions, userStats } from "@/lib/services";
 import { tierForXp } from "@/lib/vip";
@@ -18,7 +19,8 @@ export default async function WalletPage() {
   const db = await getDb();
   const [tx, stats] = await Promise.all([listTransactions(db, user.id, 100), userStats(db, user.id)]);
   const ready = !user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS;
-  const daily = DAILY_BONUS_BASE + (user.lastDailyAt ? tierForXp(user.xp).tier.dailyBonus : 0);
+  const texts = await getTexts(db);
+  const daily = dailyReward(texts, { claimedBefore: !!user.lastDailyAt, levelBonus: tierForXp(user.xp).tier.dailyBonus });
 
   return (
     <div className="space-y-6">
@@ -35,7 +37,7 @@ export default async function WalletPage() {
         </div>
         <div className="card p-5">
           <h2 className="font-bold">Daily bonus</h2>
-          <p className="mb-3 mt-1 text-sm text-muted">Today: {fmt(daily)} credit{daily === 1 ? "" : "s"}</p>
+          <p className="mb-3 mt-1 text-sm text-muted">Today: {fmt(daily)} {unit(daily, texts)}</p>
           <ClaimButton url="/api/daily" label="Claim now" disabled={!ready} doneLabel="Already claimed" />
         </div>
       </div>
@@ -63,7 +65,7 @@ export default async function WalletPage() {
           </ul>
         )}
       </section>
-      <p className="text-xs text-muted">Credits are play money: no cash value and no withdrawals.</p>
+      <p className="text-xs text-muted">{texts.currency.charAt(0).toUpperCase() + texts.currency.slice(1)} are play money: no cash value and no withdrawals.</p>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { ClaimButton } from "@/components/ClaimButton";
 import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
+import { getTexts, unit } from "@/lib/texts";
 import { listGameAccounts } from "@/lib/game-sessions";
 import { lobbyGames } from "@/lib/services";
 import { tierForXp } from "@/lib/vip";
@@ -16,6 +17,7 @@ export default async function Home() {
   const [user, db] = await Promise.all([getCurrentUser(), getDb()]);
   const featured = (await lobbyGames(db, { category: "Featured", admin: user?.role === "admin" })).slice(0, 6);
   const accounts = new Set((user ? await listGameAccounts(db, user.id) : []).map((a) => a.gameId));
+  const texts = await getTexts(db);
   const dailyReady = !!user && (!user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS);
   const tier = user ? tierForXp(user.xp) : null;
   const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;
@@ -53,7 +55,7 @@ export default async function Home() {
           <p className="neon-text text-xs font-extrabold uppercase tracking-[0.35em]">Casino night</p>
           <h1 className="gold-text mt-3 text-5xl font-extrabold uppercase leading-[1.05] sm:text-7xl">Spin. Play. Shine.</h1>
           <p className="mt-4 text-muted">
-            Join free and spin the welcome wheel for your first credits, then try the Lucky Spin Wheel with friends.
+            Join free and spin the welcome wheel for your first {texts.currency}, then try the Lucky Spin Wheel with friends.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             {user ? (
@@ -70,7 +72,7 @@ export default async function Home() {
         <section className="grid gap-4 sm:grid-cols-2">
           <div className="card p-5">
             <h2 className="font-bold">Daily bonus</h2>
-            <p className="mb-3 mt-1 text-sm text-muted">Collect {DAILY_BONUS_BASE} free credit{DAILY_BONUS_BASE === 1 ? "" : "s"} every day. Higher levels add a little more.</p>
+            <p className="mb-3 mt-1 text-sm text-muted">Collect {texts.dailyBase} free {unit(texts.dailyBase, texts)} every day. Higher levels add a little more.</p>
             <ClaimButton url="/api/daily" label="Claim daily bonus" disabled={!dailyReady} doneLabel="Come back later" />
           </div>
           <div className="card p-5">
@@ -96,8 +98,8 @@ export default async function Home() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["1. Join free", `Sign up at zero and take ${WELCOME_SPINS} free spins on the welcome wheel for your first credits.`],
-          ["2. Play", "Pick your own bet from 1 to 1,000 credits on the Lucky Spin. Prizes grow with your bet and land in your wallet right away."],
+          ["1. Join free", `Sign up at zero and take ${WELCOME_SPINS} free spins on the welcome wheel for your first ${texts.currency}.`],
+          ["2. Play", `Pick your own bet from 1 to 1,000 ${texts.currency} on the Lucky Spin. Prizes grow with your bet and land in your wallet right away.`],
           ["3. Level up", "Every spin earns XP. Higher VIP tiers unlock bigger daily bonuses."],
         ].map(([t, d]) => (
           <div key={t} className="card p-5">

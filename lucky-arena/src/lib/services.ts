@@ -1,4 +1,5 @@
 import { adminIds, notifyUsers } from "./push";
+import { dailyReward, getTexts } from "./texts";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -182,7 +183,7 @@ export async function claimDaily(db: Db, userId: number, now = new Date()) {
       throw new AppError("cooldown", `Daily bonus is ready in ${Math.ceil(waitMs / 3600000)}h.`, 429);
     }
     // The level bonus unlocks once the player has taken the daily bonus before.
-    const reward = DAILY_BONUS_BASE + (user.lastDailyAt ? tierForXp(user.xp).tier.dailyBonus : 0);
+    const reward = dailyReward(await getTexts(t), { claimedBefore: !!user.lastDailyAt, levelBonus: tierForXp(user.xp).tier.dailyBonus });
     await t.update(users).set({ lastDailyAt: now }).where(eq(users.id, userId));
     const balance = await applyCredits(t, userId, reward, "daily_bonus", "Daily bonus");
     return { reward, balance };
@@ -538,7 +539,8 @@ export async function requestCredits(db: Db, userId: number, opts: { gameId?: nu
     const inGameCredits = (await getOpenSession(db, userId))?.balance ?? 0;
     if (user.balance + inGameCredits > 0 || user.welcomeSpins > 0 || user.role === "admin") return { sent: false, reason: "has_credits", game: game.title };
   }
-  const body = game ? `I want credits in ${game.title}` : "I need a top-up";
+  const texts = await getTexts(db);
+  const body = game ? texts.msgGame.replaceAll("{game}", game.title) : texts.msgTopup;
   const [last] = await db
     .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
     .from(chatMessages)
@@ -559,7 +561,8 @@ export async function grantCreditsAndNotify(db: Db, userId: number, amount: numb
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
     const balance = await adminAdjust(t, userId, amount, note || "Credits added on request");
-    await postChat(t, userId, "admin", `Added ${amount.toLocaleString("en-US")} credits to your wallet. Balance: ${balance.toLocaleString("en-US")}.`);
+    const w = (await getTexts(t)).currency;
+    await postChat(t, userId, "admin", `Added ${amount.toLocaleString("en-US")} ${w} to your wallet. Balance: ${balance.toLocaleString("en-US")}.`);
     return balance;
   });
 }

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_BET, MIN_BET } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { sfxResult, sfxSpin, unlockSfx } from "@/lib/sfx";
+import { useUnit } from "./Currency";
 import { betLabel } from "@/lib/wheel-display";
 import { segmentLayout } from "@/lib/wheel-layout";
 
@@ -25,6 +26,7 @@ interface Win {
 
 /** Celebration shown for every prize except "Try again". */
 function WinPopup({ win, onClose }: { win: Win; onClose: () => void }) {
+  const unit = useUnit();
   const jackpot = win.prize >= 1000;
   const btn = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -48,7 +50,7 @@ function WinPopup({ win, onClose }: { win: Win; onClose: () => void }) {
         <div className="float-slow relative text-7xl" aria-hidden="true">{win.icon || "🎉"}</div>
         <p className="neon-text relative mt-3 text-xs font-extrabold uppercase tracking-[0.35em]">{jackpot ? "Jackpot!" : "You won"}</p>
         <p className="gold-text relative font-[family-name:var(--font-display)] text-6xl font-extrabold">+{fmt(win.prize)}</p>
-        <p className="relative mb-5 text-sm text-muted">credit{win.prize === 1 ? "" : "s"}</p>
+        <p className="relative mb-5 text-sm text-muted">{unit(win.prize)}</p>
         <button ref={btn} className="btn btn-gold relative w-full" onClick={onClose}>Collect</button>
       </div>
     </div>
@@ -63,6 +65,7 @@ const polar = (deg: number, r = R) => {
 
 export function SpinWheel({ kind, segments, defaultBet, balance: initial, signedIn, welcomeLeft: initialLeft }: { kind: "main" | "welcome"; segments: WheelSeg[]; defaultBet: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
   const router = useRouter();
+  const unit = useUnit();
   const [angle, setAngle] = useState(0);
   const [balance, setBalance] = useState(initial);
   const [welcomeLeft, setWelcomeLeft] = useState(initialLeft);
@@ -221,7 +224,7 @@ export function SpinWheel({ kind, segments, defaultBet, balance: initial, signed
         {error && <p className="font-semibold text-danger">{error}</p>}
         {result && (
           <p className="text-lg font-extrabold">
-            {result.prize > 0 ? <span className="text-gold">You won {fmt(result.prize)} credit{result.prize === 1 ? "" : "s"}!</span> : <span className="text-muted">{result.label === "Try next time" ? "Try next time!" : "No prize this time. Try again!"}</span>}
+            {result.prize > 0 ? <span className="text-gold">You won {fmt(result.prize)} {unit(result.prize)}!</span> : <span className="text-muted">{result.label === "Try next time" ? "Try next time!" : "No prize this time. Try again!"}</span>}
           </p>
         )}
       </div>
@@ -232,15 +235,15 @@ export function SpinWheel({ kind, segments, defaultBet, balance: initial, signed
             {!free && <button type="button" className="chip shrink-0 !px-2.5 !py-1.5 text-xs font-bold" aria-label="Smallest bet" disabled={busy || bet <= MIN_BET} onClick={() => setBet(MIN_BET)}>Min</button>}
             {!free && <button type="button" className="btn btn-ghost !px-3.5 text-xl" aria-label="Lower the bet" disabled={busy || bet <= MIN_BET} onClick={() => setBet((b) => Math.max(MIN_BET, b - (b <= 10 ? 1 : b <= 100 ? 10 : b <= 500 ? 50 : 100)))}>-</button>}
             <button className="btn btn-gold min-w-0 flex-1 text-base sm:text-lg" onClick={spin} disabled={busy || !canAfford}>
-              {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${fmt(bet)} credit${bet === 1 ? "" : "s"}`}
+              {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${fmt(bet)} ${unit(bet)}`}
             </button>
             {!free && <button type="button" className="btn btn-ghost !px-3.5 text-xl" aria-label="Raise the bet" disabled={busy || bet >= MAX_BET} onClick={() => setBet((b) => Math.min(MAX_BET, b + (b < 10 ? 1 : b < 100 ? 10 : b < 500 ? 50 : 100)))}>+</button>}
             {!free && <button type="button" className="chip shrink-0 !px-2.5 !py-1.5 text-xs font-bold" aria-label="Biggest bet you can afford" disabled={busy || balance < MIN_BET || bet >= Math.min(MAX_BET, balance)} onClick={() => setBet(Math.max(MIN_BET, Math.min(MAX_BET, balance)))}>Max</button>}
           </div>
-          <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> credits</p>
+          <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> {unit(balance)}</p>
           {!canAfford && (
             <p className="text-center text-sm text-muted">
-              {balance >= MIN_BET ? "Your balance does not cover this bet: lower it, or " : "Not enough credits. "}claim your <Link className="text-gold underline" href="/wallet">daily bonus</Link> or check <Link className="text-gold underline" href="/promotions">promotions</Link>.
+              {balance >= MIN_BET ? "Your balance does not cover this bet: lower it, or " : `Not enough ${unit(2)}. `}claim your <Link className="text-gold underline" href="/wallet">daily bonus</Link> or check <Link className="text-gold underline" href="/promotions">promotions</Link>.
             </p>
           )}
         </>

@@ -1,20 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getDb } from "@/db";
 import { CREDITS_PER_XP, SPIN_XP } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
+import { getTexts } from "@/lib/texts";
 import { VIP_TIERS, tierForXp } from "@/lib/vip";
 
 export const metadata: Metadata = { title: "VIP Club" };
 
 export default async function VipPage() {
   const user = await getCurrentUser();
+  const texts = await getTexts(await getDb());
   const cur = user ? tierForXp(user.xp) : null;
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-extrabold">VIP Club</h1>
-        <p className="mt-1 text-muted">Levels rise slowly: {SPIN_XP} XP for every 50 credits you play and {1} XP for every {CREDITS_PER_XP} credits you receive. Higher tiers add a little to the daily bonus.</p>
+        <p className="mt-1 text-muted">Levels rise slowly: {SPIN_XP} XP for every 50 {texts.currency} you play and 1 XP for every {CREDITS_PER_XP} {texts.currency} you receive. Higher tiers add a little to the daily bonus.</p>
       </header>
       {cur ? (
         <section className="card p-5">

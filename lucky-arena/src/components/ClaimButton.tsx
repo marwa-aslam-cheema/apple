@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fmt } from "@/lib/format";
+import { useUnit } from "./Currency";
 
 export function ClaimButton({ url, label, disabled, doneLabel }: { url: string; label: string; disabled?: boolean; doneLabel?: string }) {
   const router = useRouter();
+  const unit = useUnit();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -16,7 +18,7 @@ export function ClaimButton({ url, label, disabled, doneLabel }: { url: string; 
       const res = await fetch(url, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not claim.");
-      setMsg({ ok: true, text: `+${fmt(data.reward)} credits added!` });
+      setMsg({ ok: true, text: `+${fmt(data.reward)} ${unit(data.reward)} added!` });
       router.refresh();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Could not claim." });

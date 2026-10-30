@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useCurrencyWord } from "./Currency";
 import { nextTrack, startMusic, unlockAudio } from "@/lib/music";
 
 export function AuthForm({ mode, refCode, next, google = false, notice }: { mode: "login" | "register"; refCode?: string; next?: string; google?: boolean; notice?: string }) {
   const router = useRouter();
+  const word = useCurrencyWord();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const isReg = mode === "register";
@@ -42,8 +44,8 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
     <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
       <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
       {next && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Log in or sign up first, then you go straight to your game.</p>}
-      {isReg && <p className="text-sm text-muted">Start at zero and spin the free welcome wheel for your first credits. Play-money fun: credits have no cash value.</p>}
-      {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Referral code {refCode} applied: bonus credits for you and your friend.</p>}
+      {isReg && <p className="text-sm text-muted">{`Start at zero and spin the free welcome wheel for your first ${word}. Play-money fun: ${word} have no cash value.`}</p>}
+      {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`Referral code ${refCode} applied: bonus ${word} for you and your friend.`}</p>}
       {isReg ? (
         <>
           <label className="block text-sm font-semibold">Email

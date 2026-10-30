@@ -8,6 +8,7 @@ import {
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
+import { DEFAULT_TEXTS, dailyReward, getTexts, saveTexts, unit } from "@/lib/texts";
 import { baseUsername, googleLoginOrCreate, uniqueUsername } from "@/lib/google";
 import { fillCaption } from "@/lib/site";
 import { joinTags, tagList } from "@/lib/tags";
@@ -730,5 +731,29 @@ describe("invite codes", () => {
     expect(await code(setReferralCode(db, 999999, "NEWCODE1"))).toBe("not_found");
     const friend = await registerUser(db, { email: "rc3@x.test", username: "code_three", password: "password1", ref: "myclub7" });
     expect((await db.select().from(users).where(eq(users.id, friend)))[0].referredBy).toBe(a); // the new code works when joining
+  });
+});
+
+describe("texts and bonuses the admin can change", () => {
+  it("uses the admin's wording and amounts, and goes back to the defaults", async () => {
+    await saveTexts(db, { ...DEFAULT_TEXTS, currency: "chips", currencyOne: "chip", msgTopup: "Top-up please", msgGame: "Load {game} please", dailyBase: 3, googleBonus: 7 });
+    const t = await getTexts(db);
+    expect([unit(1, t), unit(5, t)]).toEqual(["chip", "chips"]);
+    const a = await registerUser(db, { email: "tx1@x.test", username: "text_one", password: "password1" });
+    await requestCredits(db, a);
+    const [g] = await db.insert(games).values({ slug: "tx-game", title: "Tx Game", category: "Arcade" }).returning();
+    const b = await registerUser(db, { email: "tx2@x.test", username: "text_two", password: "password1" });
+    await db.update(users).set({ welcomeSpins: 0 }).where(eq(users.id, b));
+    await requestCredits(db, b, { gameId: g.id });
+    expect((await readChat(db, a, "admin")).map((m) => m.body)).toEqual(["Top-up please"]);
+    expect((await readChat(db, b, "admin")).map((m) => m.body)).toEqual(["Load Tx Game please"]);
+    expect((await claimDaily(db, a, new Date("2026-03-01T10:00:00Z"))).reward).toBe(3);
+    expect((await googleLoginOrCreate(db, { email: "tx.google@gmail.com" }))).toBeGreaterThan(0);
+    const gu = (await db.select().from(users).where(eq(users.email, "tx.google@gmail.com")))[0];
+    expect(gu.balance).toBe(7);
+    expect(dailyReward(t, { claimedBefore: true, levelBonus: 1 })).toBe(3 + t.dailyExtra);
+    expect(dailyReward(t, { claimedBefore: false, levelBonus: 1 })).toBe(3);
+    await saveTexts(db, DEFAULT_TEXTS); // leave things as they were for the other tests
+    expect(await getTexts(db)).toEqual(DEFAULT_TEXTS);
   });
 });

@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Db } from "@/db";
 import { users } from "@/db/schema";
-import { GOOGLE_SIGNUP_BONUS } from "./config";
+import { getTexts } from "./texts";
 import { AppError, applyCredits, registerUser } from "./services";
 
 // "Continue with Google". Switched on by GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; without them the button is hidden.
@@ -65,6 +65,7 @@ export async function googleLoginOrCreate(db: Db, p: { email: string; ref?: stri
     return existing.id;
   }
   const id = await registerUser(db, { email: p.email, username: await uniqueUsername(db, p.email), password: randomBytes(24).toString("base64url"), ref: p.ref });
-  await applyCredits(db, id, GOOGLE_SIGNUP_BONUS, "signup_bonus", "Google sign-up bonus");
+  const bonus = (await getTexts(db)).googleBonus;
+  if (bonus > 0) await applyCredits(db, id, bonus, "signup_bonus", "Google sign-up bonus");
   return id;
 }
