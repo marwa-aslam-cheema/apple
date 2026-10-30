@@ -252,13 +252,15 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   const track = useRef<HTMLDivElement>(null);
   const grab = useRef<{ y: number; top: number } | null>(null);
   const [rail, setRail] = useState({ show: false, top: 0, height: 0 });
+  const [dragging, setDragging] = useState(false); // thin normally, wider while you hold it
   const syncRail = useCallback(() => {
     const el = box.current;
     const tr = track.current;
     if (!el) return;
     const trackH = tr?.clientHeight ?? el.clientHeight - 16;
     if (el.scrollHeight <= el.clientHeight + 4) return setRail((r) => (r.show ? { show: false, top: 0, height: 0 } : r));
-    const height = Math.max(36, Math.round((el.clientHeight / el.scrollHeight) * trackH));
+    // The more messages there are, the shorter the bar gets (it shows how much of the chat is on screen).
+    const height = Math.max(24, Math.round((el.clientHeight / el.scrollHeight) * trackH));
     const top = Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * (trackH - height));
     setRail({ show: true, top, height });
   }, []);
@@ -270,6 +272,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   function dragStart(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     grab.current = { y: e.clientY, top: rail.top };
+    setDragging(true);
   }
   function dragMove(e: React.PointerEvent<HTMLDivElement>) {
     const g = grab.current;
@@ -283,6 +286,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   }
   function dragEnd() {
     grab.current = null;
+    setDragging(false);
   }
 
   const who = (m: ChatMsg) => (m.sender === mine ? "You" : mine === "user" ? "Support" : "Player");
@@ -404,13 +408,13 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
         })}
       </div>
       {rail.show && (
-        <div ref={track} className="absolute bottom-2 right-1 top-2 w-3 rounded-full bg-black/30" aria-hidden="true">
+        <div ref={track} className="absolute bottom-2 right-0.5 top-2 w-4" aria-hidden="true">
           <div
             onPointerDown={dragStart}
             onPointerMove={dragMove}
             onPointerUp={dragEnd}
             onPointerCancel={dragEnd}
-            className="absolute inset-x-0 cursor-grab touch-none rounded-full bg-gold/80 active:cursor-grabbing active:bg-gold"
+            className={`absolute right-0.5 cursor-grab touch-none rounded-full transition-[width,background-color] hover:w-2 ${dragging ? "w-2.5 bg-gold" : "w-1 bg-gold/60"}`}
             style={{ top: rail.top, height: rail.height }}
           />
         </div>
