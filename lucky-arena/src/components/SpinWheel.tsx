@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BetPicker } from "./BetPicker";
 import { MAX_BET, MIN_BET } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { sfxResult, sfxSpin, unlockSfx } from "@/lib/sfx";
@@ -62,7 +61,7 @@ const polar = (deg: number, r = R) => {
   return [R + r * Math.cos(a), R + r * Math.sin(a)];
 };
 
-export function SpinWheel({ kind, segments, defaultBet, maxMultiplier, balance: initial, signedIn, welcomeLeft: initialLeft }: { kind: "main" | "welcome"; segments: WheelSeg[]; defaultBet: number; maxMultiplier: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
+export function SpinWheel({ kind, segments, defaultBet, balance: initial, signedIn, welcomeLeft: initialLeft }: { kind: "main" | "welcome"; segments: WheelSeg[]; defaultBet: number; balance: number; signedIn: boolean; welcomeLeft: number }) {
   const router = useRouter();
   const [angle, setAngle] = useState(0);
   const [balance, setBalance] = useState(initial);
@@ -218,7 +217,7 @@ export function SpinWheel({ kind, segments, defaultBet, maxMultiplier, balance: 
 
       {win && <WinPopup win={win} onClose={() => setWin(null)} />}
 
-      <div aria-live="polite" className="min-h-14 text-center">
+      <div aria-live="polite" className="min-h-7 text-center">
         {error && <p className="font-semibold text-danger">{error}</p>}
         {result && (
           <p className="text-lg font-extrabold">
@@ -229,13 +228,14 @@ export function SpinWheel({ kind, segments, defaultBet, maxMultiplier, balance: 
 
       {signedIn ? (
         <>
-          {!free && <BetPicker bet={bet} onChange={setBet} balance={balance} disabled={busy} maxMultiplier={maxMultiplier} />}
-          <div className="flex w-full max-w-xs items-center gap-2">
-            {!free && <button type="button" className="btn btn-ghost !px-4 text-xl" aria-label="Lower the bet" disabled={busy || bet <= MIN_BET} onClick={() => setBet((b) => Math.max(MIN_BET, b - (b <= 10 ? 1 : b <= 100 ? 10 : b <= 500 ? 50 : 100)))}>-</button>}
-            <button className="btn btn-gold min-w-0 flex-1 text-lg" onClick={spin} disabled={busy || !canAfford}>
+          <div className="flex w-full max-w-md items-center gap-1.5 sm:gap-2">
+            {!free && <button type="button" className="chip shrink-0 !px-2.5 !py-1.5 text-xs font-bold" aria-label="Smallest bet" disabled={busy || bet <= MIN_BET} onClick={() => setBet(MIN_BET)}>Min</button>}
+            {!free && <button type="button" className="btn btn-ghost !px-3.5 text-xl" aria-label="Lower the bet" disabled={busy || bet <= MIN_BET} onClick={() => setBet((b) => Math.max(MIN_BET, b - (b <= 10 ? 1 : b <= 100 ? 10 : b <= 500 ? 50 : 100)))}>-</button>}
+            <button className="btn btn-gold min-w-0 flex-1 text-base sm:text-lg" onClick={spin} disabled={busy || !canAfford}>
               {busy ? "Spinning..." : free ? `Free welcome spin (${welcomeLeft} left)` : `Spin for ${fmt(bet)} credit${bet === 1 ? "" : "s"}`}
             </button>
-            {!free && <button type="button" className="btn btn-ghost !px-4 text-xl" aria-label="Raise the bet" disabled={busy || bet >= MAX_BET} onClick={() => setBet((b) => Math.min(MAX_BET, b + (b < 10 ? 1 : b < 100 ? 10 : b < 500 ? 50 : 100)))}>+</button>}
+            {!free && <button type="button" className="btn btn-ghost !px-3.5 text-xl" aria-label="Raise the bet" disabled={busy || bet >= MAX_BET} onClick={() => setBet((b) => Math.min(MAX_BET, b + (b < 10 ? 1 : b < 100 ? 10 : b < 500 ? 50 : 100)))}>+</button>}
+            {!free && <button type="button" className="chip shrink-0 !px-2.5 !py-1.5 text-xs font-bold" aria-label="Biggest bet you can afford" disabled={busy || balance < MIN_BET || bet >= Math.min(MAX_BET, balance)} onClick={() => setBet(Math.max(MIN_BET, Math.min(MAX_BET, balance)))}>Max</button>}
           </div>
           <p className="text-sm text-muted">Balance: <b className="text-ink">{fmt(balance)}</b> credits</p>
           {!canAfford && (

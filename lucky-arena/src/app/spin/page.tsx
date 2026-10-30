@@ -29,7 +29,6 @@ export default async function SpinPage() {
         segments={segments.map((s) => ({ id: s.id, label: s.label, icon: s.icon, credits: s.credits, color: s.color }))}
         kind={welcomeLeft > 0 ? "welcome" : "main"}
         defaultBet={SPIN_COST}
-        maxMultiplier={Math.max(1, ...segments.map((s) => s.credits / SPIN_COST))}
         balance={(user?.balance ?? 0) + (open && !open.external ? open.balance : 0)}
         welcomeLeft={welcomeLeft}
         signedIn={!!user}
