@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { sfxReceived } from "@/lib/sfx";
 import { AdminChat } from "./AdminChat";
@@ -11,6 +12,7 @@ import { Icon } from "./Icon";
 /** Floating chat bubble shown on every page: for the admin, signed-in players and (as "guest") visitors who are signed out. */
 export function ChatWidget({ role }: { role: string }) {
   const guest = role === "guest";
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const isAdmin = role === "admin";
@@ -41,7 +43,8 @@ export function ChatWidget({ role }: { role: string }) {
   }, [open, guest]);
 
   useEffect(() => {
-    const openIt = () => setOpen(true);
+    // On a phone the chat is a full page (like Messenger); on a computer it is the little window.
+    const openIt = () => (window.matchMedia("(max-width: 1023px)").matches ? router.push(isAdmin ? "/admin?tab=chat" : "/chat") : setOpen(true));
     window.addEventListener("la:open-chat", openIt);
     return () => window.removeEventListener("la:open-chat", openIt);
   }, []);

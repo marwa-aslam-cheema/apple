@@ -8,6 +8,7 @@ import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unloc
 import { ChatWidget } from "./ChatWidget";
 import { InstallBanner, useInstall } from "./pwa";
 import { LiveRefresh } from "./LiveRefresh";
+import { NotifyPopup } from "./NotifyPopup";
 import { PromoPopup } from "./PromoPopup";
 import { Ticker } from "./Ticker";
 import { PushToggle } from "./PushToggle";
@@ -19,6 +20,7 @@ export interface ShellUser {
   username: string;
   balance: number;
   role: string;
+  createdAt: number; // when the account was made (ms), so a brand-new player gets the welcome popups
   nickname: string;
   avatar: string;
   /** Credits are inside a game: the wallet reads 0 until the player leaves it. */
@@ -162,6 +164,12 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       )}
       {user && <PushToggle className="mt-2" />}
       <SocialBar className="mt-3 border-t border-line px-3 pt-3" />
+      {user && (
+        <button type="button" onClick={logout} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-left text-sm font-semibold text-muted hover:border-danger hover:text-danger" data-testid="sign-out">
+          <span aria-hidden="true">🚪</span>
+          Sign out
+        </button>
+      )}
     </nav>
   );
 
@@ -188,12 +196,12 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       )}
 
       {/* Top bar */}
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg/85 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
+      <header className={`sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg/85 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4${pathname.startsWith("/chat") ? " max-lg:hidden" : ""}`}>
         <button className="rounded-lg p-2 hover:bg-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
           <Icon name="menu" />
         </button>
-        <Link href="/" className="lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} /></Link>
-        <div className="ml-auto flex items-center gap-2">
+        <Link href="/" className="min-w-0 shrink overflow-hidden lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} markOnly={!!user} /></Link>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {user ? (
             <>
               <button
@@ -241,23 +249,23 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
                   className="-ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-gold/60 bg-gradient-to-b from-[#ffe58f] to-[#d38f08] text-xl font-extrabold leading-none text-[#2a1700] shadow-[0_0_14px_rgba(255,207,74,0.3)] sm:h-10 sm:w-10"
                 >+</button>
               )}
-              <button className="btn btn-ghost hidden sm:inline-flex" onClick={logout}>Sign out</button>
             </>
           ) : (
             <>
-              <Link href="/login" className="btn btn-ghost whitespace-nowrap !px-3">Log in</Link>
+              <Link href="/login" className="btn btn-ghost hidden whitespace-nowrap !px-3 min-[420px]:inline-flex">Log in</Link>
               <Link href="/register" className="btn btn-gold whitespace-nowrap !px-3">Sign up</Link>
             </>
           )}
         </div>
       </header>
-      {!(pathname === "/" && !user) && <Ticker editable={user?.role === "admin"} />} {/* the visitor home page shows the strip inside its own layout */}
+      {(pathname === "/" ? !!user : pathname === "/games") && <Ticker editable={user?.role === "admin"} />} {/* only on Home and Games; the visitor home page shows the strip inside its own layout */}
 
       <LiveRefresh />
-      <PromoPopup signedIn={!!user} role={user?.role ?? ""} />
-      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 lg:pb-12">{children}</main>
+      <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} />
+      <NotifyPopup signedIn={!!user} role={user?.role ?? ""} />
+      <main className={`mx-auto max-w-6xl lg:px-4 lg:pb-12 lg:pt-6 ${pathname.startsWith("/chat") ? "max-lg:p-0" : "px-4 pb-28 pt-6"}`}>{children}</main>
 
-      <footer className="mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10">
+      <footer className={`mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10${pathname.startsWith("/chat") ? " max-lg:hidden" : ""}`}>
         <p>
           Lucky Arena
         </p>
@@ -272,10 +280,10 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
           { href: "/", label: "Home", emoji: "🏠" },
           { href: "/games", label: "Games", emoji: "🎮" },
           { href: "/wallet", label: "Wallet", emoji: "💰" },
-          { href: "#chat", label: "Chat", emoji: "💬" },
+          { href: user?.role === "admin" ? "/admin?tab=chat" : "/chat", label: "Chat", emoji: "💬" },
         ].map((t) => {
-          const isChat = t.href === "#chat";
-          const on = !isChat && active(t.href);
+          const isChat = t.label === "Chat";
+          const on = isChat ? pathname.startsWith("/chat") : active(t.href);
           const cls = `relative flex min-h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors ${on ? "text-gold" : "text-muted"}`;
           const inner = (
             <>
@@ -285,10 +293,8 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
               {on && <span className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-gold" aria-hidden="true" />}
             </>
           );
-          return isChat ? (
-            <button key={t.label} type="button" className={cls} onClick={() => window.dispatchEvent(new Event("la:open-chat"))}>{inner}</button>
-          ) : (
-            <Link key={t.href} href={t.href} onClick={t.href === "/wallet" ? walletTap : undefined} aria-current={on ? "page" : undefined} className={cls}>{inner}</Link>
+          return (
+            <Link key={t.label} href={t.href} onClick={t.href === "/wallet" ? walletTap : undefined} aria-current={on ? "page" : undefined} className={cls}>{inner}</Link>
           );
         })}
       </nav>

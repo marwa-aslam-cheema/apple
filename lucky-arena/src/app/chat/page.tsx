@@ -1,22 +1,11 @@
 import type { Metadata } from "next";
-import { SocialBar } from "@/components/SocialBar";
-import { ChatBox } from "@/components/ChatBox";
-import { requireUserPage } from "@/lib/session";
+import { ChatScreen } from "@/components/ChatScreen";
+import { getCurrentUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Support Chat" };
 
+/** The chat as a page: signed-in players use their own thread, visitors the signed-out support thread. */
 export default async function ChatPage() {
-  await requireUserPage();
-  return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <header>
-        <h1 className="text-2xl font-extrabold">Support chat</h1>
-        <p className="mt-1 text-sm text-muted">Message the team about your account, your password or anything else. Replies appear here. Never share your password in chat.</p>
-      </header>
-      <SocialBar />
-      <div className="card overflow-hidden">
-        <ChatBox url="/api/chat" mine="user" />
-      </div>
-    </div>
-  );
+  const user = await getCurrentUser();
+  return <ChatScreen url={user ? "/api/chat" : "/api/guest/chat"} mine="user" allowImages={!!user} signedIn={!!user} />;
 }
