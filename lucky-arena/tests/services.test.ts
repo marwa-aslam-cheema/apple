@@ -117,9 +117,24 @@ describe("wallet and spin", () => {
   it("limits the daily bonus by cooldown", async () => {
     const id = await registerUser(db, { email: "d@x.test", username: "daily", password: "password1" });
     const now = new Date("2026-01-01T10:00:00Z");
-    expect((await claimDaily(db, id, now)).reward).toBe(100);
+    expect((await claimDaily(db, id, now)).reward).toBe(1);
     expect(await code(claimDaily(db, id, new Date(now.getTime() + 3600_000)))).toBe("cooldown");
     expect(await code(claimDaily(db, id, new Date(now.getTime() + 21 * 3600_000)))).toBe("ok");
+  });
+  it("keeps the daily bonus at 1 or 2, the level part unlocking from the second claim", async () => {
+    const id = await registerUser(db, { email: "d2@x.test", username: "daily2", password: "password1" });
+    await db.update(users).set({ xp: 5000 }).where(eq(users.id, id)); // top tier
+    const t0 = new Date("2026-02-01T10:00:00Z");
+    expect((await claimDaily(db, id, t0)).reward).toBe(1); // first claim: just the base
+    expect((await claimDaily(db, id, new Date(t0.getTime() + 21 * 3600_000))).reward).toBe(2); // now the level bonus is unlocked, and 2 is the most
+  });
+  it("counts credits the admin loads towards the level, slowly", async () => {
+    const id = await registerUser(db, { email: "xp@x.test", username: "xp_slow", password: "password1" });
+    const xp = async () => (await db.select().from(users).where(eq(users.id, id)))[0].xp;
+    await adminAdjust(db, id, 500, "top-up");
+    expect(await xp()).toBe(50); // 1 XP for every 10 credits
+    await adminAdjust(db, id, -200, "correction");
+    expect(await xp()).toBe(50); // taking credits away does not add XP
   });
   it("lets a promotion be claimed only once", async () => {
     const id = await registerUser(db, { email: "pr@x.test", username: "promo", password: "password1" });
@@ -333,9 +348,9 @@ describe("bet size", () => {
   it("gives XP in proportion to the bet", async () => {
     const id = await richPlayer("bettor3");
     const [{ xp: x0 }] = await db.select().from(users).where(eq(users.id, id));
-    await spinWheel(db, id, 1000); // 200 XP
+    await spinWheel(db, id, 1000); // 20 XP
     const [{ xp: x1 }] = await db.select().from(users).where(eq(users.id, id));
-    expect(x1 - x0).toBe(200);
+    expect(x1 - x0).toBe(20);
     await spinWheel(db, id, 4); // too small for any XP
     const [{ xp: x2 }] = await db.select().from(users).where(eq(users.id, id));
     expect(x2 - x1).toBe(0);
@@ -695,7 +710,7 @@ describe("Continue with Google accounts", () => {
     expect(baseUsername("a@gmail.com")).toBe("playera");
     const id = await googleLoginOrCreate(db, { email: "g.user@gmail.com" });
     const [u] = await db.select().from(users).where(eq(users.id, id));
-    expect(u).toMatchObject({ email: "g.user@gmail.com", username: "guser", welcomeSpins: expect.any(Number) });
+    expect(u).toMatchObject({ email: "g.user@gmail.com", username: "guser", welcomeSpins: expect.any(Number), balance: 2 }); // Google sign-up bonus
     expect(await googleLoginOrCreate(db, { email: "g.user@gmail.com" })).toBe(id); // same email: same account
     expect((await uniqueUsername(db, "guser@other.com")).startsWith("guser")).toBe(true);
     expect(await uniqueUsername(db, "guser@other.com")).not.toBe("guser"); // taken, so a suffix is added

@@ -18,7 +18,7 @@ export default async function WalletPage() {
   const db = await getDb();
   const [tx, stats] = await Promise.all([listTransactions(db, user.id, 100), userStats(db, user.id)]);
   const ready = !user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS;
-  const daily = DAILY_BONUS_BASE + tierForXp(user.xp).tier.dailyBonus;
+  const daily = DAILY_BONUS_BASE + (user.lastDailyAt ? tierForXp(user.xp).tier.dailyBonus : 0);
 
   return (
     <div className="space-y-6">
@@ -35,7 +35,7 @@ export default async function WalletPage() {
         </div>
         <div className="card p-5">
           <h2 className="font-bold">Daily bonus</h2>
-          <p className="mb-3 mt-1 text-sm text-muted">Today: {fmt(daily)} credits</p>
+          <p className="mb-3 mt-1 text-sm text-muted">Today: {fmt(daily)} credit{daily === 1 ? "" : "s"}</p>
           <ClaimButton url="/api/daily" label="Claim now" disabled={!ready} doneLabel="Already claimed" />
         </div>
       </div>

@@ -28,9 +28,9 @@ describe("wheel", () => {
 describe("vip", () => {
   it("finds tiers and progress", () => {
     expect(tierForXp(0).tier.name).toBe("Bronze");
-    expect(tierForXp(200).tier.name).toBe("Silver");
+    expect(tierForXp(100).tier.name).toBe("Silver");
     expect(tierForXp(99999).tier.name).toBe("Diamond");
-    expect(tierForXp(100).progress).toBeCloseTo(0.5);
+    expect(tierForXp(50).progress).toBeCloseTo(0.5);
   });
 });
 

@@ -70,7 +70,7 @@ export default async function Home() {
         <section className="grid gap-4 sm:grid-cols-2">
           <div className="card p-5">
             <h2 className="font-bold">Daily bonus</h2>
-            <p className="mb-3 mt-1 text-sm text-muted">Collect at least {DAILY_BONUS_BASE} credits every day. VIP tiers add more.</p>
+            <p className="mb-3 mt-1 text-sm text-muted">Collect {DAILY_BONUS_BASE} free credit{DAILY_BONUS_BASE === 1 ? "" : "s"} every day. Higher levels add a little more.</p>
             <ClaimButton url="/api/daily" label="Claim daily bonus" disabled={!dailyReady} doneLabel="Come back later" />
           </div>
           <div className="card p-5">

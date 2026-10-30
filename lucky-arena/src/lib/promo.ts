@@ -9,7 +9,7 @@ export interface PromoTicker { enabled: boolean; lines: string[]; showWins: bool
 export const DEFAULT_POPUP: PromoPopup = {
   enabled: true,
   title: "Signup bonus",
-  text: "Get 10 credits on your first top-up",
+  text: "Sign up with Google and get 2 free credits",
   button: "Claim signup bonus",
   buttonMember: "I want a top-up",
   timerHours: 24,

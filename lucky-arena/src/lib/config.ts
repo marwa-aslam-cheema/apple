@@ -7,8 +7,11 @@ export const REFERRAL_MAX_REWARDS = 20; // cap on referrer rewards (prototype ab
 export const SPIN_COST = 50; // the reference bet: a wheel segment's "credits" is what it pays at this bet
 export const MIN_BET = 1;
 export const MAX_BET = 1000;
-export const SPIN_XP = 10;
-export const DAILY_BONUS_BASE = 100;
+// Levels rise slowly: 1 XP for every 50 credits played and 1 XP for every 10 credits the admin loads.
+export const SPIN_XP = 1;
+export const CREDITS_PER_XP = 10;
+export const DAILY_BONUS_BASE = 1; // the daily bonus is small: 1 credit, 2 at most (see the VIP tiers)
+export const GOOGLE_SIGNUP_BONUS = 2; // credits for a new player who signs up with Google
 export const DAILY_COOLDOWN_MS = 20 * 60 * 60 * 1000;
 
 export const CATEGORIES = ["Featured", "Wheel", "Cards", "Arcade", "Puzzle", "Trivia"] as const;

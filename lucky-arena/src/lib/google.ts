@@ -3,7 +3,8 @@ import { eq, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Db } from "@/db";
 import { users } from "@/db/schema";
-import { AppError, registerUser } from "./services";
+import { GOOGLE_SIGNUP_BONUS } from "./config";
+import { AppError, applyCredits, registerUser } from "./services";
 
 // "Continue with Google". Switched on by GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; without them the button is hidden.
 export const googleEnabled = () => !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
@@ -63,5 +64,7 @@ export async function googleLoginOrCreate(db: Db, p: { email: string; ref?: stri
     if (existing.banned) throw new AppError("banned", "This account is suspended.", 403);
     return existing.id;
   }
-  return registerUser(db, { email: p.email, username: await uniqueUsername(db, p.email), password: randomBytes(24).toString("base64url"), ref: p.ref });
+  const id = await registerUser(db, { email: p.email, username: await uniqueUsername(db, p.email), password: randomBytes(24).toString("base64url"), ref: p.ref });
+  await applyCredits(db, id, GOOGLE_SIGNUP_BONUS, "signup_bonus", "Google sign-up bonus");
+  return id;
 }

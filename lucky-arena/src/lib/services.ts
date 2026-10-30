@@ -5,6 +5,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle
 import type { Db } from "@/db";
 import { chatImages, chatMessages, chatReactions, gameAccounts, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
 import {
+  CREDITS_PER_XP,
   DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
   MAX_BET,
@@ -180,7 +181,8 @@ export async function claimDaily(db: Db, userId: number, now = new Date()) {
       const waitMs = DAILY_COOLDOWN_MS - (now.getTime() - user.lastDailyAt.getTime());
       throw new AppError("cooldown", `Daily bonus is ready in ${Math.ceil(waitMs / 3600000)}h.`, 429);
     }
-    const reward = DAILY_BONUS_BASE + tierForXp(user.xp).tier.dailyBonus;
+    // The level bonus unlocks once the player has taken the daily bonus before.
+    const reward = DAILY_BONUS_BASE + (user.lastDailyAt ? tierForXp(user.xp).tier.dailyBonus : 0);
     await t.update(users).set({ lastDailyAt: now }).where(eq(users.id, userId));
     const balance = await applyCredits(t, userId, reward, "daily_bonus", "Daily bonus");
     return { reward, balance };
@@ -208,7 +210,10 @@ export async function adminAdjust(db: Db, userId: number, amount: number, note: 
   if (!Number.isInteger(amount) || amount === 0) throw new AppError("bad_amount", "Amount must be a non-zero whole number.");
   const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
   if (!target) throw new AppError("not_found", "User not found.", 404);
-  return applyCredits(db, userId, amount, "admin_adjust", note || "Admin adjustment");
+  const balance = await applyCredits(db, userId, amount, "admin_adjust", note || "Admin adjustment");
+  // Credits the player receives count towards the level, slowly.
+  if (amount > 0 && Math.floor(amount / CREDITS_PER_XP) > 0) await db.update(users).set({ xp: sql`${users.xp} + ${Math.floor(amount / CREDITS_PER_XP)}` }).where(eq(users.id, userId));
+  return balance;
 }
 
 export async function adminSetPassword(db: Db, userId: number, password: string) {
