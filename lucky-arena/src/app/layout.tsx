@@ -11,6 +11,9 @@ import "./globals.css";
 
 const SITE_URL = process.env.SITE_URL ?? "http://localhost:3000";
 
+// Every page reads the database (site name, signed-in player), so nothing is built ahead of time.
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const { name } = await getSite(await getDb());
   return {

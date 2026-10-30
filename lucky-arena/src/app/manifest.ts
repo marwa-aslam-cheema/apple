@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { getDb } from "@/db";
 import { getSite } from "@/lib/site";
 
+export const dynamic = "force-dynamic"; // the app name comes from the database
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const { name } = await getSite(await getDb());
   return {
