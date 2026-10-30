@@ -248,6 +248,43 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     }
   }
 
+  // A side bar you can grab and drag to move through the messages (it is also there on phones, where the normal bar hides).
+  const track = useRef<HTMLDivElement>(null);
+  const grab = useRef<{ y: number; top: number } | null>(null);
+  const [rail, setRail] = useState({ show: false, top: 0, height: 0 });
+  const syncRail = useCallback(() => {
+    const el = box.current;
+    const tr = track.current;
+    if (!el) return;
+    const trackH = tr?.clientHeight ?? el.clientHeight - 16;
+    if (el.scrollHeight <= el.clientHeight + 4) return setRail((r) => (r.show ? { show: false, top: 0, height: 0 } : r));
+    const height = Math.max(36, Math.round((el.clientHeight / el.scrollHeight) * trackH));
+    const top = Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * (trackH - height));
+    setRail({ show: true, top, height });
+  }, []);
+  useEffect(() => { syncRail(); }, [msgs, syncRail]);
+  useEffect(() => {
+    window.addEventListener("resize", syncRail);
+    return () => window.removeEventListener("resize", syncRail);
+  }, [syncRail]);
+  function dragStart(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    grab.current = { y: e.clientY, top: rail.top };
+  }
+  function dragMove(e: React.PointerEvent<HTMLDivElement>) {
+    const g = grab.current;
+    const el = box.current;
+    const tr = track.current;
+    if (!g || !el || !tr) return;
+    const room = tr.clientHeight - rail.height;
+    if (room <= 0) return;
+    const top = Math.min(room, Math.max(0, g.top + (e.clientY - g.y)));
+    el.scrollTop = (top / room) * (el.scrollHeight - el.clientHeight);
+  }
+  function dragEnd() {
+    grab.current = null;
+  }
+
   const who = (m: ChatMsg) => (m.sender === mine ? "You" : mine === "user" ? "Support" : "Player");
   const snippet = (m: ChatMsg) => (m.deleted ? "Message deleted" : m.body ? m.body.slice(0, 80) : m.imageId ? "🖼️ Picture" : "");
   function startReply(m: ChatMsg) {
@@ -305,7 +342,8 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
 
   return (
     <div className={`flex flex-col ${className}`}>
-      <div ref={box} className="flex-1 space-y-2 overflow-y-auto p-3" aria-live="polite">
+      <div className="relative min-h-0 flex-1">
+      <div ref={box} onScroll={syncRail} className="no-native-scrollbar absolute inset-0 space-y-2 overflow-y-auto p-3 pr-6" aria-live="polite">
         {msgs.length === 0 && <p className="py-8 text-center text-sm text-muted">No messages yet.</p>}
         {msgs.map((m) => {
           const own = m.sender === mine;
@@ -364,6 +402,19 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
             </div>
           );
         })}
+      </div>
+      {rail.show && (
+        <div ref={track} className="absolute bottom-2 right-1 top-2 w-3 rounded-full bg-black/30" aria-hidden="true">
+          <div
+            onPointerDown={dragStart}
+            onPointerMove={dragMove}
+            onPointerUp={dragEnd}
+            onPointerCancel={dragEnd}
+            className="absolute inset-x-0 cursor-grab touch-none rounded-full bg-gold/80 active:cursor-grabbing active:bg-gold"
+            style={{ top: rail.top, height: rail.height }}
+          />
+        </div>
+      )}
       </div>
       {error && <p role="alert" className="px-3 text-sm font-semibold text-danger">{error}</p>}
       {mine === "admin" && (text.trim() || image) && (

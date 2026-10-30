@@ -126,6 +126,10 @@ h1, h2 { font-family: var(--font-display); letter-spacing: 0.01em; }
   @keyframes coin-bounce { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-10px) rotate(8deg); } }
   @media (prefers-reduced-motion: reduce) { .shine::after, .coin-bounce { animation: none; } }
 
+  /* A scroll area whose own bar is hidden because the chat draws its own, draggable one. */
+  .no-native-scrollbar { scrollbar-width: none; }
+  .no-native-scrollbar::-webkit-scrollbar { display: none; }
+
   .float-slow { animation: floaty 7s ease-in-out infinite; }
   .float-slower { animation: floaty 9s ease-in-out infinite reverse; }
   @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-12px) rotate(calc(var(--r, 0deg) + 4deg)); } }
