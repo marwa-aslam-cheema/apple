@@ -164,6 +164,12 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       )}
       {user && <PushToggle className="mt-2" />}
       <SocialBar className="mt-3 border-t border-line px-3 pt-3" />
+      {user && (
+        <button type="button" onClick={logout} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-left text-sm font-semibold text-muted hover:border-danger hover:text-danger" data-testid="sign-out">
+          <span aria-hidden="true">🚪</span>
+          Sign out
+        </button>
+      )}
     </nav>
   );
 
@@ -194,7 +200,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
         <button className="rounded-lg p-2 hover:bg-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
           <Icon name="menu" />
         </button>
-        <Link href="/" className="min-w-0 shrink overflow-hidden lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} /></Link>
+        <Link href="/" className="min-w-0 shrink overflow-hidden lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} markOnly={!!user} /></Link>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {user ? (
             <>
@@ -243,7 +249,6 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
                   className="-ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-gold/60 bg-gradient-to-b from-[#ffe58f] to-[#d38f08] text-xl font-extrabold leading-none text-[#2a1700] shadow-[0_0_14px_rgba(255,207,74,0.3)] sm:h-10 sm:w-10"
                 >+</button>
               )}
-              <button className="btn btn-ghost hidden sm:inline-flex" onClick={logout}>Sign out</button>
             </>
           ) : (
             <>
