@@ -23,14 +23,14 @@ export function LogoMark({ size = 36 }: { size?: number }) {
 export function Logo({ name = "Lucky Arena", logo = "" }: { name?: string; logo?: string }) {
   const custom = name !== "Lucky Arena";
   return (
-    <span className="flex items-center gap-2.5">
+    <span className="flex min-w-0 items-center gap-2.5">
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
+        <img src={logo} alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-full object-cover" />
       ) : (
-        <LogoMark />
+        <span className="shrink-0"><LogoMark /></span>
       )}
-      <span className="font-[family-name:var(--font-display)] text-base font-extrabold uppercase tracking-wide min-[400px]:text-lg min-[400px]:tracking-wider">
+      <span className="min-w-0 truncate font-[family-name:var(--font-display)] text-base font-extrabold uppercase tracking-wide min-[400px]:text-lg min-[400px]:tracking-wider">
         {custom ? <span className="gold-text">{name}</span> : <>Lucky<span className="gold-text">Arena</span></>}
       </span>
     </span>

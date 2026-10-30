@@ -8,6 +8,7 @@ import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unloc
 import { ChatWidget } from "./ChatWidget";
 import { InstallBanner, useInstall } from "./pwa";
 import { LiveRefresh } from "./LiveRefresh";
+import { NotifyPopup } from "./NotifyPopup";
 import { PromoPopup } from "./PromoPopup";
 import { Ticker } from "./Ticker";
 import { PushToggle } from "./PushToggle";
@@ -19,6 +20,7 @@ export interface ShellUser {
   username: string;
   balance: number;
   role: string;
+  createdAt: number; // when the account was made (ms), so a brand-new player gets the welcome popups
   nickname: string;
   avatar: string;
   /** Credits are inside a game: the wallet reads 0 until the player leaves it. */
@@ -192,8 +194,8 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
         <button className="rounded-lg p-2 hover:bg-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
           <Icon name="menu" />
         </button>
-        <Link href="/" className="lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} /></Link>
-        <div className="ml-auto flex items-center gap-2">
+        <Link href="/" className="min-w-0 shrink overflow-hidden lg:hidden" aria-label={`${site.name} home`}><Logo name={site.name} logo={site.logo} /></Link>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {user ? (
             <>
               <button
@@ -245,7 +247,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
             </>
           ) : (
             <>
-              <Link href="/login" className="btn btn-ghost whitespace-nowrap !px-3">Log in</Link>
+              <Link href="/login" className="btn btn-ghost hidden whitespace-nowrap !px-3 min-[420px]:inline-flex">Log in</Link>
               <Link href="/register" className="btn btn-gold whitespace-nowrap !px-3">Sign up</Link>
             </>
           )}
@@ -254,7 +256,8 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       {!(pathname === "/" && !user) && <Ticker editable={user?.role === "admin"} />} {/* the visitor home page shows the strip inside its own layout */}
 
       <LiveRefresh />
-      <PromoPopup signedIn={!!user} role={user?.role ?? ""} />
+      <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} />
+      <NotifyPopup signedIn={!!user} role={user?.role ?? ""} />
       <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 lg:pb-12">{children}</main>
 
       <footer className="mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10">
