@@ -120,6 +120,7 @@ export const chatMessages = pgTable("chat_messages", {
   readByAdmin: boolean("read_by_admin").notNull().default(false),
   readByUser: boolean("read_by_user").notNull().default(false),
   imageId: integer("image_id"), // a picture attached to the message
+  replyToId: integer("reply_to_id"), // the message this one answers (swipe or Reply)
   deletedAt: timestamp("deleted_at"), // older "deleted for everyone" messages stay as a grey line
   hiddenByUser: boolean("hidden_by_user").notNull().default(false), // the player deleted it from their own view
   hiddenByAdmin: boolean("hidden_by_admin").notNull().default(false), // the admin deleted it from their own view

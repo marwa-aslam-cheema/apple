@@ -12,6 +12,7 @@ export interface ChatMsg {
   sender: string;
   body: string;
   imageId?: number | null;
+  replyToId?: number | null;
   deleted?: boolean;
   reactions?: { emoji: string; count: number; mine: boolean }[];
   createdAt: string;
@@ -33,6 +34,8 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   const input = useRef<HTMLTextAreaElement>(null);
   const [image, setImage] = useState<{ id: number; preview: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatMsg | null>(null); // the message being answered (swipe a message, or Reply in its menu)
+  const swipe = useRef<{ id: number; x: number; y: number } | null>(null);
   const [menu, setMenu] = useState<number | null>(null); // message whose options (react, copy, delete) are open
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -245,6 +248,34 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     }
   }
 
+  const who = (m: ChatMsg) => (m.sender === mine ? "You" : mine === "user" ? "Support" : "Player");
+  const snippet = (m: ChatMsg) => (m.deleted ? "Message deleted" : m.body ? m.body.slice(0, 80) : m.imageId ? "🖼️ Picture" : "");
+  function startReply(m: ChatMsg) {
+    setReplyTo(m);
+    setMenu(null);
+    input.current?.focus();
+  }
+  // Swipe a message to the right to reply to it (phones).
+  function swipeStart(e: React.TouchEvent, m: ChatMsg) {
+    swipe.current = { id: m.id, x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  function swipeEnd(e: React.TouchEvent, m: ChatMsg) {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s || s.id !== m.id || m.deleted) return;
+    const dx = e.changedTouches[0].clientX - s.x;
+    const dy = Math.abs(e.changedTouches[0].clientY - s.y);
+    if (dx > 60 && dy < 40) startReply(m);
+  }
+  function jumpTo(id: number) {
+    const el = box.current?.querySelector(`[data-msg-id="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.add("ring-2", "ring-gold");
+      setTimeout(() => el.classList.remove("ring-2", "ring-gold"), 1200);
+    }
+  }
+
   async function send() {
     if (timer.current) clearTimeout(timer.current);
     // Enter right after a shortcut sends the saved reply, not the shortcut itself.
@@ -256,11 +287,12 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     setError("");
     unlockSfx();
     try {
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: sendImage?.id }) });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: sendImage?.id, replyToId: replyTo?.id }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send.");
       setText("");
       setImage(null);
+      setReplyTo(null);
       expanded.current = null;
       sfxSent();
       await load();
@@ -280,12 +312,21 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
           const canDelete = !m.deleted;
           return (
             <div key={m.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
-              <div className={`group flex max-w-[88%] items-end gap-1 ${own ? "flex-row-reverse" : ""}`}>
+              <div data-msg-id={m.id} onTouchStart={(e) => swipeStart(e, m)} onTouchEnd={(e) => swipeEnd(e, m)} className={`group flex max-w-[88%] items-end gap-1 rounded-2xl transition-shadow ${own ? "flex-row-reverse" : ""}`}>
                 <div className={`min-w-0 rounded-2xl px-3 py-2 text-sm ${m.deleted ? "border border-line bg-transparent italic text-muted" : own ? "bg-violet text-white" : "bg-surface-2"}`}>
                   {m.deleted ? (
                     <p>This message was deleted</p>
                   ) : (
                     <>
+                      {m.replyToId && (() => {
+                        const q = msgs.find((x) => x.id === m.replyToId);
+                        return (
+                          <button type="button" onClick={() => jumpTo(m.replyToId!)} className={`mb-1 block w-full rounded-lg border-l-4 px-2 py-1 text-left text-xs ${own ? "border-gold bg-black/25" : "border-violet bg-black/20"}`}>
+                            <b className="block">{q ? who(q) : "Earlier message"}</b>
+                            <span className="block truncate opacity-80">{q ? snippet(q) : "Tap to look it up above"}</span>
+                          </button>
+                        );
+                      })()}
                       {m.imageId && (
                         <a href={`/api/chat/image/${m.imageId}`} target="_blank" rel="noopener noreferrer" className="mb-1 block">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -306,6 +347,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
                   {REACTIONS.map((e) => (
                     <button key={e} type="button" role="menuitem" aria-label={`React ${e}`} className="h-8 w-8 rounded-lg text-lg hover:bg-surface-2" onClick={() => void act(m, { action: "react", emoji: m.reactions?.some((r) => r.mine && r.emoji === e) ? null : e })}>{e}</button>
                   ))}
+                  <button type="button" role="menuitem" className="chip !py-1 text-xs hover:border-gold" onClick={() => startReply(m)}>Reply</button>
                   {m.body && <button type="button" role="menuitem" className="chip !py-1 text-xs hover:border-gold" onClick={() => void copyText(m)}>Copy</button>}
                   {canDelete && <button type="button" role="menuitem" className="chip !py-1 text-xs text-danger hover:border-danger" onClick={() => { if (confirm("Delete this message from your side? The other person will still see it.")) void act(m, { action: "delete" }); }}>Delete for me</button>}
                 </div>
@@ -336,6 +378,15 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
           ) : (
             <button type="button" className="text-gold underline" onClick={() => setSaving(true)}>Save as quick reply</button>
           )}
+        </div>
+      )}
+      {replyTo && (
+        <div className="flex items-center gap-2 border-t border-line bg-surface-2/60 px-3 py-2 text-xs" role="status">
+          <span className="min-w-0 flex-1 border-l-4 border-gold pl-2">
+            <b className="block">Replying to {who(replyTo)}</b>
+            <span className="block truncate text-muted">{snippet(replyTo)}</span>
+          </span>
+          <button type="button" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-surface" aria-label="Cancel reply" onClick={() => setReplyTo(null)}>×</button>
         </div>
       )}
       {image && (

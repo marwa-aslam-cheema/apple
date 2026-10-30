@@ -350,7 +350,7 @@ export async function reactChatMessage(db: Db, threadUserId: number, id: number,
   await db.insert(chatReactions).values({ messageId: id, side, emoji }).onConflictDoUpdate({ target: [chatReactions.messageId, chatReactions.side], set: { emoji } });
 }
 
-export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string, imageId?: number | null) {
+export async function postChat(db: Db, userId: number, sender: "user" | "admin", body: string, imageId?: number | null, replyToId?: number | null) {
   const text = body.trim();
   if (!text && !imageId) throw new AppError("invalid", "Write a message first.");
   if (imageId) {
@@ -361,9 +361,15 @@ export async function postChat(db: Db, userId: number, sender: "user" | "admin",
     if (!img || !okOwner) throw new AppError("invalid", "That picture cannot be sent.");
   }
   if (text.length > 1000) throw new AppError("invalid", "Message is too long (max 1000 characters).");
+  // A reply can only point at a message in this same conversation; anything else is simply sent without the quote.
+  let replyTo: number | null = null;
+  if (replyToId) {
+    const [target] = await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.id, replyToId), eq(chatMessages.userId, userId)));
+    replyTo = target?.id ?? null;
+  }
   const [row] = await db
     .insert(chatMessages)
-    .values({ userId, sender, body: text, imageId: imageId ?? null, readByAdmin: sender === "admin", readByUser: sender === "user" })
+    .values({ userId, sender, body: text, imageId: imageId ?? null, replyToId: replyTo, readByAdmin: sender === "admin", readByUser: sender === "user" })
     .returning();
   // A phone notification for whoever is not looking at the site: the player gets the admin's reply, the admin gets the player's message.
   if (sender === "admin") void notifyUsers(db, [userId], { title: "Lucky Arena support", body: text.slice(0, 120) || "Sent a picture", url: "/chat" }, { skipActiveWithinMs: 20_000 });
