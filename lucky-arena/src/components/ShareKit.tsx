@@ -8,6 +8,7 @@ export function ShareKit({ code, caption: initialCaption, image: customImage, bo
   const [origin, setOrigin] = useState("");
   const [caption, setCaption] = useState(initialCaption);
   const [bonusCopied, setBonusCopied] = useState(false);
+  useEffect(() => setCaption(initialCaption), [initialCaption]); // a new code (or new wording from the admin) reaches the caption box
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
   useEffect(() => {

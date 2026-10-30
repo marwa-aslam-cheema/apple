@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { AdminGameAccounts } from "@/components/AdminGameAccounts";
 import { AdminUserActions } from "@/components/AdminUsers";
 import { games as gamesTable } from "@/db/schema";
+import { ReferralCodeEditor } from "@/components/ReferralCodeEditor";
 import { AdminSettle } from "@/components/AdminSettle";
 import { getOpenSession, listGameAccounts } from "@/lib/game-sessions";
 import { eq } from "drizzle-orm";
@@ -71,6 +72,11 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
           <AdminSettle userId={u.id} game={inGame.gameTitle} stake={inGame.stake} />
         </section>
       )}
+
+      <section className="card p-5">
+        <h2 className="mb-3 text-lg font-bold">Invite code</h2>
+        <ReferralCodeEditor code={u.referralCode} url={`/api/admin/users/${u.id}`} field="referralCode" />
+      </section>
 
       <section className="card p-5">
         <h2 className="mb-3 text-lg font-bold">Game usernames</h2>

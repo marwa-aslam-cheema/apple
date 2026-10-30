@@ -216,6 +216,20 @@ export async function adminAdjust(db: Db, userId: number, amount: number, note: 
   return balance;
 }
 
+/** A player (or the admin, for a player) picks their own invite code: 4 to 12 letters or numbers, unique on the site. */
+export async function setReferralCode(db: Db, userId: number, raw: string) {
+  const code = raw.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,12}$/.test(code)) throw new AppError("invalid", "The code must be 4 to 12 letters or numbers, no spaces.");
+  try {
+    const done = await db.update(users).set({ referralCode: code }).where(eq(users.id, userId)).returning({ id: users.id });
+    if (!done.length) throw new AppError("not_found", "User not found.", 404);
+  } catch (e) {
+    if (isUniqueViolation(e)) throw new AppError("code_taken", "Someone already uses that code. Try another one.", 409);
+    throw e;
+  }
+  return code;
+}
+
 export async function adminSetPassword(db: Db, userId: number, password: string) {
   const done = await db
     .update(users)

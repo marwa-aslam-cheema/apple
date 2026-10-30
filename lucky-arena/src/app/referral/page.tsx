@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { transactions, users } from "@/db/schema";
+import { ReferralCodeEditor } from "@/components/ReferralCodeEditor";
 import { CopyLink } from "@/components/CopyLink";
 import { ShareKit } from "@/components/ShareKit";
 import { REFERRAL_BONUS } from "@/lib/config";
@@ -30,7 +31,7 @@ export default async function ReferralPage() {
       </header>
       <section className="card space-y-3 p-5">
         <p className="text-sm text-muted">{share.codeLabel}</p>
-        <p className="text-3xl font-extrabold tracking-widest text-gold" data-testid="ref-code">{user.referralCode}</p>
+        <ReferralCodeEditor code={user.referralCode} url="/api/profile/referral-code" field="code" big />
         <CopyLink code={user.referralCode} base={share.linkBase} />
       </section>
       <section className="card space-y-3 p-5">

@@ -5,7 +5,7 @@ import { gameSessions, games, spins, walletOptions, transactions, users, wheelSe
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
 import { baseUsername, googleLoginOrCreate, uniqueUsername } from "@/lib/google";
@@ -716,5 +716,19 @@ describe("Continue with Google accounts", () => {
     expect(await uniqueUsername(db, "guser@other.com")).not.toBe("guser"); // taken, so a suffix is added
     await db.update(users).set({ banned: true }).where(eq(users.id, id));
     expect(await code(googleLoginOrCreate(db, { email: "g.user@gmail.com" }))).toBe("banned");
+  });
+});
+
+describe("invite codes", () => {
+  it("lets a code be chosen, unique and tidy", async () => {
+    const a = await registerUser(db, { email: "rc1@x.test", username: "code_one", password: "password1" });
+    const b = await registerUser(db, { email: "rc2@x.test", username: "code_two", password: "password1" });
+    expect(await setReferralCode(db, a, "  myclub7 ")).toBe("MYCLUB7");
+    expect(await setReferralCode(db, a, "myclub7")).toBe("MYCLUB7"); // the same player may save the same code again
+    expect(await code(setReferralCode(db, b, "MYCLUB7"))).toBe("code_taken");
+    for (const bad of ["abc", "has space", "waytoolongcode1", "bad-code!"]) expect(await code(setReferralCode(db, b, bad))).toBe("invalid");
+    expect(await code(setReferralCode(db, 999999, "NEWCODE1"))).toBe("not_found");
+    const friend = await registerUser(db, { email: "rc3@x.test", username: "code_three", password: "password1", ref: "myclub7" });
+    expect((await db.select().from(users).where(eq(users.id, friend)))[0].referredBy).toBe(a); // the new code works when joining
   });
 });
