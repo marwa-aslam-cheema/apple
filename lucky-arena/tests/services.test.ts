@@ -757,3 +757,18 @@ describe("texts and bonuses the admin can change", () => {
     expect(await getTexts(db)).toEqual(DEFAULT_TEXTS);
   });
 });
+
+describe("replying to a message", () => {
+  it("links a reply to a message of the same conversation only", async () => {
+    const a = await registerUser(db, { email: "rp1@x.test", username: "reply_one", password: "password1" });
+    const b = await registerUser(db, { email: "rp2@x.test", username: "reply_two", password: "password1" });
+    const first = await postChat(db, a, "user", "need help");
+    const other = await postChat(db, b, "user", "someone else's message");
+    const answer = await postChat(db, a, "admin", "sure", null, first.id);
+    expect(answer.replyToId).toBe(first.id);
+    const stray = await postChat(db, a, "user", "pointing at another thread", null, other.id);
+    expect(stray.replyToId).toBeNull(); // not part of this conversation: sent without a quote
+    expect((await readChat(db, a, "user")).find((m) => m.id === answer.id)?.replyToId).toBe(first.id);
+    expect((await postChat(db, a, "user", "no reply")).replyToId).toBeNull();
+  });
+});

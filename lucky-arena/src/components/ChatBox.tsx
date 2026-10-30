@@ -12,6 +12,7 @@ export interface ChatMsg {
   sender: string;
   body: string;
   imageId?: number | null;
+  replyToId?: number | null;
   deleted?: boolean;
   reactions?: { emoji: string; count: number; mine: boolean }[];
   createdAt: string;
@@ -33,6 +34,8 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   const input = useRef<HTMLTextAreaElement>(null);
   const [image, setImage] = useState<{ id: number; preview: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatMsg | null>(null); // the message being answered (swipe a message, or Reply in its menu)
+  const swipe = useRef<{ id: number; x: number; y: number } | null>(null);
   const [menu, setMenu] = useState<number | null>(null); // message whose options (react, copy, delete) are open
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -245,6 +248,75 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     }
   }
 
+  // A side bar you can grab and drag to move through the messages (it is also there on phones, where the normal bar hides).
+  const track = useRef<HTMLDivElement>(null);
+  const grab = useRef<{ y: number; top: number } | null>(null);
+  const [rail, setRail] = useState({ show: false, top: 0, height: 0 });
+  const [dragging, setDragging] = useState(false); // thin normally, wider while you hold it
+  const syncRail = useCallback(() => {
+    const el = box.current;
+    const tr = track.current;
+    if (!el) return;
+    const trackH = tr?.clientHeight ?? el.clientHeight - 16;
+    if (el.scrollHeight <= el.clientHeight + 4) return setRail((r) => (r.show ? { show: false, top: 0, height: 0 } : r));
+    // The more messages there are, the shorter the bar gets (it shows how much of the chat is on screen).
+    const height = Math.max(24, Math.round((el.clientHeight / el.scrollHeight) * trackH));
+    const top = Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * (trackH - height));
+    setRail({ show: true, top, height });
+  }, []);
+  useEffect(() => { syncRail(); }, [msgs, syncRail]);
+  useEffect(() => {
+    window.addEventListener("resize", syncRail);
+    return () => window.removeEventListener("resize", syncRail);
+  }, [syncRail]);
+  function dragStart(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    grab.current = { y: e.clientY, top: rail.top };
+    setDragging(true);
+  }
+  function dragMove(e: React.PointerEvent<HTMLDivElement>) {
+    const g = grab.current;
+    const el = box.current;
+    const tr = track.current;
+    if (!g || !el || !tr) return;
+    const room = tr.clientHeight - rail.height;
+    if (room <= 0) return;
+    const top = Math.min(room, Math.max(0, g.top + (e.clientY - g.y)));
+    el.scrollTop = (top / room) * (el.scrollHeight - el.clientHeight);
+  }
+  function dragEnd() {
+    grab.current = null;
+    setDragging(false);
+  }
+
+  const who = (m: ChatMsg) => (m.sender === mine ? "You" : mine === "user" ? "Support" : "Player");
+  const snippet = (m: ChatMsg) => (m.deleted ? "Message deleted" : m.body ? m.body.slice(0, 80) : m.imageId ? "🖼️ Picture" : "");
+  function startReply(m: ChatMsg) {
+    setReplyTo(m);
+    setMenu(null);
+    input.current?.focus();
+  }
+  // Swipe a message to the right to reply to it (phones).
+  function swipeStart(e: React.TouchEvent, m: ChatMsg) {
+    swipe.current = { id: m.id, x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  function swipeEnd(e: React.TouchEvent, m: ChatMsg) {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s || s.id !== m.id || m.deleted) return;
+    const dx = e.changedTouches[0].clientX - s.x;
+    const dy = Math.abs(e.changedTouches[0].clientY - s.y);
+    if (dx > 60 && dy < 40) startReply(m);
+  }
+  function jumpTo(id: number) {
+    const el = box.current?.querySelector(`[data-msg-id="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.add("ring-2", "ring-gold");
+      setTimeout(() => el.classList.remove("ring-2", "ring-gold"), 1200);
+    }
+  }
+
   async function send() {
     if (timer.current) clearTimeout(timer.current);
     // Enter right after a shortcut sends the saved reply, not the shortcut itself.
@@ -256,11 +328,12 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     setError("");
     unlockSfx();
     try {
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: sendImage?.id }) });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, imageId: sendImage?.id, replyToId: replyTo?.id }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send.");
       setText("");
       setImage(null);
+      setReplyTo(null);
       expanded.current = null;
       sfxSent();
       await load();
@@ -273,19 +346,29 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
 
   return (
     <div className={`flex flex-col ${className}`}>
-      <div ref={box} className="flex-1 space-y-2 overflow-y-auto p-3" aria-live="polite">
+      <div className="relative min-h-0 flex-1">
+      <div ref={box} onScroll={syncRail} className="no-native-scrollbar absolute inset-0 space-y-2 overflow-y-auto p-3 pr-6" aria-live="polite">
         {msgs.length === 0 && <p className="py-8 text-center text-sm text-muted">No messages yet.</p>}
         {msgs.map((m) => {
           const own = m.sender === mine;
           const canDelete = !m.deleted;
           return (
             <div key={m.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
-              <div className={`group flex max-w-[88%] items-end gap-1 ${own ? "flex-row-reverse" : ""}`}>
+              <div data-msg-id={m.id} onTouchStart={(e) => swipeStart(e, m)} onTouchEnd={(e) => swipeEnd(e, m)} className={`group flex max-w-[88%] items-end gap-1 rounded-2xl transition-shadow ${own ? "flex-row-reverse" : ""}`}>
                 <div className={`min-w-0 rounded-2xl px-3 py-2 text-sm ${m.deleted ? "border border-line bg-transparent italic text-muted" : own ? "bg-violet text-white" : "bg-surface-2"}`}>
                   {m.deleted ? (
                     <p>This message was deleted</p>
                   ) : (
                     <>
+                      {m.replyToId && (() => {
+                        const q = msgs.find((x) => x.id === m.replyToId);
+                        return (
+                          <button type="button" onClick={() => jumpTo(m.replyToId!)} className={`mb-1 block w-full rounded-lg border-l-4 px-2 py-1 text-left text-xs ${own ? "border-gold bg-black/25" : "border-violet bg-black/20"}`}>
+                            <b className="block">{q ? who(q) : "Earlier message"}</b>
+                            <span className="block truncate opacity-80">{q ? snippet(q) : "Tap to look it up above"}</span>
+                          </button>
+                        );
+                      })()}
                       {m.imageId && (
                         <a href={`/api/chat/image/${m.imageId}`} target="_blank" rel="noopener noreferrer" className="mb-1 block">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -306,6 +389,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
                   {REACTIONS.map((e) => (
                     <button key={e} type="button" role="menuitem" aria-label={`React ${e}`} className="h-8 w-8 rounded-lg text-lg hover:bg-surface-2" onClick={() => void act(m, { action: "react", emoji: m.reactions?.some((r) => r.mine && r.emoji === e) ? null : e })}>{e}</button>
                   ))}
+                  <button type="button" role="menuitem" className="chip !py-1 text-xs hover:border-gold" onClick={() => startReply(m)}>Reply</button>
                   {m.body && <button type="button" role="menuitem" className="chip !py-1 text-xs hover:border-gold" onClick={() => void copyText(m)}>Copy</button>}
                   {canDelete && <button type="button" role="menuitem" className="chip !py-1 text-xs text-danger hover:border-danger" onClick={() => { if (confirm("Delete this message from your side? The other person will still see it.")) void act(m, { action: "delete" }); }}>Delete for me</button>}
                 </div>
@@ -323,6 +407,19 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
           );
         })}
       </div>
+      {rail.show && (
+        <div ref={track} className="absolute bottom-2 right-0.5 top-2 w-4" aria-hidden="true">
+          <div
+            onPointerDown={dragStart}
+            onPointerMove={dragMove}
+            onPointerUp={dragEnd}
+            onPointerCancel={dragEnd}
+            className={`absolute right-0.5 cursor-grab touch-none rounded-full transition-[width,background-color] hover:w-2 ${dragging ? "w-2.5 bg-gold" : "w-1 bg-gold/60"}`}
+            style={{ top: rail.top, height: rail.height }}
+          />
+        </div>
+      )}
+      </div>
       {error && <p role="alert" className="px-3 text-sm font-semibold text-danger">{error}</p>}
       {mine === "admin" && (text.trim() || image) && (
         <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 pt-2 text-xs">
@@ -336,6 +433,15 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
           ) : (
             <button type="button" className="text-gold underline" onClick={() => setSaving(true)}>Save as quick reply</button>
           )}
+        </div>
+      )}
+      {replyTo && (
+        <div className="flex items-center gap-2 border-t border-line bg-surface-2/60 px-3 py-2 text-xs" role="status">
+          <span className="min-w-0 flex-1 border-l-4 border-gold pl-2">
+            <b className="block">Replying to {who(replyTo)}</b>
+            <span className="block truncate text-muted">{snippet(replyTo)}</span>
+          </span>
+          <button type="button" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-surface" aria-label="Cancel reply" onClick={() => setReplyTo(null)}>×</button>
         </div>
       )}
       {image && (

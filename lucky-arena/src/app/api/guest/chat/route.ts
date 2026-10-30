@@ -16,7 +16,7 @@ export const GET = route(async (req: Request) => {
 
 export const POST = route(async (req: Request) => {
   rateLimit(`guest-chat:${clientIp(req)}`, 20, 60_000);
-  const { body } = z.object({ body: z.string().max(5000) }).parse(await req.json());
+  const { body, replyToId } = z.object({ body: z.string().max(5000), replyToId: z.number().int().positive().optional() }).parse(await req.json());
   const db = await getDb();
   let gid = await getGuestId();
   if (!gid) {
@@ -24,5 +24,5 @@ export const POST = route(async (req: Request) => {
     gid = await createGuest(db);
     await setGuestCookie(gid);
   }
-  return NextResponse.json(await postChat(db, gid, "user", body), { status: 201 });
+  return NextResponse.json(await postChat(db, gid, "user", body, null, replyToId), { status: 201 });
 });
