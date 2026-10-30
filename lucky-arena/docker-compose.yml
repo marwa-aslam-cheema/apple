@@ -1,0 +1,26 @@
+# Local production-like run: docker compose up --build   ->  http://localhost:3000
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: arena
+      POSTGRES_PASSWORD: arena
+      POSTGRES_DB: arena
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arena"]
+      interval: 3s
+      retries: 20
+  web:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgres://arena:arena@db:5432/arena
+      SESSION_SECRET: change-me-to-a-long-random-string-change-me
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: change-this-admin-password
+      COOKIE_SECURE: "false" # only because this compose file serves plain http
+volumes:
+  pgdata:
