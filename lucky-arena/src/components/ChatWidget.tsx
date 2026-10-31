@@ -20,6 +20,32 @@ export function ChatWidget({ role }: { role: string }) {
   const prevUnread = useRef<number | null>(null);
   openRef.current = open;
 
+  // The admin's popup is big by default and can be made bigger or smaller by dragging its top-left corner (the size is remembered).
+  const SIZE_KEY = "la_admin_chat_size";
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const drag = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const clampSize = (w: number, h: number) => ({ w: Math.round(Math.max(340, Math.min(w, window.innerWidth - 32))), h: Math.round(Math.max(540, Math.min(h, window.innerHeight - 100))) });
+  useEffect(() => {
+    if (!isAdmin) return;
+    let saved: { w: number; h: number } | null = null;
+    try { saved = JSON.parse(localStorage.getItem(SIZE_KEY) ?? "null"); } catch { /* use the default */ }
+    setSize(clampSize(saved?.w ?? 520, saved?.h ?? window.innerHeight * 0.88));
+  }, [isAdmin]);
+  function grabStart(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!size) return;
+    drag.current = { x: e.clientX, y: e.clientY, w: size.w, h: size.h };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function grabMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const d = drag.current;
+    if (d) setSize(clampSize(d.w + (d.x - e.clientX), d.h + (d.y - e.clientY))); // the popup sits bottom-right, so pulling up/left makes it bigger
+  }
+  function grabEnd() {
+    if (!drag.current) return;
+    drag.current = null;
+    try { if (size) localStorage.setItem(SIZE_KEY, JSON.stringify(size)); } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     let alive = true;
     async function check() {
@@ -61,9 +87,24 @@ export function ChatWidget({ role }: { role: string }) {
         <section
           role="dialog"
           aria-label={isAdmin ? "Player messages" : "Support chat"}
-          className={`fixed inset-x-2 bottom-20 z-40 flex ${isAdmin ? "h-[36rem] max-h-[78vh]" : "h-[26rem] max-h-[65vh]"} flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:right-4 sm:w-96 lg:bottom-24`}
+          style={isAdmin && size ? ({ "--w": `${size.w}px`, "--h": `${size.h}px` } as React.CSSProperties) : undefined}
+          className={`fixed inset-x-2 bottom-20 z-40 flex ${isAdmin ? "h-[36rem] max-h-[78vh] sm:h-[var(--h,44rem)] sm:max-h-none sm:w-[var(--w,32rem)]" : "h-[26rem] max-h-[65vh] sm:w-96"} flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:right-4 lg:bottom-24`}
         >
-          <header className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-2">
+          {isAdmin && (
+            <button
+              type="button"
+              aria-label="Drag to make the chat bigger or smaller"
+              title="Drag to make this chat bigger or smaller"
+              onPointerDown={grabStart}
+              onPointerMove={grabMove}
+              onPointerUp={grabEnd}
+              onPointerCancel={grabEnd}
+              className="absolute left-0 top-0 z-10 hidden h-6 w-6 cursor-nwse-resize touch-none items-start justify-start rounded-br-lg bg-gold/30 p-1 text-[10px] leading-none text-gold hover:bg-gold/60 sm:flex"
+            >
+              ⤡
+            </button>
+          )}
+          <header className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-2 pl-8">
             <b className="text-sm">{isAdmin ? "Player messages" : "Support chat"}</b>
             <button className="rounded-lg p-1.5 hover:bg-surface" onClick={() => setOpen(false)} aria-label="Close chat"><Icon name="x" className="h-4 w-4" /></button>
           </header>
