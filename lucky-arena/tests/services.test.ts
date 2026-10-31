@@ -5,7 +5,7 @@ import { gameSessions, games, promotions, spins, walletOptions, transactions, us
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, tellGameBalance, zeroToldGameBalance, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, tellGameBalance, zeroToldGameBalance, listToldGameBalances, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
 import { DEFAULT_TEXTS, getTexts, saveTexts, unit } from "@/lib/texts";
@@ -378,8 +378,10 @@ describe("credit request from a game", () => {
     const gid = await gameId("lucky-spin");
     expect(await zeroToldGameBalance(db, id, gid)).toBe(false); // nothing was told yet
     await tellGameBalance(db, id, gid, 700);
+    expect(await listToldGameBalances(db, id)).toEqual([{ gameId: gid, title: "Lucky Spin Wheel", amount: 700 }]); // shown in green at the top
     expect(await zeroToldGameBalance(db, id, gid)).toBe(true);
     expect(await zeroToldGameBalance(db, id, gid)).toBe(false); // already 0
+    expect(await listToldGameBalances(db, id)).toEqual([]);
     expect((await readChat(db, id, "user")).map((m) => m.body)).toEqual(["🎮 Lucky Spin Wheel · 700 credits", "🎮 Lucky Spin Wheel · 0 credits"]);
   });
   it("posts the sign-up bonus message from the home page box", async () => {

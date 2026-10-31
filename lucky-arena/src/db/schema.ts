@@ -230,6 +230,19 @@ export const gameAccounts = pgTable(
   (t) => [unique("game_accounts_user_game").on(t.userId, t.gameId)],
 );
 
+/** What the admin told a player they have inside a game: shown in green beside the wallet balance until they open that game. */
+export const gameBalances = pgTable(
+  "game_balances",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull(),
+    gameId: integer("game_id").notNull(),
+    amount: integer("amount").notNull(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [unique("game_balances_user_game").on(t.userId, t.gameId)],
+);
+
 export type User = typeof users.$inferSelect;
 export type Game = typeof games.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;
