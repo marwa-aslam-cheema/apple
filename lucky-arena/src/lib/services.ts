@@ -34,11 +34,11 @@ function newReferralCode(): string {
 
 export async function registerUser(
   db: Db,
-  input: { email: string; username: string; password: string; ref?: string | null },
+  input: { email: string; username: string; password?: string; passwordHash?: string; ref?: string | null },
 ) {
   const email = input.email.trim().toLowerCase();
   const username = input.username.trim();
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const passwordHash = input.passwordHash ?? (await bcrypt.hash(input.password ?? "", 10));
   try {
     return await db.transaction(async (tx) => {
       const [byEmail] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email));
