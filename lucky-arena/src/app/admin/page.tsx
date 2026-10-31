@@ -19,7 +19,7 @@ import { AdminRequests } from "@/components/AdminRequests";
 import { AdminUsers } from "@/components/AdminUsers";
 import { SPIN_COST } from "@/lib/config";
 import { fmt } from "@/lib/format";
-import { mailAudience, mailEnabled } from "@/lib/mail";
+import { mailAudience, mailConfig } from "@/lib/mail";
 import { AdminMail } from "@/components/AdminMail";
 import { requireAdminPage } from "@/lib/session";
 import { adminUnreadCount } from "@/lib/services";
@@ -117,7 +117,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   } else if (tab === "mail") {
     const rows = await db.select().from(settings).where(inArray(settings.key, ["mail_subject", "mail_message"]));
     const get = (k: string) => rows.find((r) => r.key === k)?.value ?? "";
-    body = <AdminMail subject={get("mail_subject")} message={get("mail_message")} count={(await mailAudience(db)).length} enabled={mailEnabled()} />;
+    body = <AdminMail subject={get("mail_subject")} message={get("mail_message")} count={(await mailAudience(db)).length} gmail={(await mailConfig(db)).user} hasPassword={!!(await mailConfig(db)).pass} />;
   } else if (tab === "texts") {
     body = <AdminTexts initial={await getTexts(db)} />;
   } else if (tab === "banner") {
