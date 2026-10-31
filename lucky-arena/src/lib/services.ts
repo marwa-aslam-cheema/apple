@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { chatImages, chatMessages, chatReactions, gameAccounts, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
+import { chatImages, chatMessages, chatReactions, gameAccounts, gameBalances, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
 import {
   CREDITS_PER_XP,
   DAILY_COOLDOWN_MS,
@@ -638,30 +638,34 @@ export async function lobbyGames(db: Db, opts: { q?: string; category?: string; 
   });
 }
 
-/** The admin tells a player what their balance is inside one game. It is only a message: the game keeps the real balance. */
+/**
+ * The admin tells a player what their balance is inside one game: a green line in the chat, and the same amount beside the
+ * wallet balance until they open that game. It is only a note: the game keeps the real balance.
+ */
 export async function tellGameBalance(db: Db, userId: number, gameId: number, amount: number) {
   if (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000) throw new AppError("bad_amount", "Type the balance as a whole number.");
   const [game] = await db.select({ title: games.title }).from(games).where(eq(games.id, gameId));
   if (!game) throw new AppError("not_found", "Game not found.", 404);
+  if (amount === 0) await db.delete(gameBalances).where(and(eq(gameBalances.userId, userId), eq(gameBalances.gameId, gameId)));
+  else await db.insert(gameBalances).values({ userId, gameId, amount }).onConflictDoUpdate({ target: [gameBalances.userId, gameBalances.gameId], set: { amount, updatedAt: new Date() } });
   const texts = await getTexts(db);
   return postChat(db, userId, "admin", `🎮 ${game.title} · ${amount.toLocaleString("en-US")} ${unit(amount, texts)}`);
 }
 
-/**
- * The player opens a game the admin told them a balance for: the green balance line goes to 0 in the chat. Does nothing
- * when the last balance told for this game is already 0 (or none was told).
- */
+/** The balances the admin told this player, for the green chips at the top of the site. */
+export async function listToldGameBalances(db: Db, userId: number): Promise<{ gameId: number; title: string; amount: number }[]> {
+  return db
+    .select({ gameId: gameBalances.gameId, title: games.title, amount: gameBalances.amount })
+    .from(gameBalances)
+    .innerJoin(games, eq(games.id, gameBalances.gameId))
+    .where(and(eq(gameBalances.userId, userId), gt(gameBalances.amount, 0)))
+    .orderBy(gameBalances.id);
+}
+
+/** The player opens a game the admin told them a balance for: the chip goes away and the chat line says 0. Once only. */
 export async function zeroToldGameBalance(db: Db, userId: number, gameId: number) {
-  const [game] = await db.select({ title: games.title }).from(games).where(eq(games.id, gameId));
-  if (!game) return false;
-  const [last] = await db
-    .select({ body: chatMessages.body })
-    .from(chatMessages)
-    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), sql`${chatMessages.body} like ${`🎮 ${game.title} · %`}`))
-    .orderBy(desc(chatMessages.id))
-    .limit(1);
-  const told = Number(last?.body.slice(`🎮 ${game.title} · `.length).split(" ")[0].replaceAll(",", ""));
-  if (!last || !(told > 0)) return false;
+  const [row] = await db.select().from(gameBalances).where(and(eq(gameBalances.userId, userId), eq(gameBalances.gameId, gameId)));
+  if (!row || row.amount <= 0) return false;
   await tellGameBalance(db, userId, gameId, 0);
   return true;
 }

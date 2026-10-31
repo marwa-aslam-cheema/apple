@@ -26,6 +26,8 @@ export interface ShellUser {
   avatar: string;
   /** Credits are inside a game: the wallet reads 0 until the player leaves it. */
   inGame: { title: string; balance: number; external: boolean } | null;
+  /** What the admin told this player they have inside games: shown in green beside the wallet balance. */
+  told: { title: string; amount: number }[];
 }
 
 const NAV = [
@@ -231,6 +233,11 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
                   {inGame.title}: {fmt(inGame.balance)}
                 </span>
               )}
+              {user.told.map((t) => (
+                <span key={t.title} className="rounded-xl border border-green-500/60 bg-surface px-2.5 py-2 text-xs font-extrabold text-green-400" data-testid="told-balance" title={`Your credits in ${t.title}`}>
+                  {t.title}: {fmt(t.amount)}
+                </span>
+              ))}
               {inGame && inGame.external && (
                 <button type="button" onClick={leaveGame} className="rounded-xl border border-teal/60 bg-surface px-2.5 py-2 text-xs font-bold text-teal" data-testid="in-game" title={`In ${inGame.title}. Tap to bring your credits back.`}>
                   In {inGame.title}: back to wallet

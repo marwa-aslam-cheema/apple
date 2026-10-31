@@ -73,6 +73,14 @@ export const DDL = [
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT game_accounts_user_game UNIQUE (user_id, game_id)
   )`,
+  `CREATE TABLE IF NOT EXISTS game_balances (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    game_id INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT game_balances_user_game UNIQUE (user_id, game_id)
+  )`,
   `CREATE TABLE IF NOT EXISTS promotions (
     id SERIAL PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,

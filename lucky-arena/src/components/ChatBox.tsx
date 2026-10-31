@@ -38,7 +38,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
   const [image, setImage] = useState<{ id: number; preview: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null); // the message being answered (swipe a message, or Reply in its menu)
-  const swipe = useRef<{ id: number; x: number; y: number } | null>(null);
+  const swipe = useRef<{ id: number; x: number; y: number; el: HTMLElement; slid: boolean } | null>(null);
   const [menu, setMenu] = useState<number | null>(null); // message whose options (react, copy, delete) are open
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -299,17 +299,30 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     setMenu(null);
     input.current?.focus();
   }
-  // Swipe a message to the right to reply to it (phones).
+  // Swipe a message to the left or right to reply to it (phones): it slides with the finger, and letting go past the mark replies.
+  const SWIPE_MARK = 60;
   function swipeStart(e: React.TouchEvent, m: ChatMsg) {
-    swipe.current = { id: m.id, x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (m.deleted) return;
+    swipe.current = { id: m.id, x: e.touches[0].clientX, y: e.touches[0].clientY, el: e.currentTarget as HTMLElement, slid: false };
+  }
+  function swipeMove(e: React.TouchEvent) {
+    const s = swipe.current;
+    if (!s) return;
+    const dx = e.touches[0].clientX - s.x;
+    const dy = e.touches[0].clientY - s.y;
+    if (!s.slid && (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2)) return; // still a normal scroll
+    s.slid = true;
+    s.el.style.transition = "none";
+    s.el.style.transform = `translateX(${Math.max(-90, Math.min(90, dx * 0.8))}px)`;
   }
   function swipeEnd(e: React.TouchEvent, m: ChatMsg) {
     const s = swipe.current;
     swipe.current = null;
-    if (!s || s.id !== m.id || m.deleted) return;
+    if (!s || s.id !== m.id) return;
     const dx = e.changedTouches[0].clientX - s.x;
-    const dy = Math.abs(e.changedTouches[0].clientY - s.y);
-    if (dx > 60 && dy < 40) startReply(m);
+    s.el.style.transition = "transform .2s ease-out";
+    s.el.style.transform = "";
+    if (s.slid && Math.abs(dx) > SWIPE_MARK) startReply(m);
   }
   function jumpTo(id: number) {
     const el = box.current?.querySelector(`[data-msg-id="${id}"]`);
@@ -327,6 +340,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
     const body = expandedBody ?? text.trim();
     const sendImage = image ?? (expandedBody !== null && pics[normalizeShortcut(text)] ? { id: pics[normalizeShortcut(text)], preview: "" } : null);
     if ((!body && !sendImage) || busy || uploading) return;
+    input.current?.focus(); // inside the tap, so a phone keeps its keyboard open for the next message
     setBusy(true);
     setError("");
     unlockSfx();
@@ -340,6 +354,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
       expanded.current = null;
       sfxSent();
       await load();
+      input.current?.focus();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send.");
     } finally {
@@ -357,7 +372,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
           const canDelete = !m.deleted;
           return (
             <div key={m.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
-              <div data-msg-id={m.id} onTouchStart={(e) => swipeStart(e, m)} onTouchEnd={(e) => swipeEnd(e, m)} className={`group flex max-w-[88%] items-end gap-1 rounded-2xl transition-shadow ${own ? "flex-row-reverse" : ""}`}>
+              <div data-msg-id={m.id} onTouchStart={(e) => swipeStart(e, m)} onTouchMove={swipeMove} onTouchEnd={(e) => swipeEnd(e, m)} onTouchCancel={(e) => swipeEnd(e, m)} className={`group flex touch-pan-y max-w-[88%] items-end gap-1 rounded-2xl transition-shadow ${own ? "flex-row-reverse" : ""}`}>
                 <div className={`min-w-0 rounded-2xl px-3 py-2 text-sm ${m.deleted ? "border border-line bg-transparent italic text-muted" : own ? "bg-violet text-white" : "bg-surface-2"}`}>
                   {m.deleted ? (
                     <p>This message was deleted</p>
@@ -493,7 +508,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
           }}
         />
-        <button className="btn btn-gold" disabled={busy || uploading || (!text.trim() && !image)}>Send</button>
+        <button className="btn btn-gold" disabled={busy || uploading || (!text.trim() && !image)} onMouseDown={(e) => e.preventDefault()} onTouchEnd={(e) => { e.preventDefault(); void send(); }}>Send</button>
       </form>
     </div>
   );

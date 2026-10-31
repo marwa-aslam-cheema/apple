@@ -3,6 +3,7 @@ import { PwaProvider } from "@/components/pwa";
 import { Shell } from "@/components/Shell";
 import { getDb } from "@/db";
 import { getOpenSession } from "@/lib/game-sessions";
+import { listToldGameBalances } from "@/lib/services";
 import { CurrencyProvider } from "@/components/Currency";
 import { getTexts } from "@/lib/texts";
 import { getSite } from "@/lib/site";
@@ -33,12 +34,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const site = await getSite(await getDb());
   const texts = await getTexts(await getDb());
   const open = user ? await getOpenSession(await getDb(), user.id) : null;
+  const told = user ? (await listToldGameBalances(await getDb(), user.id)).map((t) => ({ title: t.title, amount: t.amount })) : [];
   return (
     <html lang="en">
       <body>
         <PwaProvider>
           <CurrencyProvider value={{ currency: texts.currency, currencyOne: texts.currencyOne }}>
-          <Shell site={site} user={user ? { username: user.username, balance: user.balance, role: user.role, createdAt: user.createdAt.getTime(), nickname: user.nickname, avatar: user.avatar, inGame: open ? { title: open.gameTitle, balance: open.balance, external: open.external } : null } : null}>{children}</Shell>
+          <Shell site={site} user={user ? { username: user.username, balance: user.balance, role: user.role, createdAt: user.createdAt.getTime(), nickname: user.nickname, avatar: user.avatar, inGame: open ? { title: open.gameTitle, balance: open.balance, external: open.external } : null, told } : null}>{children}</Shell>
         </CurrencyProvider>
         </PwaProvider>
       </body>

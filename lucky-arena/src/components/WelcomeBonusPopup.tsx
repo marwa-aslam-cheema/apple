@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useCurrencyWord } from "./Currency";
 import { ChipIcon } from "./Logo";
 
 /**
@@ -9,7 +8,6 @@ import { ChipIcon } from "./Logo";
  * chat, and the admin loads whatever amount they like.
  */
 export function WelcomeBonusPopup({ signedIn, role, createdAt }: { signedIn: boolean; role: string; createdAt: number }) {
-  const word = useCurrencyWord();
   const brandNew = signedIn && role !== "admin" && createdAt > 0 && Date.now() - createdAt < 15 * 60_000;
   const key = `la_welcome_popup_${createdAt}`;
   const [open, setOpen] = useState(false);
@@ -63,7 +61,7 @@ export function WelcomeBonusPopup({ signedIn, role, createdAt }: { signedIn: boo
           <span className="coin-bounce" style={{ animationDelay: ".5s" }}><ChipIcon size={34} /></span>
         </div>
         <h2 className="gold-text relative mt-3 text-3xl font-extrabold uppercase">Claim your welcome free bonus</h2>
-        <button className="btn btn-gold shine relative mt-6 w-full text-lg" disabled={busy} onClick={ask}>{busy ? "Please wait..." : `I want free ${word}`}</button>
+        <button className="btn btn-gold shine relative mt-6 w-full text-lg" disabled={busy} onClick={ask}>{busy ? "Please wait..." : "Claim free play"}</button>
         <button className="tap relative mt-2 text-xs text-muted underline" onClick={done}>Maybe later</button>
         {note && <p role="alert" className="relative mt-2 text-sm font-semibold text-danger">{note}</p>}
       </div>
