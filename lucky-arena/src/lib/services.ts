@@ -404,9 +404,9 @@ export async function userUnreadCount(db: Db, userId: number) {
 export const WHEEL_SLUG = "lucky-spin";
 const BROADCAST_CHUNK = 500;
 
-/** Players who would receive a message sent to all: everyone except admins and banned accounts. */
+/** Who would receive a message sent to all: every player and every guest (visitor with a chat), but not admins or banned accounts. */
 export async function broadcastRecipientCount(db: Db) {
-  const [r] = await db.select({ n: count() }).from(users).where(and(eq(users.role, "user"), eq(users.banned, false)));
+  const [r] = await db.select({ n: count() }).from(users).where(and(inArray(users.role, ["user", "guest"]), eq(users.banned, false)));
   return r.n;
 }
 
@@ -417,7 +417,7 @@ export async function broadcastChat(db: Db, body: string) {
   if (text.length > 1000) throw new AppError("invalid", "Message is too long (max 1000 characters).");
   const ids = await db.transaction(async (tx) => {
     const t = tx as unknown as Db;
-    const people = await t.select({ id: users.id }).from(users).where(and(eq(users.role, "user"), eq(users.banned, false)));
+    const people = await t.select({ id: users.id }).from(users).where(and(inArray(users.role, ["user", "guest"]), eq(users.banned, false)));
     for (let i = 0; i < people.length; i += BROADCAST_CHUNK) {
       await t.insert(chatMessages).values(
         people.slice(i, i + BROADCAST_CHUNK).map((p) => ({ userId: p.id, sender: "admin", body: text, kind: "broadcast", readByAdmin: true, readByUser: false })),
