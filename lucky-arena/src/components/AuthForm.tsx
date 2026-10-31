@@ -6,16 +6,13 @@ import { useState } from "react";
 import { useCurrencyWord } from "./Currency";
 import { nextTrack, startMusic, unlockAudio } from "@/lib/music";
 
-export function AuthForm({ mode, refCode, next, google = false, mail = false, notice }: { mode: "login" | "register"; refCode?: string; next?: string; google?: boolean; mail?: boolean; notice?: string }) {
+export function AuthForm({ mode, refCode, next, google = false, notice }: { mode: "login" | "register"; refCode?: string; next?: string; google?: boolean; notice?: string }) {
   const router = useRouter();
   const word = useCurrencyWord();
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [ticket, setTicket] = useState(""); // set once a code has been emailed
-  const [sentTo, setSentTo] = useState("");
   const isReg = mode === "register";
-  const googleOnly = isReg && google && !mail; // without an email service, new players join with their real Google account only
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,20 +20,13 @@ export function AuthForm({ mode, refCode, next, google = false, mail = false, no
     setError("");
     setBusy(true);
     const f = new FormData(e.currentTarget);
-    const verifying = isReg && !!ticket;
-    const body = verifying ? { ticket, code: f.get("code") } : isReg
+    const body = isReg
       ? { email: f.get("email"), username: f.get("username"), password: f.get("password"), ref: refCode ?? null }
       : { identifier: f.get("identifier"), password: f.get("password") };
     try {
-      const res = await fetch(verifying ? "/api/auth/register/verify" : `/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
-      if (data.verify) { // a code was emailed: ask for it before the account is made
-        setTicket(data.verify);
-        setSentTo(String(f.get("email") ?? ""));
-        setBusy(false);
-        return;
-      }
       nextTrack(); // a different track each time you log in
       startMusic();
       if (next) {
@@ -51,31 +41,17 @@ export function AuthForm({ mode, refCode, next, google = false, mail = false, no
     }
   }
 
-  if (isReg && ticket) {
-    return (
-      <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
-        <h1 className="gold-text text-3xl font-extrabold uppercase">Check your email</h1>
-        <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`We sent a 6-number code to ${sentTo}. Type it here to finish. (Check Spam too.)`}</p>
-        <label className="block text-sm font-semibold">Code
-          <input name="code" required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" className="input mt-1 text-center text-2xl tracking-[0.4em]" />
-        </label>
-        {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
-        <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : "Verify and join"}</button>
-        <button type="button" className="tap w-full text-center text-sm text-gold underline" onClick={() => { setTicket(""); setError(""); }}>Wrong email? Go back</button>
-      </form>
-    );
-  }
-
   return (
     <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
       <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
       {next && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Log in or sign up first, then you go straight to your game.</p>}
       {isReg && <p className="text-sm text-muted">{`Start at zero and spin the free welcome wheel for your first ${word}. Play-money fun: ${word} have no cash value.`}</p>}
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`Referral code ${refCode} applied: bonus ${word} for you and your friend.`}</p>}
-      {googleOnly ? null : isReg ? (
+      {isReg ? (
         <>
-          <label className="block text-sm font-semibold">Email
+          <label className="block text-sm font-semibold">Gmail or Apple ID (email)
             <input name="email" type="email" required autoComplete="email" className="input mt-1" />
+            <span className="mt-1 block text-xs font-normal text-muted">Gmail: tap "Continue with Google" below (we check the Gmail is real). Apple ID or any other email: type it here.</span>
           </label>
           <label className="block text-sm font-semibold">Username
             <input name="username" required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}" autoComplete="username" className="input mt-1" />
@@ -86,7 +62,7 @@ export function AuthForm({ mode, refCode, next, google = false, mail = false, no
           <input name="identifier" required autoComplete="username" className="input mt-1" />
         </label>
       )}
-      {googleOnly ? null : <label className="block text-sm font-semibold">Password
+      <label className="block text-sm font-semibold">Password
         <span className="relative mt-1 block">
           <input name="password" type={show ? "text" : "password"} required minLength={isReg ? 8 : 1} maxLength={72} autoComplete={isReg ? "new-password" : "current-password"} className="input !pr-12" />
           <button
@@ -103,13 +79,13 @@ export function AuthForm({ mode, refCode, next, google = false, mail = false, no
             )}
           </button>
         </span>
-      </label>}
+      </label>
       {(error || notice) && <p role="alert" className="text-sm font-semibold text-danger">{error || notice}</p>}
       {!isReg && <p className="text-right text-sm"><Link href="/forgot" className="tap text-gold underline">Forgot password?</Link></p>}
-      {googleOnly ? <p className="text-sm text-muted">Sign up with your real Google account. A wrong or made-up Gmail cannot sign up.</p> : <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : isReg ? "Sign up" : "Log in"}</button>}
+      <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : isReg ? "Sign up" : "Log in"}</button>
       {(
         <>
-          {!googleOnly && <div className="flex items-center gap-3 text-xs text-muted" aria-hidden="true"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>}
+          <div className="flex items-center gap-3 text-xs text-muted" aria-hidden="true"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
           <a
             href={`/api/auth/google/start?${new URLSearchParams({ ...(next ? { next } : {}), ...(refCode ? { ref: refCode } : {}) }).toString()}`}
             onClick={(e) => { if (!google) { e.preventDefault(); setError("Google sign-in is not switched on yet. The admin needs to add the Google keys first. Please use email for now."); } }}
