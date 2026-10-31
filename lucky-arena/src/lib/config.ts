@@ -11,7 +11,7 @@ export const MAX_BET = 1000;
 export const SPIN_XP = 1;
 export const CREDITS_PER_XP = 10;
 export const DAILY_BONUS_BASE = 1; // the daily bonus is small: 1 credit, 2 at most (see the VIP tiers)
-export const GOOGLE_SIGNUP_BONUS = 2; // credits for a new player who signs up with Google
+export const GOOGLE_SIGNUP_BONUS = 0; // credits for a new player who signs up with Google (the admin can set it in Texts & bonuses; new players ask for free credits in the welcome popup instead)
 export const DAILY_COOLDOWN_MS = 20 * 60 * 60 * 1000;
 
 export const CATEGORIES = ["Featured", "Wheel", "Cards", "Arcade", "Puzzle", "Trivia"] as const;

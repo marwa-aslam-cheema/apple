@@ -534,7 +534,7 @@ const REQUEST_REPEAT_MS = 30 * 60_000;
  * version (clicking a game) is only sent when the player is really out of credits, and an unanswered identical request
  * is not repeated. Returns whether a message was posted and, if not, why.
  */
-export async function requestCredits(db: Db, userId: number, opts: { gameId?: number } = {}): Promise<{ sent: boolean; reason?: "has_credits" | "already_requested"; game?: string }> {
+export async function requestCredits(db: Db, userId: number, opts: { gameId?: number; welcome?: boolean } = {}): Promise<{ sent: boolean; reason?: "has_credits" | "already_requested"; game?: string }> {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   if (!user) throw new AppError("not_found", "User not found.", 404);
   let game: { title: string } | undefined;
@@ -546,7 +546,7 @@ export async function requestCredits(db: Db, userId: number, opts: { gameId?: nu
     if (user.balance + inGameCredits > 0 || user.welcomeSpins > 0 || user.role === "admin") return { sent: false, reason: "has_credits", game: game.title };
   }
   const texts = await getTexts(db);
-  const body = game ? texts.msgGame.replaceAll("{game}", game.title) : texts.msgTopup;
+  const body = game ? texts.msgGame.replaceAll("{game}", game.title) : opts.welcome ? `I want free ${texts.currency}` : texts.msgTopup;
   const [last] = await db
     .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
     .from(chatMessages)
@@ -638,17 +638,5 @@ export async function lobbyGames(db: Db, opts: { q?: string; category?: string; 
       if (opts.category === "Featured" ? !g.featured : g.category !== opts.category) return false;
     }
     return !q || g.title.toLowerCase().includes(q) || g.category.toLowerCase().includes(q);
-  });
-}
-
-/** The welcome bonus a new Google player taps "Claim" for. Works once: the waiting amount is cleared in the same step. */
-export async function claimWelcomeBonus(db: Db, userId: number) {
-  return db.transaction(async (tx) => {
-    const t = tx as unknown as Db;
-    const [user] = await t.select().from(users).where(eq(users.id, userId)).for("update");
-    if (!user || user.welcomeBonus <= 0) throw new AppError("nothing_to_claim", "There is no welcome bonus to claim.", 400);
-    await t.update(users).set({ welcomeBonus: 0 }).where(eq(users.id, userId));
-    const balance = await applyCredits(t, userId, user.welcomeBonus, "signup_bonus", "Welcome bonus");
-    return { reward: user.welcomeBonus, balance };
   });
 }

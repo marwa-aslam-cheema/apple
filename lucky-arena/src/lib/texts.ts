@@ -9,6 +9,7 @@ export interface SiteTexts {
   currencyOne: string; // singular ("credit")
   msgTopup: string; // sent to the admin when a player asks for more
   msgGame: string; // sent when a player with nothing taps a game; {game} is the game's name
+  msgSignup: string; // sent to the admin the moment a new player signs up
   dailyBase: number; // the daily bonus
   dailyExtra: number; // added from the second daily claim at Gold level and above
   googleBonus: number; // credits for a new player who signs up with Google
@@ -19,6 +20,7 @@ export const DEFAULT_TEXTS: SiteTexts = {
   currencyOne: "credit",
   msgTopup: "I need a top-up",
   msgGame: "I want credits in {game}",
+  msgSignup: "I want 150% signup bonus",
   dailyBase: DAILY_BONUS_BASE,
   dailyExtra: 1,
   googleBonus: GOOGLE_SIGNUP_BONUS,

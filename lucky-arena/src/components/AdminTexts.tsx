@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-interface Texts { currency: string; currencyOne: string; msgTopup: string; msgGame: string; dailyBase: number; dailyExtra: number; googleBonus: number }
+interface Texts { currency: string; currencyOne: string; msgTopup: string; msgGame: string; msgSignup: string; dailyBase: number; dailyExtra: number; googleBonus: number }
 
 /** Words and numbers around credits: what they are called, what a player's request says, and the small bonuses. */
 export function AdminTexts({ initial }: { initial: Texts }) {
@@ -44,6 +44,9 @@ export function AdminTexts({ initial }: { initial: Texts }) {
         <h2 className="font-bold">Messages you receive</h2>
         <label className="block text-xs font-semibold text-muted">When a player taps + or opens an empty wallet<input className="input mt-1" value={t.msgTopup} maxLength={100} onChange={(e) => set("msgTopup", e.target.value)} /></label>
         <label className="block text-xs font-semibold text-muted">When a player with nothing taps a game<input className="input mt-1" value={t.msgGame} maxLength={100} onChange={(e) => set("msgGame", e.target.value)} />
+          <span className="mt-1 block font-normal">Keep <b>{"{game}"}</b> in it: it becomes the game's name.</span>
+        </label>
+        <label className="block text-xs font-semibold text-muted">When a new player signs up (arrives in your chat by itself)<input className="input mt-1" value={t.msgSignup} maxLength={100} onChange={(e) => set("msgSignup", e.target.value)} />
           <span className="mt-1 block font-normal">Keep <b>{"{game}"}</b> in it: it becomes the game's name.</span>
         </label>
       </section>
