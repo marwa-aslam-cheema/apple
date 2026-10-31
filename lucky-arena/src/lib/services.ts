@@ -455,14 +455,21 @@ export async function chatConversations(db: Db) {
   const online = await db.select({ id: users.id }).from(users).where(and(gt(users.lastSeenAt, onlineSince), inArray(users.role, ["user", "guest"])));
   const ids = [...new Set([...agg.map((a) => a.userId), ...online.map((o) => o.id)])];
   if (ids.length === 0) return [];
+  // The line under a player's name is their newest message of any kind, so a message sent to everyone shows there too.
+  // (The order of the list still follows real conversations only: see agg above.)
+  const newest = await db
+    .select({ userId: chatMessages.userId, id: sql<number>`max(${chatMessages.id})::int` })
+    .from(chatMessages)
+    .where(inArray(chatMessages.userId, ids))
+    .groupBy(chatMessages.userId);
   const [people, lasts] = await Promise.all([
     db.select({ id: users.id, username: users.username, nickname: users.nickname, email: users.email, tag: users.tag, lastSeenAt: users.lastSeenAt }).from(users).where(inArray(users.id, ids)),
-    agg.length ? db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender, deletedAt: chatMessages.deletedAt, imageId: chatMessages.imageId }).from(chatMessages).where(inArray(chatMessages.id, agg.map((a) => a.lastId))) : [],
+    newest.length ? db.select({ id: chatMessages.id, body: chatMessages.body, sender: chatMessages.sender, deletedAt: chatMessages.deletedAt, imageId: chatMessages.imageId }).from(chatMessages).where(inArray(chatMessages.id, newest.map((n) => n.id))) : [],
   ]);
   const rows = ids.map((id) => {
     const a = agg.find((x) => x.userId === id);
     const u = people.find((p) => p.id === id);
-    const m = a ? lasts.find((l) => l.id === a.lastId) : undefined;
+    const m = lasts.find((l) => l.id === newest.find((n) => n.userId === id)?.id);
     return {
       userId: id,
       username: u?.username ?? "deleted",
