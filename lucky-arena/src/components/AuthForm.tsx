@@ -12,6 +12,8 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState(""); // set once a code has been emailed
+  const [sentTo, setSentTo] = useState("");
   const isReg = mode === "register";
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -20,13 +22,20 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
     setError("");
     setBusy(true);
     const f = new FormData(e.currentTarget);
-    const body = isReg
+    const verifying = isReg && !!ticket;
+    const body = verifying ? { ticket, code: f.get("code") } : isReg
       ? { email: f.get("email"), username: f.get("username"), password: f.get("password"), ref: refCode ?? null }
       : { identifier: f.get("identifier"), password: f.get("password") };
     try {
-      const res = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(verifying ? "/api/auth/register/verify" : `/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      if (data.verify) { // a code was emailed: ask for it before the account is made
+        setTicket(data.verify);
+        setSentTo(String(f.get("email") ?? ""));
+        setBusy(false);
+        return;
+      }
       nextTrack(); // a different track each time you log in
       startMusic();
       if (next) {
@@ -39,6 +48,21 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setBusy(false);
     }
+  }
+
+  if (isReg && ticket) {
+    return (
+      <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
+        <h1 className="gold-text text-3xl font-extrabold uppercase">Check your email</h1>
+        <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`We sent a 6-number code to ${sentTo}. Type it here to finish. (Check Spam too.)`}</p>
+        <label className="block text-sm font-semibold">Code
+          <input name="code" required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" className="input mt-1 text-center text-2xl tracking-[0.4em]" />
+        </label>
+        {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
+        <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : "Verify and join"}</button>
+        <button type="button" className="tap w-full text-center text-sm text-gold underline" onClick={() => { setTicket(""); setError(""); }}>Wrong email? Go back</button>
+      </form>
+    );
   }
 
   return (

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { games, promotions, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
+import { games, promotions, settings, quickReplies, socialLinks, walletOptions, spins, supportRequests, transactions, users, wheelSegments } from "@/db/schema";
 import { AdminTexts } from "@/components/AdminTexts";
 import { getTexts } from "@/lib/texts";
 import { AdminPromo } from "@/components/AdminPromo";
@@ -19,6 +19,8 @@ import { AdminRequests } from "@/components/AdminRequests";
 import { AdminUsers } from "@/components/AdminUsers";
 import { SPIN_COST } from "@/lib/config";
 import { fmt } from "@/lib/format";
+import { mailAudience, mailEnabled } from "@/lib/mail";
+import { AdminMail } from "@/components/AdminMail";
 import { requireAdminPage } from "@/lib/session";
 import { adminUnreadCount } from "@/lib/services";
 import { expectedReturn } from "@/lib/wheel";
@@ -39,6 +41,7 @@ const TABS = [
   ["banner", "Popup & strip"],
   ["texts", "Texts & bonuses"],
   ["social", "Social"],
+  ["mail", "Email all"],
 ] as const;
 
 const GAME_FIELDS: Field[] = [
@@ -111,6 +114,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     const target = Number(userParam);
     const [who] = Number.isInteger(target) && target > 0 ? await db.select({ id: users.id, username: users.username, email: users.email }).from(users).where(eq(users.id, target)) : [];
     body = <AdminChat initial={who ? { userId: who.id, username: who.username, email: who.email } : undefined} />;
+  } else if (tab === "mail") {
+    const rows = await db.select().from(settings).where(inArray(settings.key, ["mail_subject", "mail_message"]));
+    const get = (k: string) => rows.find((r) => r.key === k)?.value ?? "";
+    body = <AdminMail subject={get("mail_subject")} message={get("mail_message")} count={(await mailAudience(db)).length} enabled={mailEnabled()} />;
   } else if (tab === "texts") {
     body = <AdminTexts initial={await getTexts(db)} />;
   } else if (tab === "banner") {
