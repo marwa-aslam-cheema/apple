@@ -221,7 +221,7 @@ describe("support chat", () => {
     expect(await verifyLogin(db, `guest-x`, "!").catch((e) => e.code)).toBeTruthy(); // a guest can never log in
     const n = await broadcastRecipientCount(db);
     await broadcastChat(db, "hello everyone");
-    expect((await readChat(db, gid, "user")).some((m) => m.body === "hello everyone")).toBe(false);
+    expect((await readChat(db, gid, "user")).some((m) => m.body === "hello everyone")).toBe(true); // the guest gets a message sent to everyone
     expect(n).toBeGreaterThan(0);
   });
   it("puts whoever got or sent a message last on top, signed-up players and guests alike", async () => {
@@ -268,11 +268,12 @@ describe("credit requests", () => {
 });
 
 describe("send to all", () => {
-  it("reaches every active player but not admins or banned accounts, and stays out of the conversation list", async () => {
+  it("reaches every active player and guest but not admins or banned accounts, and stays out of the conversation list", async () => {
     const a = await registerUser(db, { email: "b1@x.test", username: "bcast1", password: "password1" });
     const b = await registerUser(db, { email: "b2@x.test", username: "bcast2", password: "password1" });
     const banned = await registerUser(db, { email: "b3@x.test", username: "bcast3", password: "password1" });
     await db.update(users).set({ banned: true }).where(eq(users.id, banned));
+    const guest = await createGuest(db, "visitor");
     const before = await broadcastRecipientCount(db);
     const sent = await broadcastChat(db, "  Weekend promo: spin twice!  ");
     expect(sent).toBe(before);
@@ -280,6 +281,7 @@ describe("send to all", () => {
     expect((await readChat(db, a, "user")).at(-1)).toMatchObject({ sender: "admin", body: "Weekend promo: spin twice!", kind: "broadcast" });
     expect((await readChat(db, b, "user")).at(-1)?.body).toBe("Weekend promo: spin twice!");
     expect((await readChat(db, banned, "user")).some((m) => m.body.startsWith("Weekend promo"))).toBe(false);
+    expect((await readChat(db, guest, "user")).at(-1)?.body).toBe("Weekend promo: spin twice!"); // a guest gets it too
     const adminRow = await db.select().from(users).where(eq(users.role, "admin"));
     expect((await readChat(db, adminRow[0].id, "user")).some((m) => m.body.startsWith("Weekend promo"))).toBe(false);
     // a broadcast alone does not put every player in the admin's list...
