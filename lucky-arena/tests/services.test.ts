@@ -7,7 +7,7 @@ import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, tellGameBalance, zeroToldGameBalance, listToldGameBalances, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
-import { maskName, recentWins } from "@/lib/promo";
+import { DEFAULT_REGULAR, getRegularBonus, maskName, recentWins, saveRegularBonus } from "@/lib/promo";
 import { DEFAULT_TEXTS, getTexts, saveTexts, unit } from "@/lib/texts";
 import { baseUsername, googleLoginOrCreate, uniqueUsername } from "@/lib/google";
 import { fillCaption } from "@/lib/site";
@@ -383,6 +383,18 @@ describe("credit request from a game", () => {
     expect(await zeroToldGameBalance(db, id, gid)).toBe(false); // already 0
     expect(await listToldGameBalances(db, id)).toEqual([]);
     expect((await readChat(db, id, "user")).map((m) => m.body)).toEqual(["🎮 Lucky Spin Wheel · 700 credits", "🎮 Lucky Spin Wheel · 0 credits"]);
+  });
+  it("counts the sign-up bonus once, then offers the admin's Regular Bonus message", async () => {
+    const id = await broke("regbonus");
+    const claimed = async () => (await db.select().from(users).where(eq(users.id, id)))[0].signupClaimedAt;
+    expect(await claimed()).toBeNull();
+    await requestCredits(db, id, { signup: true });
+    expect(await claimed()).not.toBeNull(); // the sign-up offer is over for this player
+    await saveRegularBonus(db, { ...DEFAULT_REGULAR, message: "Give me my weekly gift" });
+    expect(await requestCredits(db, id, { regular: true })).toMatchObject({ sent: true });
+    expect((await readChat(db, id, "admin")).map((m) => m.body)).toEqual(["I want 150% signup bonus", "Give me my weekly gift"]);
+    expect((await getRegularBonus(db)).title).toBe("Regular Bonus");
+    await saveRegularBonus(db, DEFAULT_REGULAR);
   });
   it("posts the sign-up bonus message from the home page box", async () => {
     const id = await broke("signupask");

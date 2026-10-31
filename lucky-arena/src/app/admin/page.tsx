@@ -6,7 +6,8 @@ import { games, promotions, settings, quickReplies, socialLinks, walletOptions, 
 import { AdminTexts } from "@/components/AdminTexts";
 import { getTexts } from "@/lib/texts";
 import { AdminPromo } from "@/components/AdminPromo";
-import { getPromo } from "@/lib/promo";
+import { AdminRegularBonus } from "@/components/AdminRegularBonus";
+import { getPromo, getRegularBonus } from "@/lib/promo";
 import { AdminSite } from "@/components/AdminSite";
 import { DEFAULT_SHARE_CAPTION, getShare, getSite } from "@/lib/site";
 import { AdminInvitePost } from "@/components/AdminInvitePost";
@@ -122,7 +123,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     body = <AdminTexts initial={await getTexts(db)} />;
   } else if (tab === "banner") {
     const promo = await getPromo(db);
-    body = <AdminPromo popup={promo.popup} tickerEnabled={promo.ticker.enabled} tickerLines={promo.ticker.lines} showWins={promo.ticker.showWins} winTemplate={promo.ticker.winTemplate} minPrize={promo.ticker.minPrize} />;
+    body = (
+      <div className="space-y-6">
+        <AdminRegularBonus regular={await getRegularBonus(db)} />
+        <AdminPromo popup={promo.popup} tickerEnabled={promo.ticker.enabled} tickerLines={promo.ticker.lines} showWins={promo.ticker.showWins} winTemplate={promo.ticker.winTemplate} minPrize={promo.ticker.minPrize} />
+      </div>
+    );
   } else if (tab === "site") {
     const site = await getSite(db);
     const share = await getShare(db);

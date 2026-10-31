@@ -28,6 +28,8 @@ export interface ShellUser {
   inGame: { title: string; balance: number; external: boolean } | null;
   /** What the admin told this player they have inside games: shown in green beside the wallet balance. */
   told: { title: string; amount: number }[];
+  /** The player has tapped the sign-up bonus once: they see the Regular Bonus instead from now on. */
+  signupClaimed: boolean;
 }
 
 const NAV = [
@@ -59,6 +61,9 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
 
   // While the phone keyboard is open (a text box has the cursor) the bottom tabs step aside instead of riding on top of the keyboard.
   const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    document.documentElement.dataset.typing = typing ? "1" : ""; // lets the chat page use the room the hidden bottom bar leaves
+  }, [typing]);
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;
     const textBox = (el: EventTarget | null) => el instanceof HTMLElement && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "file", "range", "color"].includes((el as HTMLInputElement).type)));
@@ -282,7 +287,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
 
       <LiveRefresh />
       <WelcomeBonusPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} />
-      <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} />
+      <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} signupClaimed={user?.signupClaimed ?? false} />
       <NotifyPopup signedIn={!!user} role={user?.role ?? ""} />
       <main className={`mx-auto max-w-6xl lg:px-4 lg:pb-12 lg:pt-6 ${pathname.startsWith("/chat") ? "max-lg:p-0" : "px-4 pb-28 pt-6"}`}>{children}</main>
 

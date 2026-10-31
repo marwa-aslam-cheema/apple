@@ -155,3 +155,8 @@ h1, h2 { font-family: var(--font-display); letter-spacing: 0.01em; }
 }
 :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } .confetti { display: none; } }
+
+/* On a phone, while the keyboard is open the bottom tabs are hidden: the chat page then fills the whole screen so the message box sits right above the keyboard. */
+@media (max-width: 1023px) {
+  html[data-typing="1"] .chat-screen { height: 100dvh; }
+}

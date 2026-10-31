@@ -40,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <PwaProvider>
           <CurrencyProvider value={{ currency: texts.currency, currencyOne: texts.currencyOne }}>
-          <Shell site={site} user={user ? { username: user.username, balance: user.balance, role: user.role, createdAt: user.createdAt.getTime(), nickname: user.nickname, avatar: user.avatar, inGame: open ? { title: open.gameTitle, balance: open.balance, external: open.external } : null, told } : null}>{children}</Shell>
+          <Shell site={site} user={user ? { username: user.username, balance: user.balance, role: user.role, createdAt: user.createdAt.getTime(), nickname: user.nickname, avatar: user.avatar, inGame: open ? { title: open.gameTitle, balance: open.balance, external: open.external } : null, told, signupClaimed: !!user.signupClaimedAt } : null}>{children}</Shell>
         </CurrencyProvider>
         </PwaProvider>
       </body>

@@ -49,6 +49,7 @@ export const DDL = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS tag TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_spins INTEGER NOT NULL DEFAULT 2`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_claimed_at TIMESTAMP`,
   `ALTER TABLE games ADD COLUMN IF NOT EXISTS wallet_mode TEXT NOT NULL DEFAULT 'session'`,
   `ALTER TABLE games ADD COLUMN IF NOT EXISTS api_key TEXT NOT NULL DEFAULT md5(random()::text || clock_timestamp()::text)`,
   `CREATE TABLE IF NOT EXISTS game_sessions (
