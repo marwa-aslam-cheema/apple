@@ -4,15 +4,21 @@ import { AuthForm } from "@/components/AuthForm";
 import { googleEnabled } from "@/lib/google";
 import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/session";
+import { getDb } from "@/db";
+import { fillCaption, getShare, getSite } from "@/lib/site";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string }> }): Promise<Metadata> {
   const { ref } = await searchParams;
   const code = ref && /^[A-Za-z0-9]{4,12}$/.test(ref) ? ref.toUpperCase() : undefined;
-  const image = `/invite/image?format=wide${code ? `&code=${code}` : ""}`;
+  const db = await getDb();
+  const [share, site] = [await getShare(db), await getSite(db)];
+  // the admin's own picture and words win over the automatic ones
+  const image = share.image || `/invite/image?format=wide${code ? `&code=${code}` : ""}`;
+  const text = fillCaption(share.caption, { site: site.name, code: code ?? "", bonus: share.bonus });
   return {
     title: "Join and get free spins",
-    openGraph: { title: "Join Lucky Arena and get free spins", images: [{ url: image, width: 1200, height: 630 }] },
-    twitter: { card: "summary_large_image", images: [image] },
+    openGraph: { title: `Join ${site.name} and get free spins`, description: text, images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", description: text, images: [image] },
   };
 }
 
