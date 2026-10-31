@@ -1,5 +1,5 @@
 import { adminIds, notifyUsers } from "./push";
-import { getTexts } from "./texts";
+import { getTexts, unit } from "./texts";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -636,4 +636,32 @@ export async function lobbyGames(db: Db, opts: { q?: string; category?: string; 
     }
     return !q || g.title.toLowerCase().includes(q) || g.category.toLowerCase().includes(q);
   });
+}
+
+/** The admin tells a player what their balance is inside one game. It is only a message: the game keeps the real balance. */
+export async function tellGameBalance(db: Db, userId: number, gameId: number, amount: number) {
+  if (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000) throw new AppError("bad_amount", "Type the balance as a whole number.");
+  const [game] = await db.select({ title: games.title }).from(games).where(eq(games.id, gameId));
+  if (!game) throw new AppError("not_found", "Game not found.", 404);
+  const texts = await getTexts(db);
+  return postChat(db, userId, "admin", `🎮 ${game.title} · ${amount.toLocaleString("en-US")} ${unit(amount, texts)}`);
+}
+
+/**
+ * The player opens a game the admin told them a balance for: the green balance line goes to 0 in the chat. Does nothing
+ * when the last balance told for this game is already 0 (or none was told).
+ */
+export async function zeroToldGameBalance(db: Db, userId: number, gameId: number) {
+  const [game] = await db.select({ title: games.title }).from(games).where(eq(games.id, gameId));
+  if (!game) return false;
+  const [last] = await db
+    .select({ body: chatMessages.body })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), sql`${chatMessages.body} like ${`🎮 ${game.title} · %`}`))
+    .orderBy(desc(chatMessages.id))
+    .limit(1);
+  const told = Number(last?.body.slice(`🎮 ${game.title} · `.length).split(" ")[0].replaceAll(",", ""));
+  if (!last || !(told > 0)) return false;
+  await tellGameBalance(db, userId, gameId, 0);
+  return true;
 }

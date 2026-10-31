@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { games } from "@/db/schema";
 import { buildLaunchUrl, enterGame, listGameAccounts } from "@/lib/game-sessions";
 import { getCurrentUser } from "@/lib/session";
-import { requestGameAccount } from "@/lib/services";
+import { requestGameAccount, zeroToldGameBalance } from "@/lib/services";
 
 /**
  * Opening a game that lives on another address. The player's credits move into the game (the site shows 0 meanwhile)
@@ -27,6 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       return NextResponse.redirect(new URL(`/games?waiting=${encodeURIComponent(game.slug)}`, base));
     }
     const session = await enterGame(db, user.id, game.id);
+    await zeroToldGameBalance(db, user.id, game.id); // the green balance in the chat goes to 0
     if (session) {
       target = buildLaunchUrl(game.link, { origin: base, token: session.token, player: user.username, gameUsername: acct?.username ?? null, balance: session.balance });
     }
