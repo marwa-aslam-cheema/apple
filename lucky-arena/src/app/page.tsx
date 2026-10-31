@@ -49,33 +49,36 @@ export default async function Home() {
   return (
     <div className="relative isolate space-y-10">
       <CasinoBackdrop />
-      <section className="marquee relative overflow-hidden bg-gradient-to-br from-[#4a0b26]/80 via-[#1d0b1d]/70 to-[#0d060f]/75 p-8 backdrop-blur-[2px] sm:p-14">
-        <div className="spotlight pointer-events-none absolute inset-0" aria-hidden="true" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 select-none sm:block" aria-hidden="true">
-          <span className="float-slow absolute right-24 top-8 text-8xl text-[#b3123f]/70 [--r:-8deg]">♥</span>
-          <span className="float-slower absolute right-52 top-28 text-7xl text-gold/50 [--r:10deg]">♠</span>
-          <span className="float-slow absolute right-10 top-36 text-7xl text-white/20 [--r:-4deg]">♦</span>
-          <span className="float-slower absolute bottom-6 right-36"><ChipIcon size={64} /></span>
-          <span className="float-slow absolute bottom-14 right-8"><ChipIcon size={44} /></span>
-        </div>
-        <div className="relative max-w-xl">
-          <p className="neon-text text-xs font-extrabold uppercase tracking-[0.35em]">Casino night</p>
-          <h1 className="gold-text mt-3 text-5xl font-extrabold uppercase leading-[1.05] sm:text-7xl">Spin. Play. Shine.</h1>
-          <p className="mt-4 text-muted">
-            Join free and spin the welcome wheel for your first {texts.currency}, then try the Lucky Spin Wheel with friends.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            {user ? (
-              !spunWelcome && <Link href="/spin" className="btn btn-gold">Spin the wheel</Link>
-            ) : (
-              <Link href="/register" className="btn btn-gold">Join free and spin</Link>
-            )}
-            <Link href="/games" className="btn btn-ghost">Browse games</Link>
-          </div>
-        </div>
-      </section>
-
       {showBonus && <MemberBonus title={popup.title} text={popup.text} button={popup.buttonMember} deadline={bonusDeadline} />}
+
+      {/* The big top banner (with its spin button) is for players who still have free spins; afterwards the timed sign-up bonus takes its place. */}
+      {!spunWelcome && (
+        <section className="marquee relative overflow-hidden bg-gradient-to-br from-[#4a0b26]/80 via-[#1d0b1d]/70 to-[#0d060f]/75 p-8 backdrop-blur-[2px] sm:p-14">
+          <div className="spotlight pointer-events-none absolute inset-0" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 select-none sm:block" aria-hidden="true">
+            <span className="float-slow absolute right-24 top-8 text-8xl text-[#b3123f]/70 [--r:-8deg]">♥</span>
+            <span className="float-slower absolute right-52 top-28 text-7xl text-gold/50 [--r:10deg]">♠</span>
+            <span className="float-slow absolute right-10 top-36 text-7xl text-white/20 [--r:-4deg]">♦</span>
+            <span className="float-slower absolute bottom-6 right-36"><ChipIcon size={64} /></span>
+            <span className="float-slow absolute bottom-14 right-8"><ChipIcon size={44} /></span>
+          </div>
+          <div className="relative max-w-xl">
+            <p className="neon-text text-xs font-extrabold uppercase tracking-[0.35em]">Casino night</p>
+            <h1 className="gold-text mt-3 text-5xl font-extrabold uppercase leading-[1.05] sm:text-7xl">Spin. Play. Shine.</h1>
+            <p className="mt-4 text-muted">
+              Join free and spin the welcome wheel for your first {texts.currency}, then try the Lucky Spin Wheel with friends.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              {user ? (
+                <Link href="/spin" className="btn btn-gold">Spin the wheel</Link>
+              ) : (
+                <Link href="/register" className="btn btn-gold">Join free and spin</Link>
+              )}
+              <Link href="/games" className="btn btn-ghost">Browse games</Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {user && (
         <section className="grid gap-4 sm:grid-cols-2">
