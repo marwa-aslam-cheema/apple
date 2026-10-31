@@ -10,6 +10,7 @@ import { InstallBanner, useInstall } from "./pwa";
 import { LiveRefresh } from "./LiveRefresh";
 import { NotifyPopup } from "./NotifyPopup";
 import { PromoPopup } from "./PromoPopup";
+import { WelcomeBonusPopup } from "./WelcomeBonusPopup";
 import { Ticker } from "./Ticker";
 import { PushToggle } from "./PushToggle";
 import { SocialBar } from "./SocialBar";
@@ -21,6 +22,7 @@ export interface ShellUser {
   balance: number;
   role: string;
   createdAt: number; // when the account was made (ms), so a brand-new player gets the welcome popups
+  welcomeBonus: number; // credits waiting to be claimed in the welcome popup
   nickname: string;
   avatar: string;
   /** Credits are inside a game: the wallet reads 0 until the player leaves it. */
@@ -261,7 +263,8 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       {(pathname === "/" ? !!user : pathname === "/games") && <Ticker editable={user?.role === "admin"} />} {/* only on Home and Games; the visitor home page shows the strip inside its own layout */}
 
       <LiveRefresh />
-      <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} />
+      <WelcomeBonusPopup amount={user?.welcomeBonus ?? 0} />
+      <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} bonusWaiting={(user?.welcomeBonus ?? 0) > 0} />
       <NotifyPopup signedIn={!!user} role={user?.role ?? ""} />
       <main className={`mx-auto max-w-6xl lg:px-4 lg:pb-12 lg:pt-6 ${pathname.startsWith("/chat") ? "max-lg:p-0" : "px-4 pb-28 pt-6"}`}>{children}</main>
 

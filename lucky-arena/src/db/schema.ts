@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   balance: integer("balance").notNull().default(0),
   welcomeSpins: integer("welcome_spins").notNull().default(2),
+  welcomeBonus: integer("welcome_bonus").notNull().default(0), // credits waiting for the player to tap "Claim"
   xp: integer("xp").notNull().default(0),
   referralCode: text("referral_code").notNull().unique(),
   referredBy: integer("referred_by"),
