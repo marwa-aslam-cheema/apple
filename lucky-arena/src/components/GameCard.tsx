@@ -67,10 +67,11 @@ export function GameCard({ game, needsCredits = false, needsAccount = false, vis
   const onOpen = needsCredits ? () => askForCredits(game.id) : undefined;
   const inner = (
     <>
-      <div className={`relative overflow-hidden rounded-xl ${game.image ? "" : "aspect-square"}`}>
+      {/* The box is always square; a picture of any shape fills it (cropped in the middle). */}
+      <div className="relative aspect-square overflow-hidden rounded-xl">
         {game.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={game.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="block h-auto w-full" />
+          <img src={game.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="block h-full w-full object-cover" />
         ) : (
           <GameArt hue={game.hue} category={game.category} />
         )}
