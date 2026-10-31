@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { clientIp, rateLimit, route } from "@/lib/api";
+import { googleEnabled } from "@/lib/google";
 import { mailEnabled, startSignupVerification } from "@/lib/mail";
 import { createSession } from "@/lib/session";
 import { getSite } from "@/lib/site";
@@ -11,6 +12,8 @@ import { AppError, registerUser } from "@/lib/services";
 import { registerSchema } from "@/lib/validation";
 
 export const POST = route(async (req: Request) => {
+  // With Google switched on, new players must sign up with their real Google account (Google proves the email exists).
+  if (googleEnabled()) throw new AppError("google_only", "Please sign up with Google.", 403);
   rateLimit(`register:${clientIp(req)}`, 10, 60_000);
   const input = registerSchema.parse(await req.json());
   const db = await getDb();
