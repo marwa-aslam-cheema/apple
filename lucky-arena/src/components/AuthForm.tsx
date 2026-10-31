@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useCurrencyWord } from "./Currency";
 import { nextTrack, startMusic, unlockAudio } from "@/lib/music";
 
-export function AuthForm({ mode, refCode, next, google = false, notice }: { mode: "login" | "register"; refCode?: string; next?: string; google?: boolean; notice?: string }) {
+export function AuthForm({ mode, refCode, next, google = false, mail = false, notice }: { mode: "login" | "register"; refCode?: string; next?: string; google?: boolean; mail?: boolean; notice?: string }) {
   const router = useRouter();
   const word = useCurrencyWord();
   const [show, setShow] = useState(false);
@@ -15,7 +15,7 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
   const [ticket, setTicket] = useState(""); // set once a code has been emailed
   const [sentTo, setSentTo] = useState("");
   const isReg = mode === "register";
-  const googleOnly = isReg && google; // new players join with their real Google account only
+  const googleOnly = isReg && google && !mail; // without an email service, new players join with their real Google account only
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

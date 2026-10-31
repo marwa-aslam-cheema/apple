@@ -12,8 +12,8 @@ import { AppError, registerUser } from "@/lib/services";
 import { registerSchema } from "@/lib/validation";
 
 export const POST = route(async (req: Request) => {
-  // With Google switched on, new players must sign up with their real Google account (Google proves the email exists).
-  if (googleEnabled()) throw new AppError("google_only", "Please sign up with Google.", 403);
+  // Email must be proven real: either by Google, or by the emailed code. With Google on and no email service, only Google may sign up.
+  if (googleEnabled() && !mailEnabled()) throw new AppError("google_only", "Please sign up with Google.", 403);
   rateLimit(`register:${clientIp(req)}`, 10, 60_000);
   const input = registerSchema.parse(await req.json());
   const db = await getDb();
