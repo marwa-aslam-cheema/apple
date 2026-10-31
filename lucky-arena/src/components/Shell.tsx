@@ -57,6 +57,18 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
     return () => window.removeEventListener("la:chat-unread", on);
   }, []);
 
+  // While the phone keyboard is open (a text box has the cursor) the bottom tabs step aside instead of riding on top of the keyboard.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const textBox = (el: EventTarget | null) => el instanceof HTMLElement && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "file", "range", "color"].includes((el as HTMLInputElement).type)));
+    const onIn = (e: FocusEvent) => { if (textBox(e.target)) { clearTimeout(t); setTyping(true); } };
+    const onOut = (e: FocusEvent) => { if (textBox(e.target)) { clearTimeout(t); t = setTimeout(() => setTyping(false), 150); } }; // moving between boxes does not flicker
+    document.addEventListener("focusin", onIn);
+    document.addEventListener("focusout", onOut);
+    return () => { clearTimeout(t); document.removeEventListener("focusin", onIn); document.removeEventListener("focusout", onOut); };
+  }, []);
+
   useEffect(() => setOpen(false), [pathname]);
 
   // Credits inside a game on this site come back when the player leaves that page; a game on another address
@@ -284,7 +296,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       {!pathname.startsWith("/chat") && <ChatWidget role={user ? user.role : "guest"} />}
 
       {/* Mobile bottom tabs: Home, Games, Wallet, Chat */}
-      <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gold/30 bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(0,0,0,.45)] backdrop-blur lg:hidden">
+      <nav aria-label="Quick" className={`${typing ? "hidden " : ""}fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gold/30 bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(0,0,0,.45)] backdrop-blur lg:hidden`}>
         {[
           { href: "/", label: "Home", emoji: "🏠" },
           { href: "/games", label: "Games", emoji: "🎮" },
