@@ -26,8 +26,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       await requestGameAccount(db, user.id, game.id);
       return NextResponse.redirect(new URL(`/games?waiting=${encodeURIComponent(game.slug)}`, base));
     }
-    const session = await enterGame(db, user.id, game.id);
-    await zeroToldGameBalance(db, user.id, game.id); // the green balance in the chat goes to 0
+    // The admin told this player a balance for the game: the green chip goes away and the site balance stays exactly as it was
+    // (nothing is taken from the wallet). Without a told balance the credits move into the game as before.
+    const told = await zeroToldGameBalance(db, user.id, game.id);
+    const session = told ? null : await enterGame(db, user.id, game.id);
     if (session) {
       target = buildLaunchUrl(game.link, { origin: base, token: session.token, player: user.username, gameUsername: acct?.username ?? null, balance: session.balance });
     }
