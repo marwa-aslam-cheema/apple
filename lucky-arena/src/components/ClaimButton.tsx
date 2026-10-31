@@ -18,7 +18,7 @@ export function ClaimButton({ url, label, disabled, doneLabel }: { url: string; 
       const res = await fetch(url, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not claim.");
-      setMsg({ ok: true, text: `+${fmt(data.reward)} ${unit(data.reward)} added!` });
+      setMsg({ ok: true, text: data.spin ? "Free spin added! Open Lucky Spin to use it." : `+${fmt(data.reward)} ${unit(data.reward)} added!` });
       router.refresh();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Could not claim." });

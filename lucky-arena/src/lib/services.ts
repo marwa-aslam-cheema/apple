@@ -1,5 +1,5 @@
 import { adminIds, notifyUsers } from "./push";
-import { dailyReward, getTexts } from "./texts";
+import { getTexts } from "./texts";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -7,7 +7,6 @@ import type { Db } from "@/db";
 import { chatImages, chatMessages, chatReactions, gameAccounts, gameSessions, games, promoClaims, promotions, spins, supportRequests, transactions, users, walletOptions, wheelSegments } from "@/db/schema";
 import {
   CREDITS_PER_XP,
-  DAILY_BONUS_BASE,
   DAILY_COOLDOWN_MS,
   MAX_BET,
   MIN_BET,
@@ -173,6 +172,7 @@ async function welcomeSpin(t: Db, userId: number, left: number) {
   return { segmentId: segment.id, label: segment.label, icon: segment.icon, prize: segment.credits, cost: 0, balance, xp: u.xp, welcome: true, welcomeLeft: left - 1, inGame: false };
 }
 
+/** One free spin on the welcome wheel, once every 20 hours. It replaces the old daily credits. */
 export async function claimDaily(db: Db, userId: number, now = new Date()) {
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
@@ -180,13 +180,10 @@ export async function claimDaily(db: Db, userId: number, now = new Date()) {
     if (!user) throw new AppError("not_found", "User not found.", 404);
     if (user.lastDailyAt && now.getTime() - user.lastDailyAt.getTime() < DAILY_COOLDOWN_MS) {
       const waitMs = DAILY_COOLDOWN_MS - (now.getTime() - user.lastDailyAt.getTime());
-      throw new AppError("cooldown", `Daily bonus is ready in ${Math.ceil(waitMs / 3600000)}h.`, 429);
+      throw new AppError("cooldown", `Your free daily spin is ready in ${Math.ceil(waitMs / 3600000)}h.`, 429);
     }
-    // The level bonus unlocks once the player has taken the daily bonus before.
-    const reward = dailyReward(await getTexts(t), { claimedBefore: !!user.lastDailyAt, levelBonus: tierForXp(user.xp).tier.dailyBonus });
-    await t.update(users).set({ lastDailyAt: now }).where(eq(users.id, userId));
-    const balance = await applyCredits(t, userId, reward, "daily_bonus", "Daily bonus");
-    return { reward, balance };
+    const [u] = await t.update(users).set({ lastDailyAt: now, welcomeSpins: sql`${users.welcomeSpins} + 1` }).where(eq(users.id, userId)).returning({ welcomeSpins: users.welcomeSpins });
+    return { spin: 1, welcomeSpins: u.welcomeSpins };
   });
 }
 

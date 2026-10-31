@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-interface Texts { currency: string; currencyOne: string; msgTopup: string; msgGame: string; msgSignup: string; dailyBase: number; dailyExtra: number; googleBonus: number }
+interface Texts { currency: string; currencyOne: string; msgTopup: string; msgGame: string; msgSignup: string; googleBonus: number }
 
 /** Words and numbers around credits: what they are called, what a player's request says, and the small bonuses. */
 export function AdminTexts({ initial }: { initial: Texts }) {
@@ -54,11 +54,8 @@ export function AdminTexts({ initial }: { initial: Texts }) {
       <section className="card max-w-xl space-y-3 p-5">
         <h2 className="font-bold">Bonuses</h2>
         <div className="grid gap-3 sm:grid-cols-3">
-          <label className="block text-xs font-semibold text-muted">Daily bonus<input type="number" min={0} max={100} className="input mt-1" value={t.dailyBase} onChange={(e) => set("dailyBase", Number(e.target.value))} /></label>
-          <label className="block text-xs font-semibold text-muted">Extra at Gold level and above<input type="number" min={0} max={100} className="input mt-1" value={t.dailyExtra} onChange={(e) => set("dailyExtra", Number(e.target.value))} /></label>
           <label className="block text-xs font-semibold text-muted">New player who signs up with Google<input type="number" min={0} max={1000} className="input mt-1" value={t.googleBonus} onChange={(e) => set("googleBonus", Number(e.target.value))} /></label>
         </div>
-        <p className="text-xs text-muted">The extra daily amount is added from a player's second daily claim, once they have reached Gold.</p>
       </section>
 
       <div className="flex items-center gap-3">

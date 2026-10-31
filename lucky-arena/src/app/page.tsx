@@ -6,7 +6,7 @@ import { CasinoBackdrop } from "@/components/CasinoBackdrop";
 import { ChipIcon } from "@/components/Logo";
 import { MemberBonus } from "@/components/MemberBonus";
 import { ClaimButton } from "@/components/ClaimButton";
-import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS, WELCOME_SPINS } from "@/lib/config";
+import { DAILY_COOLDOWN_MS, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
 import { getPromo } from "@/lib/promo";
@@ -80,9 +80,9 @@ export default async function Home() {
       {user && (
         <section className="grid gap-4 sm:grid-cols-2">
           <div className="card p-5">
-            <h2 className="font-bold">Daily bonus</h2>
-            <p className="mb-3 mt-1 text-sm text-muted">Collect {texts.dailyBase} free {unit(texts.dailyBase, texts)} every day. Higher levels add a little more.</p>
-            <ClaimButton url="/api/daily" label="Claim daily bonus" disabled={!dailyReady} doneLabel="Come back later" />
+            <h2 className="font-bold">Daily free spin</h2>
+            <p className="mb-3 mt-1 text-sm text-muted">Take 1 free spin every day.</p>
+            <ClaimButton url="/api/daily" label="Claim free spin" disabled={!dailyReady} doneLabel="Come back later" />
           </div>
           <div className="card p-5">
             <h2 className="font-bold">{tier!.tier.name} member</h2>
@@ -109,7 +109,7 @@ export default async function Home() {
         {[
           ["1. Join free", `Sign up at zero and take ${WELCOME_SPINS} free spins on the welcome wheel for your first ${texts.currency}.`],
           ["2. Play", `Pick your own bet from 1 to 1,000 ${texts.currency} on the Lucky Spin. Prizes grow with your bet and land in your wallet right away.`],
-          ["3. Level up", "Every spin earns XP. Higher VIP tiers unlock bigger daily bonuses."],
+          ["3. Level up", "Every spin earns XP. Climb the VIP tiers and earn new badges."],
         ].map(([t, d]) => (
           <div key={t} className="card p-5">
             <h3 className="font-bold text-gold">{t}</h3>
