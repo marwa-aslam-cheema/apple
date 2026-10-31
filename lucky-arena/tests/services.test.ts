@@ -5,7 +5,7 @@ import { gameSessions, games, promotions, spins, walletOptions, transactions, us
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, tellGameBalance, zeroToldGameBalance, listToldGameBalances, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, grantAppBonus, tellGameBalance, zeroToldGameBalance, listToldGameBalances, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { DEFAULT_REGULAR, getRegularBonus, maskName, recentWins, saveRegularBonus } from "@/lib/promo";
 import { DEFAULT_TEXTS, getTexts, saveTexts, unit } from "@/lib/texts";
@@ -395,6 +395,17 @@ describe("credit request from a game", () => {
     expect((await readChat(db, id, "admin")).map((m) => m.body)).toEqual(["I want 150% signup bonus", "Give me my weekly gift"]);
     expect((await getRegularBonus(db)).title).toBe("Regular Bonus");
     await saveRegularBonus(db, DEFAULT_REGULAR);
+  });
+  it("gives 2 free spins once for installing the app and once for notifications", async () => {
+    const id = await broke("appbonus");
+    const spinsOf = async () => (await db.select().from(users).where(eq(users.id, id)))[0].welcomeSpins;
+    expect(await grantAppBonus(db, id, "install")).toEqual({ granted: true, spins: 2 });
+    expect(await spinsOf()).toBe(2);
+    expect(await grantAppBonus(db, id, "install")).toEqual({ granted: false, spins: 0 }); // only once
+    expect(await grantAppBonus(db, id, "notify")).toEqual({ granted: true, spins: 2 }); // a separate bonus
+    expect(await spinsOf()).toBe(4);
+    const [admin] = await db.select().from(users).where(eq(users.role, "admin"));
+    expect((await grantAppBonus(db, admin.id, "notify")).granted).toBe(false); // not for the admin
   });
   it("posts the sign-up bonus message from the home page box", async () => {
     const id = await broke("signupask");

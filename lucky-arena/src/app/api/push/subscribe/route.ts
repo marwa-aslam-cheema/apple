@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { pushSubscriptions } from "@/db/schema";
 import { rateLimit, route } from "@/lib/api";
 import { requireUserApi } from "@/lib/session";
+import { grantAppBonus } from "@/lib/services";
 
 const sub = z.object({ endpoint: z.string().url().max(600), keys: z.object({ p256dh: z.string().max(200), auth: z.string().max(100) }) });
 
@@ -16,7 +17,8 @@ export const POST = route(async (req: Request) => {
   // The same phone can belong to a different player later (shared device): the newest login owns it.
   await db.insert(pushSubscriptions).values({ userId: user.id, endpoint: s.endpoint, p256dh: s.keys.p256dh, auth: s.keys.auth })
     .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { userId: user.id, p256dh: s.keys.p256dh, auth: s.keys.auth } });
-  return NextResponse.json({ ok: true });
+  const bonus = await grantAppBonus(db, user.id, "notify"); // 2 free spins the first time notifications are turned on
+  return NextResponse.json({ ok: true, spins: bonus.spins });
 });
 
 export const DELETE = route(async (req: Request) => {

@@ -222,7 +222,7 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
             <span className="flex items-center justify-between gap-2">
               <b className="flex min-w-0 items-center gap-1.5 truncate text-sm">
                 {c.online && <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-green-500 shadow-[0_0_6px_#22c55e]" role="img" aria-label="Online" title="Online" />}
-                <span className="truncate">{c.username}{c.nickname && <span className="font-normal text-muted"> ({c.nickname})</span>}</span>
+                <span className="truncate">{c.nickname || c.username}</span>
                 
               </b>
               {c.unread > 0 && <span className="rounded-full bg-gold px-2 text-xs font-extrabold text-black">{c.unread}</span>}
@@ -246,7 +246,7 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
         {compact && <button className="rounded-lg px-2 py-1 hover:bg-surface-2" onClick={() => setThread(false)} aria-label="Back to conversations">&larr;</button>}
         <span className="truncate">
           {current.online && <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-green-500" role="img" aria-label="Online" title="Online" />}
-          {current.username}{current.nickname && <span className="font-normal text-muted"> ({current.nickname})</span>} <span className="font-normal text-muted">· {current.email}</span>
+          {current.nickname || current.username} <span className="font-normal text-muted">· {current.email}</span>
         </span>
         <a href={`/admin/users/${current.userId}`} className="chip ml-auto shrink-0 !py-0.5 text-xs hover:border-gold" title="Game usernames, credits and history">Game usernames</a>
       </h2>

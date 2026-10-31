@@ -27,15 +27,21 @@ export async function pushState(): Promise<PushState> {
 
 /** Shows the phone's own "Allow notifications?" question and, on yes, saves the subscription. */
 export async function enablePush(): Promise<"on" | "blocked" | "off"> {
+  return (await enablePushWithSpins()).state;
+}
+
+/** Same, and says how many free spins the server gave for turning notifications on (0 when already given before). */
+export async function enablePushWithSpins(): Promise<{ state: "on" | "blocked" | "off"; spins: number }> {
   const k = await (await fetch("/api/push/key")).json();
   const perm = await Notification.requestPermission();
-  if (perm !== "granted") return perm === "denied" ? "blocked" : "off";
+  if (perm !== "granted") return { state: perm === "denied" ? "blocked" : "off", spins: 0 };
   const reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
   await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(k.key) }));
   const res = await fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub.toJSON()) });
   if (!res.ok) throw new Error("subscribe failed");
-  return "on";
+  const data = (await res.json().catch(() => ({}))) as { spins?: number };
+  return { state: "on", spins: data.spins ?? 0 };
 }
 
 export async function disablePush() {
