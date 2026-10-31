@@ -372,6 +372,11 @@ describe("credit request from a game", () => {
     return id;
   }
   const gameId = async (slug: string) => (await db.select().from(games).where(eq(games.slug, slug)))[0].id;
+  it("posts the sign-up bonus message from the home page box", async () => {
+    const id = await broke("signupask");
+    expect(await requestCredits(db, id, { signup: true })).toMatchObject({ sent: true });
+    expect((await readChat(db, id, "admin")).map((m) => m.body)).toEqual(["I want 150% signup bonus"]);
+  });
   it("posts \"I want free credits\" from the welcome popup", async () => {
     const id = await broke("welcomeask");
     expect(await requestCredits(db, id, { welcome: true })).toMatchObject({ sent: true });

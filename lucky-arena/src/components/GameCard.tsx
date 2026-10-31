@@ -82,7 +82,6 @@ export function GameCard({ game, needsCredits = false, needsAccount = false, vis
       </div>
       <div className="px-1 pb-1 pt-2">
         <h3 className="truncate text-sm font-bold">{game.title}</h3>
-        <p className="text-xs text-muted">{game.category}</p>
       </div>
     </>
   );
