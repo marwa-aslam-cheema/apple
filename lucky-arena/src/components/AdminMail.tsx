@@ -29,7 +29,7 @@ export function AdminMail({ subject, message, count, enabled }: { subject: strin
     <div className="card max-w-xl space-y-4 p-5">
       <h2 className="font-bold">Email all players</h2>
       <p className="text-sm text-muted">Every player who signed up (with email or Google) is added here by themselves. Right now: <b className="text-ink">{count}</b> email{count === 1 ? "" : "s"}. Suspended accounts and guests are left out.</p>
-      {!enabled && <p className="rounded-lg border border-gold/50 p-3 text-sm text-gold">Email is not switched on yet. In Vercel add <code>RESEND_API_KEY</code> and <code>MAIL_FROM</code>, then Redeploy. You can still write and save the message.</p>}
+      {!enabled && <p className="rounded-lg border border-gold/50 p-3 text-sm text-gold">Email is not switched on yet. In Vercel add <code>GMAIL_USER</code> (your Gmail) and <code>GMAIL_APP_PASSWORD</code> (the 16-letter app password from Google), then Redeploy. You can still write and save the message.</p>}
       <label className="block text-sm font-semibold">Subject
         <input className="input mt-1" value={s} maxLength={120} onChange={(e) => setS(e.target.value)} />
       </label>

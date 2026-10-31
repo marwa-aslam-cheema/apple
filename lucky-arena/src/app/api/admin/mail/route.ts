@@ -6,6 +6,8 @@ import { route } from "@/lib/api";
 import { mailAudience, mailEnabled, sendMail } from "@/lib/mail";
 import { requireAdminApi } from "@/lib/session";
 
+export const maxDuration = 60; // seconds: a long list takes a while
+
 const body = z.object({
   subject: z.string().trim().min(1, "Write a subject.").max(120),
   message: z.string().trim().min(1, "Write the message.").max(5000),
@@ -22,7 +24,7 @@ export const POST = route(async (req: Request) => {
   }
   if (!send) return NextResponse.json({ ok: true });
   const to = await mailAudience(db);
-  if (!mailEnabled()) return NextResponse.json({ error: "Email is not switched on yet. Add RESEND_API_KEY and MAIL_FROM in Vercel first." }, { status: 400 });
+  if (!mailEnabled()) return NextResponse.json({ error: "Email is not switched on yet. Add GMAIL_USER and GMAIL_APP_PASSWORD in Vercel first." }, { status: 400 });
   const sent = await sendMail(to, subject, `${message}\n\n--\nYou get this because you have an account with us.`);
   return NextResponse.json({ ok: true, sent });
 });
