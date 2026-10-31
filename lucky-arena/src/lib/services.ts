@@ -17,6 +17,7 @@ import {
   SPIN_COST,
   SPIN_XP,
   WELCOME_SPINS,
+  APP_BONUS_SPINS,
 } from "./config";
 import { INTERNAL_TTL_MS, enterGame, getOpenSession } from "./game-sessions";
 import { tierForXp } from "./vip";
@@ -671,4 +672,16 @@ export async function zeroToldGameBalance(db: Db, userId: number, gameId: number
   if (!row || row.amount <= 0) return false;
   await tellGameBalance(db, userId, gameId, 0);
   return true;
+}
+
+/** Free spins for installing the app or turning on notifications: once each per player (admins and guests do not get them). */
+export async function grantAppBonus(db: Db, userId: number, kind: "install" | "notify"): Promise<{ granted: boolean; spins: number }> {
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const [user] = await t.select().from(users).where(eq(users.id, userId)).for("update");
+    const done = kind === "install" ? user?.installBonusAt : user?.notifyBonusAt;
+    if (!user || user.role !== "user" || done) return { granted: false, spins: 0 };
+    await t.update(users).set({ ...(kind === "install" ? { installBonusAt: new Date() } : { notifyBonusAt: new Date() }), welcomeSpins: sql`${users.welcomeSpins} + ${APP_BONUS_SPINS}` }).where(eq(users.id, userId));
+    return { granted: true, spins: APP_BONUS_SPINS };
+  });
 }

@@ -7,6 +7,7 @@ import { fmt } from "@/lib/format";
 import { currentTrackName, musicPref, setMusicPref, startMusic, stopMusic, unlockAudio } from "@/lib/music";
 import { ChatWidget } from "./ChatWidget";
 import { InstallBanner, useInstall } from "./pwa";
+import { APP_BONUS_SPINS } from "@/lib/config";
 import { LiveRefresh } from "./LiveRefresh";
 import { NotifyPopup } from "./NotifyPopup";
 import { PromoPopup } from "./PromoPopup";
@@ -30,6 +31,8 @@ export interface ShellUser {
   told: { title: string; amount: number }[];
   /** The player has tapped the sign-up bonus once: they see the Regular Bonus instead from now on. */
   signupClaimed: boolean;
+  /** Turning on notifications still earns the free spins (once per player). */
+  notifyBonus: boolean;
 }
 
 const NAV = [
@@ -179,7 +182,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
           className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-gold/60 px-3 py-3 text-left text-sm font-semibold text-gold transition-colors hover:bg-surface-2"
         >
           <Icon name="download" />
-          Install app
+          Install app{pwa.installBonus ? ` · get ${APP_BONUS_SPINS} free spins` : ""}
         </button>
       )}
       {user && <PushToggle className="mt-2" />}
@@ -288,7 +291,7 @@ export function Shell({ user, site, children }: { user: ShellUser | null; site: 
       <LiveRefresh />
       <WelcomeBonusPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} />
       <PromoPopup signedIn={!!user} role={user?.role ?? ""} createdAt={user?.createdAt ?? 0} signupClaimed={user?.signupClaimed ?? false} />
-      <NotifyPopup signedIn={!!user} role={user?.role ?? ""} />
+      <NotifyPopup signedIn={!!user} role={user?.role ?? ""} bonus={user?.notifyBonus ?? false} />
       <main className={`mx-auto max-w-6xl lg:px-4 lg:pb-12 lg:pt-6 ${pathname.startsWith("/chat") ? "max-lg:p-0" : "px-4 pb-28 pt-6"}`}>{children}</main>
 
       <footer className={`mx-auto max-w-6xl px-4 pb-28 text-xs leading-relaxed text-muted lg:pb-10${pathname.startsWith("/chat") ? " max-lg:hidden" : ""}`}>

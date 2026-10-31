@@ -21,6 +21,8 @@ export const users = pgTable("users", {
   referralCode: text("referral_code").notNull().unique(),
   referredBy: integer("referred_by"),
   lastDailyAt: timestamp("last_daily_at"),
+  installBonusAt: timestamp("install_bonus_at"), // the free spins for installing the app were given
+  notifyBonusAt: timestamp("notify_bonus_at"), // the free spins for turning on notifications were given
   signupClaimedAt: timestamp("signup_claimed_at"), // set once the player taps the sign-up bonus: no more sign-up offers after that
   banned: boolean("banned").notNull().default(false),
   nickname: text("nickname").notNull().default(""), // the name the player chose to show

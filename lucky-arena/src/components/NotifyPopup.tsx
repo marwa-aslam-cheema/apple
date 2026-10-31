@@ -2,7 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { enablePush, pushState } from "@/lib/push-client";
+import { useRouter } from "next/navigation";
+import { APP_BONUS_SPINS } from "@/lib/config";
+import { enablePushWithSpins, pushState } from "@/lib/push-client";
 
 const LATER = "la_notify_later";
 const LATER_DAYS = 7;
@@ -11,7 +13,8 @@ const LATER_DAYS = 7;
  * "Turn on notifications", asked once the welcome popup is out of the way. It only appears when this phone can get
  * notifications, has not been set up yet, and the player has not said "later" in the last week.
  */
-export function NotifyPopup({ signedIn, role }: { signedIn: boolean; role: string }) {
+export function NotifyPopup({ signedIn, role, bonus = false }: { signedIn: boolean; role: string; bonus?: boolean }) {
+  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,9 +60,12 @@ export function NotifyPopup({ signedIn, role }: { signedIn: boolean; role: strin
     setBusy(true);
     setMsg("");
     try {
-      const r = await enablePush();
-      if (r === "on") return setOpen(false);
-      setMsg(r === "blocked" ? "Notifications are blocked in your browser settings for this site." : "Not turned on. You can do it later from the menu.");
+      const r = await enablePushWithSpins();
+      if (r.state === "on") {
+        if (r.spins > 0) { setMsg(`🎉 ${r.spins} free spins added!`); router.refresh(); await new Promise((ok) => setTimeout(ok, 1800)); }
+        return setOpen(false);
+      }
+      setMsg(r.state === "blocked" ? "Notifications are blocked in your browser settings for this site." : "Not turned on. You can do it later from the menu.");
     } catch {
       setMsg("Could not turn on. Try again later from the menu.");
     } finally {
@@ -75,6 +81,7 @@ export function NotifyPopup({ signedIn, role }: { signedIn: boolean; role: strin
         <div className="spotlight pointer-events-none absolute inset-0" aria-hidden="true" />
         <p className="coin-bounce relative text-5xl" aria-hidden="true">🔔</p>
         <h2 className="gold-text relative mt-3 text-2xl font-extrabold uppercase">Turn on notifications</h2>
+        {bonus && <p className="relative mt-2 text-lg font-extrabold text-gold">{`Turn on notifications and get ${APP_BONUS_SPINS} free spins!`}</p>}
         <p className="relative mt-2 text-sm text-muted">Get a buzz on your phone when the admin replies or a new offer arrives, even when the app is closed.</p>
         <button className="btn btn-gold shine relative mt-5 w-full text-lg" disabled={busy} onClick={turnOn}>{busy ? "Please wait..." : "Turn on notifications"}</button>
         <button className="tap relative mt-2 text-xs text-muted underline" onClick={later}>Maybe later</button>
