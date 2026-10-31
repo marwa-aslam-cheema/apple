@@ -137,3 +137,9 @@ Login and Sign up show a **Continue with Google** button once `GOOGLE_CLIENT_ID`
 3. Put the Client ID and Client secret in the environment (Vercel: Settings, Environment Variables) and redeploy.
 
 A player who signs in with Google gets an account made from their verified email (welcome spins and referral bonus work as usual). If that email already has an account, they simply sign in to it. These accounts have no password; the admin can set one from the chat if it is ever needed.
+
+## Backup
+
+`npm run backup` saves every table into one file, `backups/latest.json` (a new backup replaces the old one).
+Live site: `npm run backup -- "postgresql://...your DATABASE_URL..."`. Local copy: `npm run backup`.
+The file holds players' emails and password hashes: keep it private (the `backups` folder is git-ignored).
