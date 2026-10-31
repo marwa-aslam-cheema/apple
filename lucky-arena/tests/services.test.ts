@@ -224,6 +224,18 @@ describe("support chat", () => {
     expect((await readChat(db, gid, "user")).some((m) => m.body === "hello everyone")).toBe(false);
     expect(n).toBeGreaterThan(0);
   });
+  it("shows a message sent to everyone as the newest line in the inbox, without reordering the list", async () => {
+    const a = await registerUser(db, { email: "bc-a@x.test", username: "bc_a", password: "password1" });
+    const b = await registerUser(db, { email: "bc-b@x.test", username: "bc_b", password: "password1" });
+    await postChat(db, a, "user", "older chat");
+    await postChat(db, b, "user", "newer chat");
+    const order = async () => (await chatConversations(db)).filter((c) => [a, b].includes(c.userId));
+    expect((await order()).map((c) => c.userId)).toEqual([b, a]);
+    await broadcastChat(db, "Big weekend offer");
+    const after = await order();
+    expect(after.map((c) => c.userId)).toEqual([b, a]); // a broadcast does not reshuffle the list
+    expect(after.map((c) => [c.last, c.lastSender])).toEqual([["Big weekend offer", "admin"], ["Big weekend offer", "admin"]]); // but it is the latest line shown
+  });
   it("rejects empty and oversized messages", async () => {
     const id = await registerUser(db, { email: "c3@x.test", username: "chatter3", password: "password1" });
     expect(await code(postChat(db, id, "user", "   "))).toBe("invalid");
