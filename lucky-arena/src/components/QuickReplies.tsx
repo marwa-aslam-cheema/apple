@@ -31,20 +31,20 @@ export function QuickReplies({ onPick }: { onPick?: (text: string) => void }) {
   }, [load]);
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto border-b border-line px-2 py-2" aria-label="Quick replies">
+    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line px-2 py-1" aria-label="Quick replies">
       {items.map((r) => (
         <button
           key={r.id}
           type="button"
           title={r.shortcut ? `${r.body}\n(shortcut: ${r.shortcut})` : r.body}
-          className="chip shrink-0 hover:border-gold hover:text-ink"
+          className="chip shrink-0 !py-0 !text-xs hover:border-gold hover:text-ink"
           onClick={() => (onPick ? onPick(r.body) : window.dispatchEvent(new CustomEvent("la:chat-fill", { detail: { text: r.body, imageId: r.imageId ?? null } })))}
         >
           {r.imageId ? "🖼️ " : ""}{r.title}
         </button>
       ))}
       {items.length === 0 && <span className="text-xs text-muted">No quick replies yet.</span>}
-      <Link href="/admin?tab=replies" className="chip shrink-0 !border-dashed" aria-label="Edit quick replies">Edit</Link>
+      <Link href="/admin?tab=replies" className="chip shrink-0 !border-dashed !py-0 !text-xs" aria-label="Edit quick replies">Edit</Link>
     </div>
   );
 }

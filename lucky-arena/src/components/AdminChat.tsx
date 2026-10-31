@@ -32,9 +32,9 @@ function AddCredits({ userId, onDone }: { userId: number; onDone: () => void }) 
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/60 p-2">
-      <input type="number" min={1} max={100000} inputMode="numeric" className="input !min-h-9 w-28 !py-1" placeholder="Credits" aria-label="Credits to add" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      <button className="btn btn-gold !min-h-9 !px-3 !py-1" disabled={busy || !(Number(amount) >= 1)} onClick={add}>Add credits</button>
+    <div className="flex flex-wrap items-center gap-1.5 px-2 py-1">
+      <input type="number" min={1} max={100000} inputMode="numeric" className="input !min-h-7 w-20 !px-2 !py-0 !text-xs" placeholder="Credits" aria-label="Credits to add" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <button className="btn btn-gold !min-h-7 !px-2.5 !py-0 !text-xs" disabled={busy || !(Number(amount) >= 1)} onClick={add}>Add credits</button>
       {msg && <span role="status" className={`text-xs font-semibold ${msg.ok ? "text-teal" : "text-danger"}`}>{msg.text}</span>}
     </div>
   );
@@ -73,13 +73,13 @@ function GameBalance({ userId }: { userId: number }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/60 p-2">
-      <select className="input !min-h-9 w-40 !py-1" aria-label="Game" value={gameId} onChange={(e) => setGameId(e.target.value)}>
+    <div className="flex flex-wrap items-center gap-1.5 px-2 py-1">
+      <select className="input !min-h-7 w-32 !px-2 !py-0 !text-xs" aria-label="Game" value={gameId} onChange={(e) => setGameId(e.target.value)}>
         <option value="">Pick a game</option>
         {games.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
       </select>
-      <input type="number" min={0} inputMode="numeric" className="input !min-h-9 w-28 !py-1" placeholder="Balance" aria-label="Balance in that game" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      <button className="btn btn-violet !min-h-9 !px-3 !py-1" disabled={busy || !gameId || amount === ""} onClick={send}>Tell game balance</button>
+      <input type="number" min={0} inputMode="numeric" className="input !min-h-7 w-20 !px-2 !py-0 !text-xs" placeholder="Balance" aria-label="Balance in that game" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <button className="btn btn-violet !min-h-7 !px-2.5 !py-0 !text-xs" disabled={busy || !gameId || amount === ""} onClick={send}>Tell game balance</button>
       {msg && <span role="status" className={`text-xs font-semibold ${msg.ok ? "text-teal" : "text-danger"}`}>{msg.text}</span>}
     </div>
   );
@@ -111,7 +111,7 @@ function TagBar({ userId, tag, onSaved }: { userId: number; tag: string; onSaved
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-1">
       {tags.map((t) => (
         <span key={t} className="inline-flex items-center gap-1 rounded-full bg-violet/30 py-0.5 pl-2.5 pr-1 text-xs font-semibold">
           {t}
@@ -251,8 +251,10 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
         <a href={`/admin/users/${current.userId}`} className="chip ml-auto shrink-0 !py-0.5 text-xs hover:border-gold" title="Game usernames, credits and history">Game usernames</a>
       </h2>
       <TagBar userId={current.userId} tag={current.tag} onSaved={refresh} />
-      <AddCredits userId={current.userId} onDone={refresh} />
-      <GameBalance userId={current.userId} />
+      <div className="flex flex-wrap items-center border-b border-line bg-surface-2/60">
+        <AddCredits userId={current.userId} onDone={refresh} />
+        <GameBalance userId={current.userId} />
+      </div>
       <QuickReplies />
       <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "min-h-0 flex-1" : "h-[24rem] max-h-[60vh]"} />
     </>

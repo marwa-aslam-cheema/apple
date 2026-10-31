@@ -35,11 +35,11 @@ export interface ShellUser {
 const NAV = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/games", label: "Games", icon: "grid" },
+  { href: "/wallet", label: "Wallet", icon: "wallet" },
   { href: "/spin", label: "Lucky Spin", icon: "wheel" },
   { href: "/promotions", label: "Promotions", icon: "gift" },
   { href: "/vip", label: "VIP Club", icon: "crown" },
   { href: "/referral", label: "Referral", icon: "users" },
-  { href: "/wallet", label: "Wallet", icon: "wallet" },
   { href: "/chat", label: "Support Chat", icon: "chat" },
   { href: "/profile", label: "Profile", icon: "user" },
 ];
