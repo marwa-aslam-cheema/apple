@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import { getDb } from "@/db";
 import { ClaimButton } from "@/components/ClaimButton";
 import { WalletActions } from "@/components/WalletActions";
-import { DAILY_BONUS_BASE, DAILY_COOLDOWN_MS } from "@/lib/config";
+import { DAILY_COOLDOWN_MS } from "@/lib/config";
 import { fmt, fmtDate } from "@/lib/format";
 import { TX_LABELS } from "@/lib/labels";
-import { dailyReward, getTexts, unit } from "@/lib/texts";
+import { getTexts } from "@/lib/texts";
 import { requireUserPage } from "@/lib/session";
 import { listTransactions, userStats } from "@/lib/services";
-import { tierForXp } from "@/lib/vip";
 
 export const metadata: Metadata = { title: "Wallet" };
 
@@ -20,7 +19,6 @@ export default async function WalletPage() {
   const [tx, stats] = await Promise.all([listTransactions(db, user.id, 100), userStats(db, user.id)]);
   const ready = !user.lastDailyAt || Date.now() - user.lastDailyAt.getTime() >= DAILY_COOLDOWN_MS;
   const texts = await getTexts(db);
-  const daily = dailyReward(texts, { claimedBefore: !!user.lastDailyAt, levelBonus: tierForXp(user.xp).tier.dailyBonus });
 
   return (
     <div className="space-y-6">
@@ -36,8 +34,8 @@ export default async function WalletPage() {
           </div>
         </div>
         <div className="card p-5">
-          <h2 className="font-bold">Daily bonus</h2>
-          <p className="mb-3 mt-1 text-sm text-muted">Today: {fmt(daily)} {unit(daily, texts)}</p>
+          <h2 className="font-bold">Daily free spin</h2>
+          <p className="mb-3 mt-1 text-sm text-muted">1 free spin every day.</p>
           <ClaimButton url="/api/daily" label="Claim now" disabled={!ready} doneLabel="Already claimed" />
         </div>
       </div>

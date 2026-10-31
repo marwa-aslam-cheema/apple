@@ -12,23 +12,21 @@ const SEEN = "la_promo_popup_seen";
  * Welcome popup, once per visit. Visitors without an account get "Claim signup bonus" (goes to sign up); players who
  * already have one get "I want a top-up", which sends the request straight to the admin's chat. Texts are the admin's.
  */
-export function PromoPopup({ signedIn, role, createdAt = 0, bonusWaiting = false }: { signedIn: boolean; role: string; createdAt?: number; bonusWaiting?: boolean }) {
+export function PromoPopup({ signedIn, role, createdAt = 0 }: { signedIn: boolean; role: string; createdAt?: number }) {
   const pathname = usePathname();
   const router = useRouter();
   const [popup, setPopup] = useState<Popup | null>(null);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
-  // Visitors on the home page already have the same offer written on the page.
-  const quiet = bonusWaiting || role === "admin" || ["/login", "/register", "/forgot", "/admin"].some((p) => pathname.startsWith(p)) || (!signedIn && pathname === "/");
-
-  // A player whose account was made in the last 15 minutes sees this popup first, once, whatever else was seen this visit.
+  // A player whose account was made in the last 15 minutes gets the welcome popup (WelcomeBonusPopup) instead of this one.
   const brandNew = signedIn && createdAt > 0 && Date.now() - createdAt < 15 * 60_000;
-  const newKey = `la_new_popup_${createdAt}`;
+  // Visitors on the home page already have the same offer written on the page.
+  const quiet = brandNew || role === "admin" || ["/login", "/register", "/forgot", "/admin"].some((p) => pathname.startsWith(p)) || (!signedIn && pathname === "/");
 
   useEffect(() => {
     if (quiet) return;
     try {
-      if (brandNew ? localStorage.getItem(newKey) : sessionStorage.getItem(SEEN)) { window.dispatchEvent(new Event("la:promo-done")); return; }
+      if (sessionStorage.getItem(SEEN)) { window.dispatchEvent(new Event("la:promo-done")); return; }
     } catch {
       /* private mode: it may show again on the next page, which is fine */
     }
@@ -43,13 +41,12 @@ export function PromoPopup({ signedIn, role, createdAt = 0, bonusWaiting = false
         .catch(() => undefined);
     }, 1200);
     return () => { alive = false; clearTimeout(t); };
-  }, [quiet, brandNew, newKey]);
+  }, [quiet]);
 
   function close() {
     setOpen(false);
     try {
       sessionStorage.setItem(SEEN, "1");
-      if (brandNew) localStorage.setItem(newKey, "1");
     } catch {
       /* ignore */
     }

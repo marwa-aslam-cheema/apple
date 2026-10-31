@@ -1,18 +1,16 @@
 export interface VipTier {
   name: string;
   minXp: number;
-  dailyBonus: number; // extra credits added to the daily bonus
   perk: string;
 }
 
 export const VIP_TIERS: VipTier[] = [
-  { name: "Bronze", minXp: 0, dailyBonus: 0, perk: "Welcome tier" },
-  { name: "Silver", minXp: 100, dailyBonus: 0, perk: "Silver badge" },
-  { name: "Gold", minXp: 400, dailyBonus: 1, perk: "+1 daily bonus (from your 2nd daily claim)" },
-  { name: "Platinum", minXp: 1000, dailyBonus: 1, perk: "+1 daily bonus (from your 2nd daily claim)" },
-  { name: "Diamond", minXp: 2500, dailyBonus: 1, perk: "+1 daily bonus, golden badge" },
+  { name: "Bronze", minXp: 0, perk: "Welcome tier" },
+  { name: "Silver", minXp: 100, perk: "Silver badge" },
+  { name: "Gold", minXp: 400, perk: "Gold badge" },
+  { name: "Platinum", minXp: 1000, perk: "Platinum badge" },
+  { name: "Diamond", minXp: 2500, perk: "Golden badge" },
 ];
-
 
 export function tierForXp(xp: number): { tier: VipTier; index: number; next: VipTier | null; progress: number } {
   let index = 0;

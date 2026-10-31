@@ -52,7 +52,7 @@ export default async function PlayerHistoryPage({ params }: { params: Promise<{ 
         <p className="text-ink">{u.email}</p>
         <p className="text-sm text-muted">
           Joined {fmtDate(u.createdAt)} · {tier} VIP ({fmt(u.xp)} XP) · {u.welcomeSpins > 0 ? `${u.welcomeSpins} free welcome spin${u.welcomeSpins === 1 ? "" : "s"} left` : "welcome spins used"}
-          {u.lastDailyAt ? ` · last daily bonus ${fmtDate(u.lastDailyAt)}` : ""}
+          {u.lastDailyAt ? ` · last daily spin ${fmtDate(u.lastDailyAt)}` : ""}
         </p>
         <p className="text-sm text-muted">
           {h.referrer ? <>Joined through <Link className="text-gold underline" href={`/admin/users/${h.referrer.id}`}>{h.referrer.username}</Link>'s invite. </> : "Joined on their own. "}

@@ -4,7 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Db } from "@/db";
 import { users } from "@/db/schema";
 import { getTexts } from "./texts";
-import { AppError, registerUser } from "./services";
+import { AppError, applyCredits, postChat, registerUser } from "./services";
 
 // "Continue with Google". Switched on by GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; without them the button is hidden.
 export const googleEnabled = () => !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
@@ -65,7 +65,9 @@ export async function googleLoginOrCreate(db: Db, p: { email: string; ref?: stri
     return existing.id;
   }
   const id = await registerUser(db, { email: p.email, username: await uniqueUsername(db, p.email), password: randomBytes(24).toString("base64url"), ref: p.ref });
-  const bonus = (await getTexts(db)).googleBonus;
-  if (bonus > 0) await db.update(users).set({ welcomeBonus: bonus }).where(eq(users.id, id)); // the player taps "Claim" in the welcome popup
+  const texts = await getTexts(db);
+  await postChat(db, id, "user", texts.msgSignup); // the admin sees it in the chat
+  const bonus = texts.googleBonus;
+  if (bonus > 0) await applyCredits(db, id, bonus, "signup_bonus", "Google sign-up bonus");
   return id;
 }

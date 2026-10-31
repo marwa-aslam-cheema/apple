@@ -20,7 +20,7 @@ const GAMES = [
 
 const PROMOS = [
   { code: "FRIENDS", title: "Invite Friends", description: "Share your referral link. You and your friend each get bonus credits when they join.", rewardCredits: 0, claimable: false },
-  { code: "VIPCLUB", title: "VIP Club", description: "Earn XP with every spin to unlock higher tiers and bigger daily bonuses.", rewardCredits: 0, claimable: false },
+  { code: "VIPCLUB", title: "VIP Club", description: "Earn XP with every spin to unlock higher tiers and new badges.", rewardCredits: 0, claimable: false },
 ];
 
 // Main wheel: 12 slices, each with its own emoji. Weighted so the expected return stays below the 50 credit spin cost

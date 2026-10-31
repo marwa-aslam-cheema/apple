@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db";
 import { settings } from "@/db/schema";
-import { DAILY_BONUS_BASE, GOOGLE_SIGNUP_BONUS } from "./config";
+import { GOOGLE_SIGNUP_BONUS } from "./config";
 
 /** Words and numbers the admin can change without touching the code. */
 export interface SiteTexts {
@@ -9,8 +9,7 @@ export interface SiteTexts {
   currencyOne: string; // singular ("credit")
   msgTopup: string; // sent to the admin when a player asks for more
   msgGame: string; // sent when a player with nothing taps a game; {game} is the game's name
-  dailyBase: number; // the daily bonus
-  dailyExtra: number; // added from the second daily claim at Gold level and above
+  msgSignup: string; // sent to the admin the moment a new player signs up
   googleBonus: number; // credits for a new player who signs up with Google
 }
 
@@ -19,8 +18,7 @@ export const DEFAULT_TEXTS: SiteTexts = {
   currencyOne: "credit",
   msgTopup: "I need a top-up",
   msgGame: "I want credits in {game}",
-  dailyBase: DAILY_BONUS_BASE,
-  dailyExtra: 1,
+  msgSignup: "I want 150% signup bonus",
   googleBonus: GOOGLE_SIGNUP_BONUS,
 };
 
@@ -43,9 +41,4 @@ export async function saveTexts(db: Db, t: SiteTexts) {
 /** "1 credit", "5 credits" in the admin's own word. */
 export function unit(n: number, t: Pick<SiteTexts, "currency" | "currencyOne">): string {
   return n === 1 ? t.currencyOne : t.currency;
-}
-
-/** The daily bonus for this player today. The level part is added only from the second claim, at Gold level and above. */
-export function dailyReward(t: SiteTexts, p: { claimedBefore: boolean; levelBonus: number }): number {
-  return t.dailyBase + (p.claimedBefore && p.levelBonus > 0 ? t.dailyExtra : 0);
 }

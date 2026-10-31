@@ -11,8 +11,7 @@ const body = z.object({
   currencyOne: z.string().trim().min(1, "Write the word for one credit.").max(20),
   msgTopup: z.string().trim().min(1, "The top-up message cannot be empty.").max(100),
   msgGame: z.string().trim().min(1).max(100).refine((v) => v.includes("{game}"), "Keep {game} in this message so the game's name shows."),
-  dailyBase: z.coerce.number().int().min(0).max(100),
-  dailyExtra: z.coerce.number().int().min(0).max(100),
+  msgSignup: z.string().trim().min(1, "The sign-up message cannot be empty.").max(100),
   googleBonus: z.coerce.number().int().min(0).max(1000),
 });
 
