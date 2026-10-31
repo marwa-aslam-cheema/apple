@@ -45,13 +45,12 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
     <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
       <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
       {next && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">Log in or sign up first, then you go straight to your game.</p>}
-      {isReg && <p className="text-sm text-muted">{`Start at zero and spin the free welcome wheel for your first ${word}. Play-money fun: ${word} have no cash value.`}</p>}
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`Referral code ${refCode} applied: bonus ${word} for you and your friend.`}</p>}
       {isReg ? (
         <>
           <label className="block text-sm font-semibold">Gmail or Apple ID (email)
             <input name="email" type="email" required autoComplete="email" className="input mt-1" />
-            <span className="mt-1 block text-xs font-normal text-muted">Gmail: tap "Continue with Google" below (we check the Gmail is real). Apple ID or any other email: type it here.</span>
+            <span className="mt-1 block text-xs font-normal text-muted">Gmail: tap "Continue with Google" below. Apple ID or any other email: type it here.</span>
           </label>
           <label className="block text-sm font-semibold">Username
             <input name="username" required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}" autoComplete="username" className="input mt-1" />
