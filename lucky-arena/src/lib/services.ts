@@ -646,3 +646,22 @@ export async function tellGameBalance(db: Db, userId: number, gameId: number, am
   const texts = await getTexts(db);
   return postChat(db, userId, "admin", `🎮 ${game.title} · ${amount.toLocaleString("en-US")} ${unit(amount, texts)}`);
 }
+
+/**
+ * The player opens a game the admin told them a balance for: the green balance line goes to 0 in the chat. Does nothing
+ * when the last balance told for this game is already 0 (or none was told).
+ */
+export async function zeroToldGameBalance(db: Db, userId: number, gameId: number) {
+  const [game] = await db.select({ title: games.title }).from(games).where(eq(games.id, gameId));
+  if (!game) return false;
+  const [last] = await db
+    .select({ body: chatMessages.body })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sender, "admin"), sql`${chatMessages.body} like ${`🎮 ${game.title} · %`}`))
+    .orderBy(desc(chatMessages.id))
+    .limit(1);
+  const told = Number(last?.body.slice(`🎮 ${game.title} · `.length).split(" ")[0].replaceAll(",", ""));
+  if (!last || !(told > 0)) return false;
+  await tellGameBalance(db, userId, gameId, 0);
+  return true;
+}

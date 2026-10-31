@@ -5,7 +5,7 @@ import { gameSessions, games, promotions, spins, walletOptions, transactions, us
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, tellGameBalance, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, tellGameBalance, zeroToldGameBalance, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
 import { DEFAULT_TEXTS, getTexts, saveTexts, unit } from "@/lib/texts";
@@ -372,6 +372,15 @@ describe("credit request from a game", () => {
     expect((await readChat(db, id, "user")).map((m) => [m.sender, m.body])).toEqual([["admin", "🎮 Lucky Spin Wheel · 1,500 credits"]]);
     expect((await db.select().from(users).where(eq(users.id, id)))[0].balance).toBe(0); // the wallet is untouched
     expect(await code(tellGameBalance(db, id, 999999, 5))).toBe("not_found");
+  });
+  it("sets the told game balance to 0 in the chat when the player opens that game, once", async () => {
+    const id = await broke("gamezero");
+    const gid = await gameId("lucky-spin");
+    expect(await zeroToldGameBalance(db, id, gid)).toBe(false); // nothing was told yet
+    await tellGameBalance(db, id, gid, 700);
+    expect(await zeroToldGameBalance(db, id, gid)).toBe(true);
+    expect(await zeroToldGameBalance(db, id, gid)).toBe(false); // already 0
+    expect((await readChat(db, id, "user")).map((m) => m.body)).toEqual(["🎮 Lucky Spin Wheel · 700 credits", "🎮 Lucky Spin Wheel · 0 credits"]);
   });
   it("posts the sign-up bonus message from the home page box", async () => {
     const id = await broke("signupask");
