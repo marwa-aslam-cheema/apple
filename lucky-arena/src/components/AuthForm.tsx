@@ -12,8 +12,6 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [ticket, setTicket] = useState(""); // set once a code has been emailed
-  const [sentTo, setSentTo] = useState("");
   const isReg = mode === "register";
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -22,20 +20,13 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
     setError("");
     setBusy(true);
     const f = new FormData(e.currentTarget);
-    const verifying = isReg && !!ticket;
-    const body = verifying ? { ticket, code: f.get("code") } : isReg
+    const body = isReg
       ? { email: f.get("email"), username: f.get("username"), password: f.get("password"), ref: refCode ?? null }
       : { identifier: f.get("identifier"), password: f.get("password") };
     try {
-      const res = await fetch(verifying ? "/api/auth/register/verify" : `/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
-      if (data.verify) { // a code was emailed: ask for it before the account is made
-        setTicket(data.verify);
-        setSentTo(String(f.get("email") ?? ""));
-        setBusy(false);
-        return;
-      }
       nextTrack(); // a different track each time you log in
       startMusic();
       if (next) {
@@ -50,21 +41,6 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
     }
   }
 
-  if (isReg && ticket) {
-    return (
-      <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
-        <h1 className="gold-text text-3xl font-extrabold uppercase">Check your email</h1>
-        <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`We sent a 6-number code to ${sentTo}. Type it here to finish. (Check Spam too.)`}</p>
-        <label className="block text-sm font-semibold">Code
-          <input name="code" required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" className="input mt-1 text-center text-2xl tracking-[0.4em]" />
-        </label>
-        {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
-        <button className="btn btn-gold w-full" disabled={busy}>{busy ? "Please wait..." : "Verify and join"}</button>
-        <button type="button" className="tap w-full text-center text-sm text-gold underline" onClick={() => { setTicket(""); setError(""); }}>Wrong email? Go back</button>
-      </form>
-    );
-  }
-
   return (
     <form onSubmit={submit} className="card marquee mx-auto w-full max-w-md space-y-4 p-8">
       <h1 className="gold-text text-3xl font-extrabold uppercase">{isReg ? "Join the table" : "Welcome back"}</h1>
@@ -73,8 +49,9 @@ export function AuthForm({ mode, refCode, next, google = false, notice }: { mode
       {isReg && refCode && <p className="rounded-lg bg-surface-2 p-2 text-sm text-gold">{`Referral code ${refCode} applied: bonus ${word} for you and your friend.`}</p>}
       {isReg ? (
         <>
-          <label className="block text-sm font-semibold">Email
+          <label className="block text-sm font-semibold">Gmail or Apple ID (email)
             <input name="email" type="email" required autoComplete="email" className="input mt-1" />
+            <span className="mt-1 block text-xs font-normal text-muted">Gmail: tap "Continue with Google" below (we check the Gmail is real). Apple ID or any other email: type it here.</span>
           </label>
           <label className="block text-sm font-semibold">Username
             <input name="username" required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}" autoComplete="username" className="input mt-1" />
