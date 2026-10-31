@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db } from "@/db";
-import { gameSessions, games, spins, walletOptions, transactions, users, wheelSegments } from "@/db/schema";
+import { gameSessions, games, promotions, spins, walletOptions, transactions, users, wheelSegments } from "@/db/schema";
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
-  AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
+  AppError, activeWheel, adminAdjust, claimDaily, claimPromo, claimWelcomeBonus, lobbyGames, listTransactions,
   adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
@@ -139,8 +139,10 @@ describe("wallet and spin", () => {
   });
   it("lets a promotion be claimed only once", async () => {
     const id = await registerUser(db, { email: "pr@x.test", username: "promo", password: "password1" });
-    expect((await claimPromo(db, id, "WELCOME500")).reward).toBe(500);
-    expect(await code(claimPromo(db, id, "WELCOME500"))).toBe("already_claimed");
+    expect(await code(claimPromo(db, id, "WELCOME500"))).toBe("not_found"); // the big free 500 is gone
+    await db.insert(promotions).values({ code: "TESTBONUS", title: "Test bonus", description: "x", rewardCredits: 30, claimable: true });
+    expect((await claimPromo(db, id, "TESTBONUS")).reward).toBe(30);
+    expect(await code(claimPromo(db, id, "TESTBONUS"))).toBe("already_claimed");
     expect(await code(claimPromo(db, id, "FRIENDS"))).toBe("not_claimable");
     expect(await code(claimPromo(db, id, "NOPE"))).toBe("not_found");
   });
@@ -711,7 +713,10 @@ describe("Continue with Google accounts", () => {
     expect(baseUsername("a@gmail.com")).toBe("playera");
     const id = await googleLoginOrCreate(db, { email: "g.user@gmail.com" });
     const [u] = await db.select().from(users).where(eq(users.id, id));
-    expect(u).toMatchObject({ email: "g.user@gmail.com", username: "guser", welcomeSpins: expect.any(Number), balance: 2 }); // Google sign-up bonus
+    expect(u).toMatchObject({ email: "g.user@gmail.com", username: "guser", welcomeSpins: expect.any(Number), balance: 0, welcomeBonus: 2 }); // the bonus waits for "Claim"
+    expect((await claimWelcomeBonus(db, id)).reward).toBe(2);
+    expect(await code(claimWelcomeBonus(db, id))).toBe("nothing_to_claim"); // only once
+    expect((await db.select().from(users).where(eq(users.id, id)))[0].balance).toBe(2);
     expect(await googleLoginOrCreate(db, { email: "g.user@gmail.com" })).toBe(id); // same email: same account
     expect((await uniqueUsername(db, "guser@other.com")).startsWith("guser")).toBe(true);
     expect(await uniqueUsername(db, "guser@other.com")).not.toBe("guser"); // taken, so a suffix is added
@@ -750,7 +755,7 @@ describe("texts and bonuses the admin can change", () => {
     expect((await claimDaily(db, a, new Date("2026-03-01T10:00:00Z"))).reward).toBe(3);
     expect((await googleLoginOrCreate(db, { email: "tx.google@gmail.com" }))).toBeGreaterThan(0);
     const gu = (await db.select().from(users).where(eq(users.email, "tx.google@gmail.com")))[0];
-    expect(gu.balance).toBe(7);
+    expect(gu.welcomeBonus).toBe(7);
     expect(dailyReward(t, { claimedBefore: true, levelBonus: 1 })).toBe(3 + t.dailyExtra);
     expect(dailyReward(t, { claimedBefore: false, levelBonus: 1 })).toBe(3);
     await saveTexts(db, DEFAULT_TEXTS); // leave things as they were for the other tests

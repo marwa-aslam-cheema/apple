@@ -12,14 +12,14 @@ const SEEN = "la_promo_popup_seen";
  * Welcome popup, once per visit. Visitors without an account get "Claim signup bonus" (goes to sign up); players who
  * already have one get "I want a top-up", which sends the request straight to the admin's chat. Texts are the admin's.
  */
-export function PromoPopup({ signedIn, role, createdAt = 0 }: { signedIn: boolean; role: string; createdAt?: number }) {
+export function PromoPopup({ signedIn, role, createdAt = 0, bonusWaiting = false }: { signedIn: boolean; role: string; createdAt?: number; bonusWaiting?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [popup, setPopup] = useState<Popup | null>(null);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   // Visitors on the home page already have the same offer written on the page.
-  const quiet = role === "admin" || ["/login", "/register", "/forgot", "/admin"].some((p) => pathname.startsWith(p)) || (!signedIn && pathname === "/");
+  const quiet = bonusWaiting || role === "admin" || ["/login", "/register", "/forgot", "/admin"].some((p) => pathname.startsWith(p)) || (!signedIn && pathname === "/");
 
   // A player whose account was made in the last 15 minutes sees this popup first, once, whatever else was seen this visit.
   const brandNew = signedIn && createdAt > 0 && Date.now() - createdAt < 15 * 60_000;

@@ -640,3 +640,15 @@ export async function lobbyGames(db: Db, opts: { q?: string; category?: string; 
     return !q || g.title.toLowerCase().includes(q) || g.category.toLowerCase().includes(q);
   });
 }
+
+/** The welcome bonus a new Google player taps "Claim" for. Works once: the waiting amount is cleared in the same step. */
+export async function claimWelcomeBonus(db: Db, userId: number) {
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const [user] = await t.select().from(users).where(eq(users.id, userId)).for("update");
+    if (!user || user.welcomeBonus <= 0) throw new AppError("nothing_to_claim", "There is no welcome bonus to claim.", 400);
+    await t.update(users).set({ welcomeBonus: 0 }).where(eq(users.id, userId));
+    const balance = await applyCredits(t, userId, user.welcomeBonus, "signup_bonus", "Welcome bonus");
+    return { reward: user.welcomeBonus, balance };
+  });
+}

@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import type { Db } from "./index";
 import { games, promotions, quickReplies, users, walletOptions, wheelSegments } from "./schema";
 
@@ -19,8 +19,6 @@ const GAMES = [
 ];
 
 const PROMOS = [
-  { code: "WELCOME500", title: "Welcome Boost", description: "Claim 500 extra credits once, as a thank-you for joining.", rewardCredits: 500, claimable: true },
-  { code: "WEEKEND250", title: "Weekend Refill", description: "A one-time 250 credit refill to keep the spins going.", rewardCredits: 250, claimable: true },
   { code: "FRIENDS", title: "Invite Friends", description: "Share your referral link. You and your friend each get bonus credits when they join.", rewardCredits: 0, claimable: false },
   { code: "VIPCLUB", title: "VIP Club", description: "Earn XP with every spin to unlock higher tiers and bigger daily bonuses.", rewardCredits: 0, claimable: false },
 ];
@@ -103,6 +101,8 @@ export async function seed(db: Db) {
 
   const [{ value: promoCount }] = await db.select({ value: count() }).from(promotions);
   if (promoCount === 0) await db.insert(promotions).values(PROMOS);
+  // The first release gave away 500 and 250 credits from the Promotions page; new players get only the small welcome bonus now.
+  await db.update(promotions).set({ claimable: false, rewardCredits: 0 }).where(and(inArray(promotions.code, ["WELCOME500", "WEEKEND250"]), inArray(promotions.rewardCredits, [500, 250])));
 
   const main = await db.select().from(wheelSegments).where(eq(wheelSegments.kind, "main")).orderBy(wheelSegments.sortOrder, wheelSegments.id);
   const isFirstReleaseWheel = main.length === OLD_MAIN_LABELS.length && main.every((m, i) => m.label === OLD_MAIN_LABELS[i] && m.icon === "");
