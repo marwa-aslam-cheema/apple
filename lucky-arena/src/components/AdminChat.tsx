@@ -40,6 +40,51 @@ function AddCredits({ userId, onDone }: { userId: number; onDone: () => void }) 
   );
 }
 
+/** Tells the player their balance inside one game ("🎮 Fire Kirin · 150 credits", shown in green in the chat). Only a message: the game keeps the real balance. */
+function GameBalance({ userId }: { userId: number }) {
+  const [games, setGames] = useState<{ id: number; title: string }[]>([]);
+  const [gameId, setGameId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/chat/${userId}/game-balance`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { games?: { id: number; title: string }[] }) => setGames(d.games ?? []))
+      .catch(() => undefined);
+  }, [userId]);
+
+  async function send() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/chat/${userId}/game-balance`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: Number(gameId), amount: Number(amount) }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed.");
+      setMsg({ ok: true, text: "Sent." });
+      setAmount("");
+      window.dispatchEvent(new Event("la:chat-refresh")); // show the message in this thread right away
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Failed." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/60 p-2">
+      <select className="input !min-h-9 w-40 !py-1" aria-label="Game" value={gameId} onChange={(e) => setGameId(e.target.value)}>
+        <option value="">Pick a game</option>
+        {games.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+      </select>
+      <input type="number" min={0} inputMode="numeric" className="input !min-h-9 w-28 !py-1" placeholder="Balance" aria-label="Balance in that game" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <button className="btn btn-violet !min-h-9 !px-3 !py-1" disabled={busy || !gameId || amount === ""} onClick={send}>Tell game balance</button>
+      {msg && <span role="status" className={`text-xs font-semibold ${msg.ok ? "text-teal" : "text-danger"}`}>{msg.text}</span>}
+    </div>
+  );
+}
+
 /** Tags kept beside the player's name (for example their name inside a game). Shown in the list, Users and History too. */
 function TagBar({ userId, tag, onSaved }: { userId: number; tag: string; onSaved: () => void }) {
   const [tags, setTags] = useState(tagList(tag));
@@ -207,6 +252,7 @@ export function AdminChat({ compact = false, initial }: { compact?: boolean; ini
       </h2>
       <TagBar userId={current.userId} tag={current.tag} onSaved={refresh} />
       <AddCredits userId={current.userId} onDone={refresh} />
+      <GameBalance userId={current.userId} />
       <QuickReplies />
       <ChatBox key={current.userId} url={`/api/admin/chat/${current.userId}`} mine="admin" onActivity={refresh} className={compact ? "min-h-0 flex-1" : "h-[24rem] max-h-[60vh]"} />
     </>

@@ -5,7 +5,7 @@ import { gameSessions, games, promotions, spins, walletOptions, transactions, us
 import { REFERRAL_BONUS, SIGNUP_BONUS, SPIN_COST } from "@/lib/config";
 import {
   AppError, activeWheel, adminAdjust, claimDaily, claimPromo, lobbyGames, listTransactions,
-  adminSetPassword, requestCredits, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
+  adminSetPassword, requestCredits, tellGameBalance, userHistory, broadcastChat, broadcastRecipientCount, grantCreditsAndNotify, adminUnreadCount, createGuest, setReferralCode, chatMeta, deleteChatMessage, reactChatMessage, requestGameAccount, requestWalletOption, saveChatImage, readChatImage, userUnreadCount, chatConversations, createResetRequest, postChat, readChat, setRequestStatus, registerUser, spinWheel, verifyLogin,
 } from "@/lib/services";
 import { maskName, recentWins } from "@/lib/promo";
 import { DEFAULT_TEXTS, getTexts, saveTexts, unit } from "@/lib/texts";
@@ -366,6 +366,13 @@ describe("credit request from a game", () => {
     return id;
   }
   const gameId = async (slug: string) => (await db.select().from(games).where(eq(games.slug, slug)))[0].id;
+  it("tells a player their balance inside a game, as a chat message only", async () => {
+    const id = await broke("gamebal");
+    await tellGameBalance(db, id, await gameId("lucky-spin"), 1500);
+    expect((await readChat(db, id, "user")).map((m) => [m.sender, m.body])).toEqual([["admin", "🎮 Lucky Spin Wheel · 1,500 credits"]]);
+    expect((await db.select().from(users).where(eq(users.id, id)))[0].balance).toBe(0); // the wallet is untouched
+    expect(await code(tellGameBalance(db, id, 999999, 5))).toBe("not_found");
+  });
   it("posts the sign-up bonus message from the home page box", async () => {
     const id = await broke("signupask");
     expect(await requestCredits(db, id, { signup: true })).toMatchObject({ sent: true });

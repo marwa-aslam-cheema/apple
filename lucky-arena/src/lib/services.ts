@@ -1,5 +1,5 @@
 import { adminIds, notifyUsers } from "./push";
-import { getTexts } from "./texts";
+import { getTexts, unit } from "./texts";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -636,4 +636,13 @@ export async function lobbyGames(db: Db, opts: { q?: string; category?: string; 
     }
     return !q || g.title.toLowerCase().includes(q) || g.category.toLowerCase().includes(q);
   });
+}
+
+/** The admin tells a player what their balance is inside one game. It is only a message: the game keeps the real balance. */
+export async function tellGameBalance(db: Db, userId: number, gameId: number, amount: number) {
+  if (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000) throw new AppError("bad_amount", "Type the balance as a whole number.");
+  const [game] = await db.select({ title: games.title }).from(games).where(eq(games.id, gameId));
+  if (!game) throw new AppError("not_found", "Game not found.", 404);
+  const texts = await getTexts(db);
+  return postChat(db, userId, "admin", `🎮 ${game.title} · ${amount.toLocaleString("en-US")} ${unit(amount, texts)}`);
 }

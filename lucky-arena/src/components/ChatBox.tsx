@@ -22,6 +22,9 @@ const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const EMOJIS = ["😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎", "🤩", "🥳", "😉", "🙂", "😅", "😇", "🤔", "😴", "😢", "😭", "😡", "🤯", "👍", "👎", "👏", "🙌", "🙏", "💪", "🤝", "👋", "🔥", "🎉", "🎁", "💎", "👑", "🍀", "⭐", "🎰", "🃏", "🎲", "❤️", "💯"];
 
 /** One conversation. `mine` is who is looking at it ("user" = the player, "admin" = staff). */
+/** "🎮 Fire Kirin · 150 credits": the admin telling a player their balance inside a game, shown in green. */
+const GAME_BALANCE = /^🎮 .+ · [\d,]+ \S+$/;
+
 export function ChatBox({ url, mine, onActivity, allowImages = true, className = "h-[28rem] max-h-[70vh]" }: { url: string; mine: "user" | "admin"; onActivity?: () => void; allowImages?: boolean; className?: string }) {
   const router = useRouter();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
@@ -375,7 +378,7 @@ export function ChatBox({ url, mine, onActivity, allowImages = true, className =
                           <img src={`/api/chat/image/${m.imageId}`} alt="Picture in the chat" loading="lazy" className="max-h-72 w-auto max-w-full rounded-lg" />
                         </a>
                       )}
-                      {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                      {m.body && <p className={`whitespace-pre-wrap break-words ${GAME_BALANCE.test(m.body) ? "font-extrabold text-green-400" : ""}`}>{m.body}</p>}
                     </>
                   )}
                   <p className="mt-1 text-[10px] opacity-60">{m.sender === "admin" && mine === "user" ? "Support · " : ""}{fmtDate(m.createdAt)}{copiedId === m.id ? " · Copied" : ""}</p>
