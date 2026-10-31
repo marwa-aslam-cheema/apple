@@ -434,7 +434,7 @@ export async function adminUnreadCount(db: Db) {
   return r.n;
 }
 
-/** One row per player who has written, newest conversation first, with unread count and last message. */
+/** One row per player who has written, newest message first (whoever sent it), with unread count and last message. */
 /** A player counts as online if the site has seen them in this long. */
 const ONLINE_MS = 2 * 60_000;
 
@@ -480,11 +480,11 @@ export async function chatConversations(db: Db) {
       unread: a?.unread ?? 0,
       last: m?.deletedAt ? "Message deleted" : m?.body.slice(0, 80) || (m?.imageId ? "📷 Picture" : ""),
       lastSender: m?.sender ?? "admin",
-      lastId: a?.lastId ?? 0,
+      lastId: newest.find((n) => n.userId === id)?.id ?? 0, // when the newest message of any kind (either side, signed-up player or guest) was written
     };
   });
-  // Unread first, then whoever wrote most recently.
-  return rows.sort((x, y) => Number(y.unread > 0) - Number(x.unread > 0) || y.lastId - x.lastId);
+  // Whoever got or sent a message most recently is on top.
+  return rows.sort((x, y) => y.lastId - x.lastId);
 }
 
 const ACCOUNT_REPEAT_MS = 30 * 60_000;

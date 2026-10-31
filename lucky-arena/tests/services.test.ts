@@ -224,17 +224,21 @@ describe("support chat", () => {
     expect((await readChat(db, gid, "user")).some((m) => m.body === "hello everyone")).toBe(false);
     expect(n).toBeGreaterThan(0);
   });
-  it("shows a message sent to everyone as the newest line in the inbox, without reordering the list", async () => {
-    const a = await registerUser(db, { email: "bc-a@x.test", username: "bc_a", password: "password1" });
-    const b = await registerUser(db, { email: "bc-b@x.test", username: "bc_b", password: "password1" });
-    await postChat(db, a, "user", "older chat");
-    await postChat(db, b, "user", "newer chat");
-    const order = async () => (await chatConversations(db)).filter((c) => [a, b].includes(c.userId));
-    expect((await order()).map((c) => c.userId)).toEqual([b, a]);
-    await broadcastChat(db, "Big weekend offer");
-    const after = await order();
-    expect(after.map((c) => c.userId)).toEqual([b, a]); // a broadcast does not reshuffle the list
-    expect(after.map((c) => [c.last, c.lastSender])).toEqual([["Big weekend offer", "admin"], ["Big weekend offer", "admin"]]); // but it is the latest line shown
+  it("puts whoever got or sent a message last on top, signed-up players and guests alike", async () => {
+    const a = await registerUser(db, { email: "or-a@x.test", username: "or_a", password: "password1" });
+    const b = await registerUser(db, { email: "or-b@x.test", username: "or_b", password: "password1" });
+    const g = await createGuest(db, "visitor");
+    const order = async () => (await chatConversations(db)).filter((c) => [a, b, g].includes(c.userId)).map((c) => c.userId);
+    await postChat(db, a, "user", "first");
+    await postChat(db, b, "user", "second");
+    expect(await order()).toEqual([b, a]);
+    await postChat(db, a, "admin", "reply to a"); // the admin writes to a: a jumps to the top
+    expect(await order()).toEqual([a, b]);
+    await postChat(db, g, "user", "I am a guest"); // a guest writing comes to the top too
+    expect(await order()).toEqual([g, a, b]);
+    expect((await chatConversations(db)).find((c) => c.userId === a)).toMatchObject({ last: "reply to a", lastSender: "admin" });
+    await broadcastChat(db, "Big weekend offer"); // a message to everyone is the newest line for them
+    expect((await chatConversations(db)).filter((c) => [a, b].includes(c.userId)).map((c) => c.last)).toEqual(["Big weekend offer", "Big weekend offer"]);
   });
   it("rejects empty and oversized messages", async () => {
     const id = await registerUser(db, { email: "c3@x.test", username: "chatter3", password: "password1" });
