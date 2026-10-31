@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChipIcon } from "./Logo";
 
+interface Regular { enabled: boolean; title: string; text: string; button: string; message: string }
 interface Popup { enabled: boolean; title: string; text: string; button: string; buttonMember: string; timerHours: number }
 
 const SEEN = "la_promo_popup_seen";
@@ -12,10 +13,11 @@ const SEEN = "la_promo_popup_seen";
  * Welcome popup, once per visit. Visitors without an account get "Claim signup bonus" (goes to sign up); players who
  * already have one get "I want a top-up", which sends the request straight to the admin's chat. Texts are the admin's.
  */
-export function PromoPopup({ signedIn, role, createdAt = 0 }: { signedIn: boolean; role: string; createdAt?: number }) {
+export function PromoPopup({ signedIn, role, createdAt = 0, signupClaimed = false }: { signedIn: boolean; role: string; createdAt?: number; signupClaimed?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [popup, setPopup] = useState<Popup | null>(null);
+  const [regular, setRegular] = useState<Regular | null>(null);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   // A player whose account was made in the last 15 minutes gets the welcome popup (WelcomeBonusPopup) instead of this one.
@@ -34,9 +36,11 @@ export function PromoPopup({ signedIn, role, createdAt = 0 }: { signedIn: boolea
     const t = setTimeout(() => {
       fetch("/api/promo", { cache: "no-store" })
         .then((r) => r.json())
-        .then((d: { popup: Popup }) => {
+        .then((d: { popup: Popup; regular: Regular }) => {
           if (!alive) return;
-          if (d.popup.enabled) { setPopup(d.popup); setOpen(true); } else window.dispatchEvent(new Event("la:promo-done"));
+          // A player who has claimed the sign-up bonus is shown the admin's Regular Bonus; the sign-up offer never comes back for them.
+          const shown = signedIn && signupClaimed ? { enabled: d.regular.enabled, title: d.regular.title, text: d.regular.text, button: d.regular.button, buttonMember: d.regular.button, timerHours: 0 } : d.popup;
+          if (shown.enabled) { setPopup(shown); setRegular(signedIn && signupClaimed ? d.regular : null); setOpen(true); } else window.dispatchEvent(new Event("la:promo-done"));
         })
         .catch(() => undefined);
     }, 1200);
@@ -68,7 +72,7 @@ export function PromoPopup({ signedIn, role, createdAt = 0 }: { signedIn: boolea
     }
     setNote("");
     try {
-      await fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      await fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(regular ? { regular: true } : { signup: true }) });
       close();
       window.dispatchEvent(new Event("la:open-chat")); // the player sees the message that went to the admin
     } catch {

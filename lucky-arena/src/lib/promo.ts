@@ -14,6 +14,27 @@ export const DEFAULT_POPUP: PromoPopup = {
   buttonMember: "I want a top-up",
   timerHours: 24,
 };
+/** The offer a player sees after they have claimed the sign-up bonus. Every word of it is the admin's. */
+export interface RegularBonus { enabled: boolean; title: string; text: string; button: string; message: string }
+export const DEFAULT_REGULAR: RegularBonus = {
+  enabled: true,
+  title: "Regular Bonus",
+  text: "Ask for your regular bonus any time",
+  button: "Claim regular bonus",
+  message: "I want my regular bonus",
+};
+const REGULAR_KEY = "promo_regular";
+
+export async function getRegularBonus(db: Db): Promise<RegularBonus> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, REGULAR_KEY));
+  return parse(row?.value, DEFAULT_REGULAR);
+}
+
+export async function saveRegularBonus(db: Db, r: RegularBonus) {
+  const value = JSON.stringify(r);
+  await db.insert(settings).values({ key: REGULAR_KEY, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
+}
+
 export const DEFAULT_TICKER: PromoTicker = {
   enabled: true,
   showWins: false,

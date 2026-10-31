@@ -9,7 +9,7 @@ import { ClaimButton } from "@/components/ClaimButton";
 import { DAILY_COOLDOWN_MS, WELCOME_SPINS } from "@/lib/config";
 import { fmt } from "@/lib/format";
 import { getCurrentUser } from "@/lib/session";
-import { getPromo } from "@/lib/promo";
+import { getPromo, getRegularBonus } from "@/lib/promo";
 import { getTexts, unit } from "@/lib/texts";
 import { listGameAccounts } from "@/lib/game-sessions";
 import { lobbyGames } from "@/lib/services";
@@ -26,7 +26,10 @@ export default async function Home() {
   const spunWelcome = !!user && user.role !== "admin" && user.welcomeSpins === 0;
   const popup = (await getPromo(db)).popup;
   const bonusDeadline = user && popup.timerHours ? user.createdAt.getTime() + popup.timerHours * 3600_000 : 0;
-  const showBonus = spunWelcome && popup.enabled && (!popup.timerHours || bonusDeadline > Date.now());
+  const claimed = !!user && user.role !== "admin" && !!user.signupClaimedAt;
+  const regular = await getRegularBonus(db);
+  const showBonus = spunWelcome && !claimed && popup.enabled && (!popup.timerHours || bonusDeadline > Date.now());
+  const showRegular = claimed && regular.enabled; // once claimed, the sign-up offer is gone for good and the Regular Bonus takes its place
   const needsCredits = !!user && user.role !== "admin" && user.balance === 0 && user.welcomeSpins === 0;
 
   // Someone without an account: sign in / create account, the signup bonus with its countdown, the strip, then every game.
@@ -50,6 +53,7 @@ export default async function Home() {
     <div className="relative isolate space-y-10">
       <CasinoBackdrop />
       {showBonus && <MemberBonus title={popup.title} text={popup.text} button={popup.buttonMember} deadline={bonusDeadline} />}
+      {showRegular && <MemberBonus kind="regular" title={regular.title} text={regular.text} button={regular.button} deadline={0} />}
 
       {/* The big top banner (with its spin button) is for players who still have free spins; afterwards the timed sign-up bonus takes its place. */}
       {!spunWelcome && (

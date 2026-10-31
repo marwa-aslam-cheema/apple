@@ -5,8 +5,8 @@ import { ChipIcon } from "./Logo";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** The sign-up bonus box with its countdown, shown on the home page once the player has used their free welcome spins. */
-export function MemberBonus({ title, text, button, deadline }: { title: string; text: string; button: string; deadline: number }) {
+/** The sign-up bonus box with its countdown (home page, once the free welcome spins are used), or the admin's Regular Bonus after the sign-up bonus was claimed. */
+export function MemberBonus({ title, text, button, deadline, kind = "signup" }: { title: string; text: string; button: string; deadline: number; kind?: "signup" | "regular" }) {
   const [left, setLeft] = useState<number | null>(deadline ? Math.max(0, deadline - Date.now()) : null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -21,7 +21,7 @@ export function MemberBonus({ title, text, button, deadline }: { title: string; 
     setBusy(true);
     setNote("");
     try {
-      const res = await fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signup: true }) });
+      const res = await fetch("/api/credits/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(kind === "regular" ? { regular: true } : { signup: true }) });
       if (!res.ok) throw new Error();
       window.dispatchEvent(new Event("la:open-chat")); // the player sees the message that went to the admin
     } catch {

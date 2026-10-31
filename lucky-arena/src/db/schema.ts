@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   referralCode: text("referral_code").notNull().unique(),
   referredBy: integer("referred_by"),
   lastDailyAt: timestamp("last_daily_at"),
+  signupClaimedAt: timestamp("signup_claimed_at"), // set once the player taps the sign-up bonus: no more sign-up offers after that
   banned: boolean("banned").notNull().default(false),
   nickname: text("nickname").notNull().default(""), // the name the player chose to show
   avatar: text("avatar").notNull().default(""), // profile picture (an uploaded picture on this site)

@@ -13,7 +13,7 @@ export function ChatScreen({ url, mine, allowImages, signedIn }: { url: string; 
   const router = useRouter();
   const back = () => (window.history.length > 1 ? router.back() : router.push("/"));
   return (
-    <div className="flex h-[calc(100dvh-4rem-env(safe-area-inset-bottom))] flex-col lg:mx-auto lg:h-auto lg:max-w-2xl lg:space-y-4">
+    <div className="chat-screen flex h-[calc(100dvh-4rem-env(safe-area-inset-bottom))] flex-col lg:mx-auto lg:h-auto lg:max-w-2xl lg:space-y-4">
       <header className="flex items-center gap-2 border-b border-line bg-surface px-2 py-2 lg:hidden">
         <button type="button" onClick={back} className="flex h-10 w-10 items-center justify-center rounded-full text-xl hover:bg-surface-2" aria-label="Back">&larr;</button>
         <div className="min-w-0 flex-1">
